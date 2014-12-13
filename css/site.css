@@ -1,0 +1,33 @@
+table.display tr {
+	background-color:  white;
+}
+table.display tr:nth-child(even) {
+	background-color: #E2E4FF;
+}
+
+#map {
+	height:100%;
+}
+
+#map .leaflet-popup h3.router {
+	font-size: 15px;
+}
+#map .leaflet-popup h4.comm {
+	font-size: 13px;
+}
+
+#map .leaflet-popup p {
+	margin: 4px 0;
+}
+
+#map .leaflet-popup .errorNote {
+	color: red;
+	font-weight: bold;
+}
+
+#toList.btn {
+	position: absolute;
+	z-index: 10;
+	top: 15px;
+	right: 15px;
+}
