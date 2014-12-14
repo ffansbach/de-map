@@ -245,7 +245,15 @@ class nodeListParser
 				continue;
 			}
 
-			$thisComm = array('name' => $communityData->name, 'url' => $communityData->url);
+			$communityName = $communityData->name;
+
+			if(isset($communityData->metacommunity))
+			{
+				$cName = $communityData->metacommunity;
+				$communityName = $communityData->metacommunity;
+			}
+
+			$thisComm = array('name' => $communityName, 'url' => $communityData->url);
 
 			if(!json_encode($thisComm))
 			{
