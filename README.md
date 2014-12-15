@@ -1,4 +1,4 @@
 de-map
 ======
 
-http://de-map.freifunk-emskirchen.de/
+http://www.freifunk-karte.de/
