@@ -3,11 +3,31 @@ $(function() {
 	init();
 	icons = prepareIcon();
 
-	addPoints2Map(allTheRouters);
+	$.ajax({
+		url: 'data.php',
+		data: window.location.search.substring(1),
+		beforeSend: function()
+		{
+			ajaxModalTimeout = window.setTimeout("$('#waitModal').modal('show');", 1000);
+		},
+		success: function(response)
+		{
+			communities = response.communities;
+			addPoints2Map(response.allTheRouters);
+		},
+		complete : function()
+		{
+			window.clearTimeout(ajaxModalTimeout);
+			$('#waitModal').modal('hide')
+		}
+	});
+
 });
 
 var map;
 var icons;
+var communities; // todo: make this none global
+var ajaxModalTimeout;
 
 /**
  * initialize map

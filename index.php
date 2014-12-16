@@ -1,30 +1,8 @@
 <?php
+
 header('Content-Type: text/html; charset=utf-8');
 
-if(isset($_REQUEST['deb']))
-{
-	error_reporting(-1);
-	ini_set('display_errors', 'On');
-}
-
 require 'config.php';
-require 'lib/simpleCachedCurl.inc.php';
-require 'lib/nodelistparser.php';
-
-$apiUrl = 'https://raw.githubusercontent.com/freifunk/directory.api.freifunk.net/master/directory.json';
-
-$parser = new nodeListParser();
-$parser->setCachePath(dirname(__FILE__).'/cache/');
-$parser->setSource($apiUrl);
-
-$parser->addAdditional('ffnw', array(
-		'name'	=> 'Freifunk NordWest',
-		'nameShort'	=> 'FF NordWest',
-		'url'	=> 'https://netmon.nordwest.freifunk.net/'
-	)
-);
-
-$parseResult = $parser->getParsed(isset($_REQUEST[$forceReparseKey]));
 
 ?><!doctype html>
 <html lang="de">
@@ -40,16 +18,6 @@ $parseResult = $parser->getParsed(isset($_REQUEST[$forceReparseKey]));
 		<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
 		<link rel="stylesheet" href="css/MarkerCluster.Default.css" />
 		<link rel="stylesheet" href="css/MarkerCluster.css" />
-
-		<style>
-			html{
-				height:100%;
-				overflow: hidden;
-			}
-			body {
-				height:100%;
-			}
-		</style>
 	</head>
 	<body>
 		<div id="map"></div>
@@ -94,12 +62,38 @@ $parseResult = $parser->getParsed(isset($_REQUEST[$forceReparseKey]));
 
 							<li>Bootstrap <a href="http://getbootstrap.com/" targte="_blank">http://getbootstrap.com/</a></li>
 							<li>simpleCachedCurl <a href="https://github.com/ginader/simpleCachedCurl" targte="_blank">https://github.com/ginader/simpleCachedCurl/</a></li>
-							
 						</ul>
 					</div>
 					<div class="modal-footer">
 						<button type="button" class="btn btn-default">Schließen</button>
 						<a class="btn btn-info" data-dismiss="modal" href="http://www.freifunk-emskirchen.de/de-map/" target="ffems">Ausführliche Informationen</a>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="modal fade" id="waitModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h2 class="modal-title" id="myModalLabel">Daten werden geladen</h2>
+					</div>
+					<div class="modal-body">
+						<div style="text-align:center"><img src="img/ajax-loader.gif" alt="spinner" /></div>
+						<p>
+							Bitte haben Sie einen Moment Geduld. Die Daten werden geladen und unter Umständen neu verarbeitet.
+						</p>
+						<p>
+							Falls Sie bisher gelesen haben werden die Daten tatsächlich neu von allen Communities eingelesen und verarbeitet.
+							Dies passiert alle 24 Stunden bei einem zufälligen Seitenaufruf.
+							Das Los ist auf Sie gefallen. Sie haben also gewonnen und sorgen nun so dafür, dass die nächsten Besucher die Karte deutlich schneller sehen werden.
+						</p>
+						<p>
+							Nach spätestens einer Minute werden Sie die Freifunk-Knoten angezeigt bekommen.
+						</p>
+						<p>
+							Vielen Dank für Ihre Geduld und Mithilfe.
+						</p>
 					</div>
 				</div>
 			</div>
@@ -112,8 +106,8 @@ $parseResult = $parser->getParsed(isset($_REQUEST[$forceReparseKey]));
 
 		<script src="js/meta_map.js"></script>
 		<script>
-			var communities = <?php echo json_encode($parseResult['communities'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);?>;
-			var allTheRouters = <?php echo json_encode($parseResult['routerList']);?>;
+			<?php /*var communities = <?php echo json_encode($parseResult['communities'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);?>;
+			var allTheRouters = <?php echo json_encode($parseResult['routerList']);?>;*/?>
 			var tileServerUrl = <?php echo json_encode($tileServerUrl);?>;
 			var tileServerAttribution = <?php echo json_encode($tileServerAttribution);?>;
 			var mapInitalView = <?php echo json_encode($mapInitalView);?>;
