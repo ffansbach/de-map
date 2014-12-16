@@ -26,13 +26,16 @@ $parser->addAdditional('ffnw', array(
 
 $parseResult = $parser->getParsed(isset($_REQUEST[$forceReparseKey]));
 
-?>
-<html>
+?><!doctype html>
+<html lang="de">
 	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<title>Freifunk-Karte</title>
+		<meta name="description" content="Karte der Freifunk Zugangspunkte in Deutschland. Öffentlich zugängliche, nicht kommerzielle und unzensierte WLAN Zugangspunkte. ">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
 		<link rel="stylesheet" href="css/site.css" />
-		
-		<title>De-Freifunk-Map</title>
 
 		<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
 		<link rel="stylesheet" href="css/MarkerCluster.Default.css" />
