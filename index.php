@@ -43,7 +43,7 @@ require 'config.php';
 						</p>
 						<p>
 							3 Arten von Knotenkarten können dann zum Beziehen von Daten genutzt werden: Netmon, ffmap und OpenWifiMap.
-							Die dort gezeigten Knooten/Router/Zugangspunkte der jeweiligen Community fließen dann in diese Karte ein.
+							Die dort gezeigten Knoten/Router/Zugangspunkte der jeweiligen Community fließen dann in diese Karte ein.
 						</p>
 						<p>
 							Alle 24 Stunden werden die Daten neu verarbeitet und so aktualisiert.
