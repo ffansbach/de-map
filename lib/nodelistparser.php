@@ -195,6 +195,19 @@ class nodeListParser
 
 		$urlParts = parse_url($url);
 
+		if(isset($urlParts['path']))
+		{
+			$arr = explode('/', $urlParts['path']);
+
+			if(strpos($arr[sizeof($arr)-1], '.') !== false)
+			{
+				$arr[sizeof($arr)-1] = '';
+			}
+
+			$arr = array_filter($arr);
+			$urlParts['path'] = implode('/', $arr);
+		}
+
 		if(empty($urlParts['host']) && empty($urlParts['path']))
 		{
 			// no useable path
@@ -207,15 +220,20 @@ class nodeListParser
 				$urlParts['scheme'] = 'http';
 			}
 
-			if(empty($urlParts['host']) && !empty($urlParts['path']))
+			$preparedUrl = $urlParts['scheme'].'://';
+
+			if(!empty($urlParts['host']))
 			{
-				$preparedUrl = $urlParts['scheme'].'://'.$urlParts['path'].'/';
+				$preparedUrl .= $urlParts['host'].'/';
 			}
-			else
+
+			if(!empty($urlParts['path']))
 			{
-				$preparedUrl = $urlParts['scheme'].'://'.$urlParts['host'].'/';
+				$preparedUrl .= $urlParts['path'].'/';
 			}
 		}
+
+		$this->_log('new URL: '.$preparedUrl);
 
 		return $preparedUrl;
 	}
