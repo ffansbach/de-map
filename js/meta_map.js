@@ -37,7 +37,28 @@ var ajaxModalTimeout;
  */
 function init()
 {
-	map = L.map('map').setView([mapInitalView.latitude, mapInitalView.longitude], mapInitalView.zoom);
+	var requestedLat = parseFloat(getURLParameter('lat'));
+	var requestedLng = parseFloat(getURLParameter('lng'));
+	var requestedZoom = parseInt(getURLParameter('z'));
+
+	var startView = {
+		latitude: mapInitalView.latitude,
+		longitude: mapInitalView.longitude,
+		zoom: mapInitalView.zoom
+	};
+
+	if(requestedLat && requestedLng)
+	{
+		startView.latitude = requestedLat;
+		startView.longitude = requestedLng;
+	}
+
+	if(requestedZoom)
+	{
+		startView.zoom = requestedZoom;
+	}
+
+	map = L.map('map').setView([startView.latitude, startView.longitude], startView.zoom);
 
 	L.tileLayer(tileServerUrl,
 	{
@@ -45,6 +66,34 @@ function init()
 	    maxZoom: 18
 	}).addTo(map);
 
+	map.on('moveend', setDirectLink);
+
+	setDirectLink();
+
+}
+
+/**
+ * set some informations to the stat-tab in modal
+ * @param {int} comCount  community count
+ * @param {int} nodeCount node count
+ */
+function setStats(comCount, nodeCount)
+{
+	$('#countCom').text(comCount);
+	$('#countNodes').text(nodeCount);
+}
+
+/**
+ * creates a link for the current view and sets it in the modal
+ */
+function setDirectLink()
+{
+	var z = map.getZoom();
+	var pos = map.getCenter();
+
+	var newLink = document.location.origin + document.location.pathname
+					+'?lat='+pos.lat+'&lng='+pos.lng+'&z='+z;
+	$('#direktlink').text(newLink);
 }
 
 /**
@@ -120,6 +169,18 @@ function addPoints2Map(data)
 
 	// add layer with clustergroup to map
 	map.addLayer(markers);
+
+	var countCom = 0;
+
+	for (var k in communities)
+	{
+		if (communities.hasOwnProperty(k))
+		{
+			++countCom;
+		}
+	}
+
+	setStats(countCom, data.length);
 }
 
 /**
@@ -152,4 +213,23 @@ function getTooltipContent(routerData)
 		tooltip += '</p>';
 
 	return tooltip;
+}
+
+/**
+ * returns the value of a getparameter from the url
+ *
+ * uf no url is given, doc.loc.href is used
+ *
+ * @param  {string} name
+ * @param  {string|boolean} url
+ * @return string|null
+ */
+function getURLParameter(name, url)
+{
+	if(typeof url == 'undefined' || !url)
+	{
+		var url = document.location.href;
+	}
+
+    return (RegExp(name + '=' + '(.+?)(&|$)').exec(url)||[,null])[1];
 }

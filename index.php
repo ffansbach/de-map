@@ -36,37 +36,59 @@ require 'config.php';
 						<h2 class="modal-title" id="myModalLabel">Über die Karte</h2>
 					</div>
 					<div class="modal-body">
-						<h3>Wie es funktioniert</h3>
-						<p>
-							Die Karte nutzt die <a href="https://github.com/freifunk/directory.api.freifunk.net" target="_blank">Freifunk Api</a> um eine Liste der
-							Communities in Deutschland zu beziehen. Aus deren API-Files werden dann die Links zu Knotenkarten gelesen.
-						</p>
-						<p>
-							3 Arten von Knotenkarten können dann zum Beziehen von Daten genutzt werden: Netmon, ffmap und OpenWifiMap.
-							Die dort gezeigten Knoten/Router/Zugangspunkte der jeweiligen Community fließen dann in diese Karte ein.
-						</p>
-						<p>
-							Alle 24 Stunden werden die Daten neu verarbeitet und so aktualisiert.
-						</p>
-						<h3>Wer hat es gebaut</h3>
-						<p>
-							Tino Dietel<br />
-							tino [at] freifunk-emskirchen.de<br/>
-							<a href="http://www.freifunk-emskirchen.de">Freifunk Emskirchen</a></br>
-							<a href="https://github.com/stilgarbf">https://github.com/stilgarbf/</a></br><br>
-						</p>
-						<h3>Technik</h3>
-						<ul>
-							<li>Leaflet <a href="http://leafletjs.com/" targte="_blank">http://leafletjs.com/</a></li>
-							<li>Leaflet-Markercluster <a href="https://github.com/Leaflet/Leaflet.markercluster" targte="_blank">https://github.com/Leaflet/Leaflet.markercluster</a></li>
+						<div role="tabpanel">
 
-							<li>Bootstrap <a href="http://getbootstrap.com/" targte="_blank">http://getbootstrap.com/</a></li>
-							<li>simpleCachedCurl <a href="https://github.com/ginader/simpleCachedCurl" targte="_blank">https://github.com/ginader/simpleCachedCurl/</a></li>
-						</ul>
+							<!-- Nav tabs -->
+							<ul class="nav nav-tabs" role="tablist">
+								<li role="presentation" class="active"><a href="#home" aria-controls="home" role="tab" data-toggle="tab">Infos</a></li>
+								<li role="presentation"><a href="#about" aria-controls="profile" role="tab" data-toggle="tab">Über die Karte</a></li>
+							</ul>
+
+							<!-- Tab panes -->
+							<div class="tab-content">
+								<div role="tabpanel" class="tab-pane active" id="home">
+									<h3>Direktlink zur aktuellen Ansicht:</h3>
+									<p><span id="direktlink"></span></p>
+									<h3>Statistisches</h3>
+									<ul>Communities im Api-File: <span id="countCom"></ul>
+									<ul>Verarbeitete Knoten: <span id="countNodes"></ul>
+								</div>
+								<div role="tabpanel" class="tab-pane" id="about">
+									<h3>Wie es funktioniert</h3>
+									<p>
+										Die Karte nutzt die <a href="https://github.com/freifunk/directory.api.freifunk.net" target="_blank">Freifunk Api</a> um eine Liste der
+										Communities in Deutschland zu beziehen. Aus deren API-Files werden dann die Links zu Knotenkarten gelesen.
+									</p>
+									<p>
+										3 Arten von Knotenkarten können dann zum Beziehen von Daten genutzt werden: Netmon, ffmap und OpenWifiMap.
+										Die dort gezeigten Knoten/Router/Zugangspunkte der jeweiligen Community fließen dann in diese Karte ein.
+									</p>
+									<p>
+										Alle 24 Stunden werden die Daten neu verarbeitet und so aktualisiert.
+									</p>
+									<h3>Wer hat es gebaut</h3>
+									<p>
+										Tino Dietel<br />
+										tino [at] freifunk-emskirchen.de<br/>
+										<a href="http://www.freifunk-emskirchen.de">Freifunk Emskirchen</a><br />
+										<a href="https://github.com/stilgarbf">https://github.com/stilgarbf/</a><br /><br />
+									</p>
+									<h3>Technik</h3>
+									<ul>
+										<li>Leaflet <a href="http://leafletjs.com/" targte="_blank">http://leafletjs.com/</a></li>
+										<li>Leaflet-Markercluster <a href="https://github.com/Leaflet/Leaflet.markercluster" targte="_blank">https://github.com/Leaflet/Leaflet.markercluster</a></li>
+
+										<li>Bootstrap <a href="http://getbootstrap.com/" targte="_blank">http://getbootstrap.com/</a></li>
+										<li>simpleCachedCurl <a href="https://github.com/ginader/simpleCachedCurl" targte="_blank">https://github.com/ginader/simpleCachedCurl/</a></li>
+									</ul>
+									<a class="btn btn-info" data-dismiss="modal" href="http://www.freifunk-emskirchen.de/de-map/" target="ffems">Ausführliche Informationen</a>
+								</div>
+							</div>
+
+						</div>
 					</div>
 					<div class="modal-footer">
-						<button type="button" class="btn btn-default">Schließen</button>
-						<a class="btn btn-info" data-dismiss="modal" href="http://www.freifunk-emskirchen.de/de-map/" target="ffems">Ausführliche Informationen</a>
+						<button type="button" class="btn btn-default" data-dismiss="modal">Schließen</button>
 					</div>
 				</div>
 			</div>
