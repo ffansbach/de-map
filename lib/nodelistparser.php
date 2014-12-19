@@ -26,6 +26,7 @@ class nodeListParser
 	private $_additionals = array();
 
 	private $_nodeList = array();
+	private $_nodeListHashes = array();
 
 	private $_communityList = array();
 
@@ -417,7 +418,7 @@ class nodeListParser
 			);
 
 			// add to routerlist for later use in JS
-			array_push($this->_nodeList, $thisRouter);
+			$this->_addOrForget($thisRouter);
 		}
 	}
 
@@ -468,7 +469,7 @@ class nodeListParser
 			);
 
 			// add to routerlist for later use in JS
-			array_push($this->_nodeList, $thisRouter);
+			$this->_addOrForget($thisRouter);
 		}
 	}
 
@@ -520,7 +521,18 @@ class nodeListParser
 			);
 
 			// add to routerlist for later use in JS
-			array_push($this->_nodeList, $thisRouter);
+			$this->_addOrForget($thisRouter);
+		}
+	}
+
+	private function _addOrForget($node)
+	{
+		$key = md5($node['name'].$node['id'].$node['lat'].$node['long']);
+
+		if(!in_array($key, $this->_nodeListHashes))
+		{
+			array_push($this->_nodeList, $node);
+			$this->_nodeListHashes[] = $key;
 		}
 	}
 
