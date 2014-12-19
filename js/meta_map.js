@@ -88,11 +88,14 @@ function setStats(comCount, nodeCount)
  */
 function setDirectLink()
 {
+	var roundBy = 100000;
 	var z = map.getZoom();
 	var pos = map.getCenter();
+	var lat = Math.round(pos.lat * roundBy) / roundBy;
+	var lng = Math.round(pos.lng * roundBy) / roundBy;
 
 	var newLink = document.location.origin + document.location.pathname
-					+'?lat='+pos.lat+'&lng='+pos.lng+'&z='+z;
+					+'?lat='+lat+'&lng='+lng+'&z='+z;
 	$('#direktlink').text(newLink);
 }
 
