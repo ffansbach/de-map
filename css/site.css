@@ -35,6 +35,6 @@ table.display tr:nth-child(even) {
 #toList.btn {
 	position: absolute;
 	z-index: 10;
-	top: 15px;
-	right: 15px;
+	bottom: 15px;
+	left: 15px;
 }

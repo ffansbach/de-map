@@ -73,6 +73,13 @@ require 'config.php';
 										<a href="http://www.freifunk-emskirchen.de">Freifunk Emskirchen</a><br />
 										<a href="https://github.com/stilgarbf">https://github.com/stilgarbf/</a><br /><br />
 									</p>
+									<p>
+										<i>Heatmap Layer:</i><br />
+										Alexander Wunschik<br />
+										freifunk [at] wunschik.net<br/>
+										<a href="https://wiki.freifunk-franken.de/w/Benutzer:DelphiN">Freifunk Franken</a><br />
+										<a href="https://github.com/mojoaxel">https://github.com/mojoaxel/</a><br /><br />
+									</p>
 									<h3>Technik</h3>
 									<ul>
 										<li>Leaflet <a href="http://leafletjs.com/" targte="_blank">http://leafletjs.com/</a></li>
@@ -125,6 +132,8 @@ require 'config.php';
 		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
 		<script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
 		<script src="js/leaflet.markercluster-src.js"></script>
+		<script src="js/heatmap.min.js"></script>
+		<script src="js/leaflet-heatmap.js"></script>
 
 		<script src="js/meta_map.js"></script>
 		<script>
