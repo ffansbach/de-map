@@ -176,7 +176,6 @@ class nodeListParser
 	public function _getCommunityData($cUrl)
 	{
 		$communityFile = simpleCachedCurl($cUrl, $this->_curlCacheTime);
-		$this->_log('_getCommunityData for '.$cUrl);
 
 		if($communityFile)
 		{
@@ -186,14 +185,6 @@ class nodeListParser
 			{
 				return $communityData;
 			}
-			else
-			{
-				$this->_log('_getCommunityData json_decode failed');
-			}
-		}
-		else
-		{
-			$this->_log('_getCommunityData failed');
 		}
 
 		return false;
@@ -221,7 +212,6 @@ class nodeListParser
 		if(empty($urlParts['host']) && empty($urlParts['path']))
 		{
 			// no useable path
-			$this->_log('_getUrl failed for '.$url);
 		}
 		else
 		{
@@ -242,8 +232,6 @@ class nodeListParser
 				$preparedUrl .= $urlParts['path'].'/';
 			}
 		}
-
-		$this->_log('new URL: '.$preparedUrl);
 
 		return $preparedUrl;
 	}
@@ -298,7 +286,6 @@ class nodeListParser
 
 			foreach($communityData->nodeMaps AS $nmEntry)
 			{
-				$this->_log('try parsing a nodeMap');
 
 				if(
 					isset($nmEntry->technicalType)
@@ -310,7 +297,6 @@ class nodeListParser
 
 					if(!$url)
 					{
-						$this->_log('urlPrepare failed');
 						// no usable url ignore this entry
 						continue;
 					}
@@ -333,14 +319,9 @@ class nodeListParser
 					{
 						$data = $this->_getFromOwm($cName, $url);
 					}
-					else
-					{
-						$this->_log('nodeMaps - have no parser for '.$nmEntry->technicalType.' - ignoring');
-					}
 
 					if($data !== false)
 					{
-						$this->_log('got data');
 						// found something
 						$parsedSources[] = $url;
 						break;
