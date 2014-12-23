@@ -128,7 +128,7 @@ function prepareIcon()
  */
 function addPoints2Map(data)
 {
-	// prepare clustergroup
+	// prepare cluster overlay
 	var markers = L.markerClusterGroup(
 	{
 		maxClusterRadius: function(zoom)
@@ -146,8 +146,16 @@ function addPoints2Map(data)
 			return clusterRadius;
 		}
 	});
+	
+	// prepare heatmap overlay
+	var heatmapLayer = new HeatmapOverlay({
+		"radius": 30,
+		"scaleRadius": false,
+		"useLocalExtrema": false
+	});
+	var heatMapData = [];
 
-	// add all entries to clustergroup
+	// add all entries to clustergroup and heatmap
 	$.each(data, function(i, router)
 	{
 		var markerSettings = {
@@ -168,13 +176,41 @@ function addPoints2Map(data)
 
 		marker.bindPopup(getTooltipContent(router));
 		markers.addLayer(marker);
+		
+		// heatmap data
+		heatMapData.push({
+			lat: router.lat, 
+			lng: router.long, 
+			count: 1.1
+		});
 	});
 
 	// add layer with clustergroup to map
 	map.addLayer(markers);
+	
+	
+	// add heatmap layer	
+	map.addLayer(heatmapLayer);
+	heatmapLayer.setData({
+		max: 1,
+		data: heatMapData
+	});
+	// hide heatmap layer by default
+	map.removeLayer(heatmapLayer);
 
+	// add layer controls for all layers
+	L.control.layers({
+		//no baselayers to select yet
+	}, {
+		// add the cluster layer
+		"Nodes": markers,
+		
+		// add the heatmap layer
+		"HeatMap": heatmapLayer
+	}).addTo(map);
+	
+	// update stats
 	var countCom = 0;
-
 	for (var k in communities)
 	{
 		if (communities.hasOwnProperty(k))
@@ -182,7 +218,6 @@ function addPoints2Map(data)
 			++countCom;
 		}
 	}
-
 	setStats(countCom, data.length);
 }
 
