@@ -44,8 +44,9 @@ else
 {
 	$report = array(
 		'communities'	=> sizeof($parseResult['communities']),
-		'nodes'	=> sizeof($parseResult['routerList'])
+		'nodes'	=> sizeof($parseResult['routerList']),
+		'stats' => $parser->getParseStatistics()
 	);
 
-	echo json_encode($report);
+	echo json_encode($report, JSON_PRETTY_PRINT);
 }

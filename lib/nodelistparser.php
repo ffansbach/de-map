@@ -32,6 +32,15 @@ class nodeListParser
 
 	private $_logfile = null;
 
+	private $_parseStatistics = array(
+		'errorCommunities' => array()
+	);
+
+	private $_currentParseObject = array(
+		'name'	=> '',
+		'source' => ''
+	);
+
 	public function __construct()
 	{
 
@@ -249,18 +258,20 @@ class nodeListParser
 		{
 			$this->_log('------');
 			$this->_log('parsing '.$cName." ".$cUrl);
+			$this->_currentParseObject['name'] = $cName;
+			$this->_currentParseObject['source'] = $cUrl;
 
 			$communityData = $this->_getCommunityData($cUrl);
 
 			if($communityData == false)
 			{
-				$this->_log('failed - no data');
+				$this->_addCommunityError('got no data');
 				continue;
 			}
 
 			if(!isset($communityData->nodeMaps))
 			{
-				$this->_log('no nodeMaps delivered');
+				$this->_addCommunityError('has no nodeMaps');
 				continue;
 			}
 
@@ -276,12 +287,14 @@ class nodeListParser
 
 			if(!json_encode($thisComm))
 			{
-				$this->_log('name or url corrupt - ignoring');
+				$this->_addCommunityError('name or url corrupt - ignoring');
 				// error in some data - ignore community
 				continue;
 			}
 
 			$this->_communityList[$cName] = $thisComm;
+
+			$data = false;
 
 			foreach($communityData->nodeMaps AS $nmEntry)
 			{
@@ -334,6 +347,11 @@ class nodeListParser
 					}
 				}
 			}
+
+			if($data === false)
+			{
+				$this->_addCommunityError('no parseable nodeMap found');
+			}
 		}
 
 		foreach($this->_additionals AS $cName => $community)
@@ -357,10 +375,6 @@ class nodeListParser
 				break;
 			}
 		}
-
-		// set cache
-		$this->_toCache('routers', $this->_nodeList);
-		$this->_toCache('communities', $this->_communityList);
 	}
 
 	private function _getFromNetmon($comName, $comUrl)
@@ -378,7 +392,7 @@ class nodeListParser
 
 		if(!$result)
 		{
-			$this->_log('_getFromNetmon error - no result');
+			$this->_addCommunityError($url.' returns no result');
 			return false;
 		}
 
@@ -386,7 +400,7 @@ class nodeListParser
 
 		if(!$xml)
 		{
-			$this->_log('_getFromNetmon error - xml failed');
+			$this->_addCommunityError($url.' returns no valid xml');
 			return false;
 		}
 
@@ -394,7 +408,7 @@ class nodeListParser
 
 		if(!$routers)
 		{
-			$this->_log('_getFromNetmon error - no routers');
+			$this->_addCommunityError($url.' contains no nodes');
 			return false;
 		}
 
@@ -430,7 +444,7 @@ class nodeListParser
 
 		if(!$result)
 		{
-			$this->_log('_getFromFfmap error - no result');
+			$this->_addCommunityError($comUrl.' returns no result');
 			return false;
 		}
 
@@ -438,7 +452,7 @@ class nodeListParser
 
 		if(!$responseObject)
 		{
-			$this->_log('_getFromFfmap error - json_decode failed');
+			$this->_addCommunityError($comUrl.' returns no valid json');
 			return false;
 		}
 
@@ -446,7 +460,7 @@ class nodeListParser
 
 		if(!$routers)
 		{
-			$this->_log('_getFromFfmap error - no routers');
+			$this->_addCommunityError($comUrl.' contains no nodes');
 			return false;
 		}
 
@@ -482,7 +496,7 @@ class nodeListParser
 
 		if(!$result)
 		{
-			$this->_log('_getFromOwm error - no result');
+			$this->_addCommunityError($comUrl.' returns no result');
 			return false;
 		}
 
@@ -490,7 +504,7 @@ class nodeListParser
 
 		if(!$responseObject)
 		{
-			$this->_log('_getFromOwm error - json_decode failed');
+			$this->_addCommunityError($comUrl.' returns no valid json');
 			return false;
 		}
 
@@ -498,7 +512,7 @@ class nodeListParser
 
 		if(!$routers)
 		{
-			$this->_log('_getFromOwm error - no routers');
+			$this->_addCommunityError($comUrl.' contains no nodes');
 			return false;
 		}
 
@@ -549,5 +563,27 @@ class nodeListParser
     		$msg.
     		"\n"
     	);
+	}
+
+	/**
+	 * returns the array with info about the parseprocess
+	 * @return mixed[]
+	 */
+	public function getParseStatistics()
+	{
+		return $this->_parseStatistics;
+	}
+
+	/**
+	 * adds an error-entry for the current community
+	 * @param string $message
+	 */
+	private function _addCommunityError($message)
+	{
+		$this->_parseStatistics['errorCommunities'][] = array(
+			'name' => $this->_currentParseObject['name'],
+			'apifile' => $this->_currentParseObject['source'],
+			'message' => $message
+		);
 	}
 }
