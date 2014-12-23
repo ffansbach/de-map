@@ -33,4 +33,19 @@ $response = array(
 	'allTheRouters' =>  $parseResult['routerList']
 );
 
-echo json_encode($response, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
+/**
+ * if processonly is set we handle a reparse cron request
+ */
+if(!isset($_REQUEST['processonly']))
+{
+	echo json_encode($response, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
+}
+else
+{
+	$report = array(
+		'communities'	=> sizeof($parseResult['communities']),
+		'nodes'	=> sizeof($parseResult['routerList'])
+	);
+
+	echo json_encode($report);
+}
