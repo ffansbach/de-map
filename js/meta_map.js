@@ -271,3 +271,32 @@ function getURLParameter(name, url)
 
     return (RegExp(name + '=' + '(.+?)(&|$)').exec(url)||[,null])[1];
 }
+
+function addOutlines()
+{
+	$.ajax({
+		url: 'test.php',
+		data: window.location.search.substring(1),
+		success: function(response)
+		{
+			drawOutlines(response);
+		}
+	});
+}
+
+function drawOutlines(communities)
+{
+	$.each(communities, function(name, data)
+	{
+		var hull = data.hull;
+
+		$.each(data.hull, function(index, point)
+		{
+			point[0] = parseFloat(point[0]);
+			point[1] = parseFloat(point[1]);
+		});
+
+		var cColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+		var polygon = L.polygon(data.hull, {color: cColor, fillColor: cColor}).addTo(map);
+	});
+}
