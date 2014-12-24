@@ -64,7 +64,7 @@ require 'config.php';
 										Die dort gezeigten Knoten/Router/Zugangspunkte der jeweiligen Community fließen dann in diese Karte ein.
 									</p>
 									<p>
-										Alle 24 Stunden werden die Daten neu verarbeitet und so aktualisiert.
+										Alle 60 Minuten werden die Daten neu verarbeitet und so aktualisiert.
 									</p>
 									<h3>Wer hat es gebaut</h3>
 									<p>
