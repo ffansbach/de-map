@@ -1,0 +1,150 @@
+{
+  "$schema": "http://json-schema.org/draft-03/schema#",
+  "description": "nodelistjson schema",
+  "type": "object",
+  "required": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "enum" : ["1.0.0"],
+      "default" : "1.0.0",
+      "required" : true
+ },
+    "updated_at": {
+      "type": "string",
+      "required": false
+    },
+    "community": {
+      "type": "object",
+      "required": false,
+      "properties": {
+        "href": {
+          "type": "string",
+          "required": false
+        },
+        "name": {
+          "type": "string",
+          "required": false
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "required": false,
+      "minItems": 1,
+      "uniqueItems": false,
+      "items": {
+        "type": "object",
+        "required": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "required": false
+          },
+          "name": {
+            "type": "string",
+            "required": false
+          },
+          "node_type": {
+            "type": "string",
+            "required": false
+          },
+          "href": {
+            "type": "string",
+            "required": false
+          },
+          "updated_at": {
+            "type": "string",
+            "required": false
+          },
+          "status": {
+            "type": "object",
+            "required": false,
+            "properties": {
+              "online": {
+                "type": "boolean",
+                "required": false
+              },
+              "clients": {
+                "type": "integer",
+                "required": false
+              },
+              "lastcontact": {
+                "type": "string",
+                "required": false
+              }
+            }
+          },
+          "links": {
+            "type": "object",
+            "required": false,
+            "properties": {
+              "admin_c": {
+                "type": "object",
+                "required": false,
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "required": false
+                  },
+                  "id": {
+                    "type": "integer",
+                    "required": false
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "type": "object",
+            "required": false,
+            "properties": {
+              "lat": {
+                "type": "number",
+                "required": false
+              },
+              "long": {
+                "type": "number",
+                "required": false
+              },
+              "alt": {
+                "type": "integer",
+                "required": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "linked": {
+      "type": "object",
+      "required": false,
+      "properties": {
+        "people": {
+          "type": "array",
+          "required": false,
+          "minItems": 1,
+          "uniqueItems": false,
+          "items": {
+            "type": "object",
+            "required": false,
+            "properties": {
+              "id": {
+                "type": "integer",
+                "required": false
+              },
+              "name": {
+                "type": "string",
+                "required": false
+              },
+              "href": {
+                "type": "string",
+                "required": false
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
