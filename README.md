@@ -19,6 +19,7 @@ Diese wird in einem Dateicache abgelegt und 24 Stunden lang genutzt.
 Wenn Communities im Api-file verzeichnet sind, aber in der Karte fehlen, dann wurde keine verwendpare nodemap gefunden.
 
 Ausweg ist das anbieten einer extra node-liste in folgendem Format: gist.github.com/StilgarBF/c21826994b775787f739
+Das JSON-Schema ist in schema/nodelist-schema.json zu finden, gegen das man die eigenen Daten validieren kann. Z.B. unter http://jsonschemalint.com können Daten und Schema aufeinander validiert werden. Eine Lösung für die Kommandozeile folgt.
 
 Für den Export dieser Liste habe ich 2 PHP-Klassen beispielhaft implementiert https://github.com/StilgarBF/nodelistexport
 
