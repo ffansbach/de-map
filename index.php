@@ -23,25 +23,25 @@ require 'config.php';
 		<div id="map"></div>
 
 		<!-- Button trigger modal -->
-		<button type="button" class="btn btn-info" data-toggle="modal" id="toList" data-target="#myModal">
+		<button type="button" class="btn btn-info" data-toggle="modal" id="toList" data-target="#informationModal">
 			<span class="glyphicon glyphicon-info-sign" aria-hidden="true"></span> Infos zur Karte
 		</button>
 
 		<!-- Modal -->
-		<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+		<div class="modal fade" id="informationModal" tabindex="-1" role="dialog" aria-labelledby="informationModalLabel" aria-hidden="true">
 			<div class="modal-dialog">
 				<div class="modal-content">
 					<div class="modal-header">
 						<button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-						<h2 class="modal-title" id="myModalLabel">Über die Karte</h2>
+						<h2 class="modal-title" id="informationModalLabel">Über die Karte</h2>
 					</div>
 					<div class="modal-body">
 						<div role="tabpanel">
 
 							<!-- Nav tabs -->
-							<ul class="nav nav-tabs" role="tablist">
+							<ul class="nav nav-tabs modalMainTabs" role="tablist">
 								<li role="presentation" class="active"><a href="#home" aria-controls="home" role="tab" data-toggle="tab">Infos</a></li>
-								<li role="presentation"><a href="#about" aria-controls="profile" role="tab" data-toggle="tab">Über die Karte</a></li>
+								<li role="presentation"><a href="#about" aria-controls="profile" role="tab" data-toggle="tab" data-tabsource="fetch.php?content=about">Über die Karte</a></li>
 							</ul>
 
 							<!-- Tab panes -->
@@ -53,43 +53,7 @@ require 'config.php';
 									<ul>Communities im Api-File: <span id="countCom"></ul>
 									<ul>Verarbeitete Knoten: <span id="countNodes"></ul>
 								</div>
-								<div role="tabpanel" class="tab-pane" id="about">
-									<h3>Wie es funktioniert</h3>
-									<p>
-										Die Karte nutzt die <a href="https://github.com/freifunk/directory.api.freifunk.net" target="_blank">Freifunk Api</a> um eine Liste der
-										Communities in Deutschland zu beziehen. Aus deren API-Files werden dann die Links zu Knotenkarten gelesen.
-									</p>
-									<p>
-										3 Arten von Knotenkarten können dann zum Beziehen von Daten genutzt werden: Netmon, ffmap und OpenWifiMap.
-										Die dort gezeigten Knoten/Router/Zugangspunkte der jeweiligen Community fließen dann in diese Karte ein.
-									</p>
-									<p>
-										Alle 60 Minuten werden die Daten neu verarbeitet und so aktualisiert.
-									</p>
-									<h3>Wer hat es gebaut</h3>
-									<p>
-										Tino Dietel<br />
-										tino [at] freifunk-emskirchen.de<br/>
-										<a href="http://www.freifunk-emskirchen.de">Freifunk Emskirchen</a><br />
-										<a href="https://github.com/stilgarbf">https://github.com/stilgarbf/</a><br /><br />
-									</p>
-									<p>
-										<i>Heatmap Layer:</i><br />
-										Alexander Wunschik<br />
-										freifunk [at] wunschik.net<br/>
-										<a href="https://wiki.freifunk-franken.de/w/Benutzer:DelphiN">Freifunk Franken</a><br />
-										<a href="https://github.com/mojoaxel">https://github.com/mojoaxel/</a><br /><br />
-									</p>
-									<h3>Technik</h3>
-									<ul>
-										<li>Leaflet <a href="http://leafletjs.com/" targte="_blank">http://leafletjs.com/</a></li>
-										<li>Leaflet-Markercluster <a href="https://github.com/Leaflet/Leaflet.markercluster" targte="_blank">https://github.com/Leaflet/Leaflet.markercluster</a></li>
-
-										<li>Bootstrap <a href="http://getbootstrap.com/" targte="_blank">http://getbootstrap.com/</a></li>
-										<li>simpleCachedCurl <a href="https://github.com/ginader/simpleCachedCurl" targte="_blank">https://github.com/ginader/simpleCachedCurl/</a></li>
-									</ul>
-									<a class="btn btn-info" data-dismiss="modal" href="http://www.freifunk-emskirchen.de/de-map/" target="ffems">Ausführliche Informationen</a>
-								</div>
+								<div role="tabpanel" class="tab-pane" id="about"></div>
 							</div>
 
 						</div>
@@ -136,6 +100,7 @@ require 'config.php';
 		<script src="js/leaflet-heatmap.js"></script>
 
 		<script src="js/meta_map.js"></script>
+		<script src="js/site.js"></script>
 		<script>
 			<?php /*var communities = <?php echo json_encode($parseResult['communities'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);?>;
 			var allTheRouters = <?php echo json_encode($parseResult['routerList']);?>;*/?>
