@@ -236,6 +236,9 @@ class nodeListParser
 		return $preparedUrl;
 	}
 
+	/**
+	 * parse all communities found in the api-file
+	 */
 	private function _parseList()
 	{
 		// used to prevent duplicates
@@ -249,33 +252,39 @@ class nodeListParser
 			$this->_currentParseObject['name'] = $cName;
 			$this->_currentParseObject['source'] = $cUrl;
 
+			$this->_addCommunityMessage('start parsing');
+
 			$communityData = $this->_getCommunityData($cUrl);
 
 			if($communityData == false)
 			{
-				$this->_addCommunityError('got no data');
+				$this->_addCommunityMessage('got no data');
 				continue;
 			}
 
 			if(!isset($communityData->nodeMaps))
 			{
-				$this->_addCommunityError('has no nodeMaps');
+				$this->_addCommunityMessage('has no nodeMaps');
 				continue;
 			}
 
 			$communityName = $communityData->name;
 
+			// this community belongs to a meta-community.
+			// use meta-communityname
 			if(isset($communityData->metacommunity))
 			{
 				$cName = $communityData->metacommunity;
 				$communityName = $communityData->metacommunity;
+
+				$this->_addCommunityMessage('Metacommunity:' . $communityData->metacommunity);
 			}
 
 			$thisComm = array('name' => $communityName, 'url' => $communityData->url);
 
 			if(!json_encode($thisComm))
 			{
-				$this->_addCommunityError('name or url corrupt - ignoring');
+				$this->_addCommunityMessage('name or url corrupt - ignoring');
 				// error in some data - ignore community
 				continue;
 			}
@@ -304,19 +313,25 @@ class nodeListParser
 					if(in_array($url, $parsedSources))
 					{
 						// already parsed ( meta community?)
+						$this->_addCommunityMessage('already parsed - skipping - '.$url);
 						continue;
 					}
 
+					$this->_addCommunityMessage('try to find parser for: '.$url);
+
 					if($nmEntry->technicalType == 'netmon')
 					{
+						$this->_addCommunityMessage('parse as netmon');
 						$data = $this->_getFromNetmon($cName, $url);
 					}
 					elseif($nmEntry->technicalType == 'ffmap')
 					{
+						$this->_addCommunityMessage('parse as ffmap');
 						$data = $this->_getFromFfmap($cName, $url);
 					}
 					elseif($nmEntry->technicalType == 'openwifimap')
 					{
+						$this->_addCommunityMessage('parse as openwifimap');
 						$data = $this->_getFromOwm($cName, $url);
 					}
 
@@ -331,7 +346,7 @@ class nodeListParser
 
 			if($data === false)
 			{
-				$this->_addCommunityError('no parseable nodeMap found');
+				$this->_addCommunityMessage('no parseable nodeMap found');
 			}
 		}
 
@@ -373,7 +388,7 @@ class nodeListParser
 
 		if(!$result)
 		{
-			$this->_addCommunityError($url.' returns no result');
+			$this->_addCommunityMessage($url.' returns no result');
 			return false;
 		}
 
@@ -381,7 +396,7 @@ class nodeListParser
 
 		if(!$xml)
 		{
-			$this->_addCommunityError($url.' returns no valid xml');
+			$this->_addCommunityMessage($url.' returns no valid xml');
 			return false;
 		}
 
@@ -389,7 +404,7 @@ class nodeListParser
 
 		if(!$routers)
 		{
-			$this->_addCommunityError($url.' contains no nodes');
+			$this->_addCommunityMessage($url.' contains no nodes');
 			return false;
 		}
 
@@ -425,7 +440,7 @@ class nodeListParser
 
 		if(!$result)
 		{
-			$this->_addCommunityError($comUrl.' returns no result');
+			$this->_addCommunityMessage($comUrl.' returns no result');
 			return false;
 		}
 
@@ -433,7 +448,7 @@ class nodeListParser
 
 		if(!$responseObject)
 		{
-			$this->_addCommunityError($comUrl.' returns no valid json');
+			$this->_addCommunityMessage($comUrl.' returns no valid json');
 			return false;
 		}
 
@@ -441,15 +456,22 @@ class nodeListParser
 
 		if(!$routers)
 		{
-			$this->_addCommunityError($comUrl.' contains no nodes');
+			$this->_addCommunityMessage($comUrl.' contains no nodes');
 			return false;
 		}
 
+		$counter = 0;
+		$skipped = 0;
+		$duplicates = 0;
+		$added = 0;
+
 		foreach($routers AS $router)
 		{
+			$counter++;
 			if(empty($router->geo[0]) || empty($router->geo[1]))
 			{
 				// router has no location
+				$skipped++;
 				continue;
 			}
 
@@ -464,8 +486,21 @@ class nodeListParser
 			);
 
 			// add to routerlist for later use in JS
-			$this->_addOrForget($thisRouter);
+			if($this->_addOrForget($thisRouter))
+			{
+				$added++;
+			}
+			else
+			{
+				$duplicates++;
+			}
 		}
+
+		$this->_addCommunityMessage('parsing done. '.
+										$counter.' nodes found, '.
+										$added.' added, '.
+										$skipped.' skipped, '.
+										$duplicates.' duplicates');
 	}
 
 	private function _getFromOwm($comName, $comUrl)
@@ -477,7 +512,7 @@ class nodeListParser
 
 		if(!$result)
 		{
-			$this->_addCommunityError($comUrl.' returns no result');
+			$this->_addCommunityMessage($comUrl.' returns no result');
 			return false;
 		}
 
@@ -485,7 +520,7 @@ class nodeListParser
 
 		if(!$responseObject)
 		{
-			$this->_addCommunityError($comUrl.' returns no valid json');
+			$this->_addCommunityMessage($comUrl.' returns no valid json');
 			return false;
 		}
 
@@ -493,7 +528,7 @@ class nodeListParser
 
 		if(!$routers)
 		{
-			$this->_addCommunityError($comUrl.' contains no nodes');
+			$this->_addCommunityMessage($comUrl.' contains no nodes');
 			return false;
 		}
 
@@ -520,15 +555,32 @@ class nodeListParser
 		}
 	}
 
+	/**
+	 * add a node to the list or skip if it is allready in the list
+	 *
+	 * a hash of name, id and location ist used for deduplication
+	 *
+	 * @param mixed[] $node
+	 * @return boolean
+	 */
 	private function _addOrForget($node)
 	{
 		$key = md5($node['name'].$node['id'].$node['lat'].$node['long']);
 
-		if(!in_array($key, $this->_nodeListHashes))
+		//if(!in_array($key, $this->_nodeListHashes))
+		if(!isset($this->_nodeListHashes[$key]))
 		{
 			array_push($this->_nodeList, $node);
-			$this->_nodeListHashes[] = $key;
+			//$this->_nodeListHashes[] = $key;
+			$this->_nodeListHashes[$key] = $this->_currentParseObject['name'];
+
+			return true;
 		}
+
+		// add this if info about duplication-source is needed
+		//$this->_addCommunityMessage(' dupplicate - source: '.$this->_nodeListHashes[$key]);
+
+		return false;
 	}
 
 	private function _prepareLogFile()
@@ -556,15 +608,20 @@ class nodeListParser
 	}
 
 	/**
-	 * adds an error-entry for the current community
+	 * adds an message-entry for the current community
 	 * @param string $message
 	 */
-	private function _addCommunityError($message)
+	private function _addCommunityMessage($message)
 	{
-		$this->_parseStatistics['errorCommunities'][] = array(
-			'name' => $this->_currentParseObject['name'],
-			'apifile' => $this->_currentParseObject['source'],
-			'message' => $message
-		);
+		if(!isset($this->_parseStatistics['errorCommunities'][$this->_currentParseObject['name']]))
+		{
+			$this->_parseStatistics['errorCommunities'][$this->_currentParseObject['name']] = array(
+				'name' => $this->_currentParseObject['name'],
+				'apifile' => $this->_currentParseObject['source'],
+				'message' => array()
+			);
+		}
+
+		$this->_parseStatistics['errorCommunities'][$this->_currentParseObject['name']]['message'][] = $message;
 	}
 }
