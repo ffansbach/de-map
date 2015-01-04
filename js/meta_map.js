@@ -28,6 +28,7 @@ var map;
 var icons;
 var communities; // todo: make this none global
 var ajaxModalTimeout;
+var layerControl;
 
 /**
  * initialize map
@@ -66,7 +67,7 @@ function init()
 	    maxZoom: 18
 	}).addTo(map);
 
-	map.on('moveend', setDirectLink);
+	map.on('moveend overlayadd overlayremove', setDirectLink);
 
 	setDirectLink();
 
@@ -94,8 +95,31 @@ function setDirectLink()
 	var lat = Math.round(pos.lat * roundBy) / roundBy;
 	var lng = Math.round(pos.lng * roundBy) / roundBy;
 
+	var layers = [];
+
+	if(typeof layerControl != 'undefined')
+	{
+		// check for every layer if it is active
+		$.each(layerControl._layers, function(key, item)
+		{
+			if(map.hasLayer(item.layer))
+			{
+				layers.push(item.name);
+			}
+		});
+	}
+
+	layers = layers.join('|');
+
 	var newLink = document.location.origin + document.location.pathname
 					+'?lat='+lat+'&lng='+lng+'&z='+z;
+
+	// add layers only to query string if any is selected and its not only the default one
+	if(layers != '' && layers != 'Nodes')
+	{
+		newLink = newLink+'&l='+layers;
+	}
+
 	$('#direktlink').text(newLink);
 }
 
@@ -187,27 +211,49 @@ function addPoints2Map(data)
 
 	// add layer with clustergroup to map
 	map.addLayer(markers);
-	
-	
+
 	// add heatmap layer	
 	map.addLayer(heatmapLayer);
 	heatmapLayer.setData({
 		max: 1,
 		data: heatMapData
 	});
-	// hide heatmap layer by default
-	map.removeLayer(heatmapLayer);
 
-	// add layer controls for all layers
-	L.control.layers({
-		//no baselayers to select yet
-	}, {
+	var layers = {
 		// add the cluster layer
 		"Nodes": markers,
 		
 		// add the heatmap layer
 		"HeatMap": heatmapLayer
-	}).addTo(map);
+	};
+
+	var selectedLayers = getURLParameter('l');
+
+	if(selectedLayers)
+	{
+		// layers have been preselected in the url
+		selectedLayers = selectedLayers.split('|');
+
+		$.each(layers, function(key, layer)
+		{
+			if($.inArray(key, selectedLayers) != -1)
+			{
+				map.addLayer(layer);
+			}
+			else
+			{
+				map.removeLayer(layer);
+			}
+		});
+	}
+	else
+	{
+		// hide heatmap layer by default
+		map.removeLayer(heatmapLayer);
+	}
+
+	// add layer controls for all layers
+	layerControl = L.control.layers({}, layers).addTo(map);
 	
 	// update stats
 	var countCom = 0;
@@ -218,7 +264,9 @@ function addPoints2Map(data)
 			++countCom;
 		}
 	}
+
 	setStats(countCom, data.length);
+	setDirectLink();
 }
 
 /**
