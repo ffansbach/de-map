@@ -24,11 +24,48 @@ $(function() {
 
 });
 
+/**
+ * the leaflet map
+ *
+ * @var {object}
+ */
 var map;
+
+/**
+ * will hold the icons for nodes as created by prepareIcon()
+ *
+ * @var {array}
+ */
 var icons;
+
+/**
+ * all the communities
+ *
+ * @var {object}
+ */
 var communities; // todo: make this none global
+
+/**
+ * a window timeout used for the modal shown if the ajax-fetch takes very long
+ *
+ * @var {timeout}
+ */
 var ajaxModalTimeout;
+
+/**
+ * will hold the layer-control
+ *
+ * @var {leafletControl}
+ */
 var layerControl;
+
+/**
+ * stores marker and area, that indicate tzhe user position
+ * after the map has been centered
+ *
+ * @var {object}
+ */
+var locMarker, locArea;
 
 /**
  * initialize map
@@ -66,6 +103,8 @@ function init()
 	    attribution: tileServerAttribution,
 	    maxZoom: 18
 	}).addTo(map);
+
+	map.addControl(centerOnPosition);
 
 	map.on('moveend overlayadd overlayremove', setDirectLink);
 
@@ -317,5 +356,69 @@ function getURLParameter(name, url)
 		var url = document.location.href;
 	}
 
-    return (RegExp(name + '=' + '(.+?)(&|$)').exec(url)||[,null])[1];
+	return (RegExp(name + '=' + '(.+?)(&|$)').exec(url)||[,null])[1];
 }
+
+/*
+ * icon/Button zum Zentrieren der Karte
+ */
+L.Control.CenterOnPosition = L.Control.extend(
+{
+	options:
+	{
+		position: 'topleft',
+	},
+	onAdd: function (map)
+	{
+		var controlDiv = L.DomUtil.create('div', 'leaflet-draw-toolbar leaflet-bar');
+
+		L.DomEvent
+			.addListener(controlDiv, 'click', L.DomEvent.stopPropagation)
+			.addListener(controlDiv, 'click', L.DomEvent.preventDefault)
+			.addListener(controlDiv, 'click', function () {
+				map.locate(
+				{
+					setView: true,
+					maxZoom: 18
+				});
+			});
+
+		var controlUI = L.DomUtil.create('a', 'leaflet-center-on-position', controlDiv);
+			controlUI.title = 'Auf Position zentrieren';
+			controlUI.href = '#';
+
+		map.on('locationfound', onLocationFound);
+
+		return controlDiv;
+	}
+});
+
+/**
+ * eventhandler called when a location is found
+ *
+ * this is triggered after the user has clicked the "center on position"
+ * button a valid position has been found.
+ *
+ * @param  {event} e
+ */
+function onLocationFound(e)
+{
+	// remove previously added location-layers
+	if(locArea)
+	{
+		map.removeLayer(locArea);
+		map.removeLayer(locMarker);
+	}
+
+	locMarker = L.marker(e.latlng)
+					.addTo(map)
+					.bindPopup("Du bist vermutlich innerhalb dieses Kreises")
+					.openPopup();
+
+	// draw a circle around the position indication accuracy
+	locArea = L.circle(e.latlng, (e.accuracy / 2)).addTo(map);
+
+	window.setTimeout(function(){map.removeLayer(locArea);}, 3000);
+}
+
+var centerOnPosition = new L.Control.CenterOnPosition();

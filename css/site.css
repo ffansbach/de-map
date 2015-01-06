@@ -38,3 +38,8 @@ table.display tr:nth-child(even) {
 	bottom: 15px;
 	left: 15px;
 }
+
+.leaflet-center-on-position
+{
+	background-image: url(../img/gps13.png);
+}

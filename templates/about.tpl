@@ -32,4 +32,8 @@
 	<li>Bootstrap <a href="http://getbootstrap.com/" targte="_blank">http://getbootstrap.com/</a></li>
 	<li>simpleCachedCurl <a href="https://github.com/ginader/simpleCachedCurl" targte="_blank">https://github.com/ginader/simpleCachedCurl/</a></li>
 </ul>
+<h3>Attribution</h3>
+<p>
+	Icon zum Zentrieren der Karte made by <a href="http://www.icons8.com" title="Icons8">Icons8</a> - <a href="http://www.flaticon.com" title="Flaticon">www.flaticon.com</a> lizensiert unter <a href="http://creativecommons.org/licenses/by/3.0/" title="Creative Commons BY 3.0">CC BY 3.0</a>
+</p>
 <a class="btn btn-info" data-dismiss="modal" href="http://www.freifunk-emskirchen.de/de-map/" target="ffems">Ausführliche Informationen</a>
