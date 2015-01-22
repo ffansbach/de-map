@@ -108,5 +108,11 @@ require 'config.php';
 			var tileServerAttribution = <?php echo json_encode($tileServerAttribution);?>;
 			var mapInitalView = <?php echo json_encode($mapInitalView);?>;
 		</script>
+		<?php
+			if(!empty($trackingCode))
+			{
+				echo $trackingCode;
+			}
+		?>
 	</body>
 </html>
