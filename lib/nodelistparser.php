@@ -200,13 +200,16 @@ class nodeListParser
 		{
 			$arr = explode('/', $urlParts['path']);
 
-			if(strpos($arr[sizeof($arr)-1], '.') !== false)
+			if(sizeof($arr) > 1)
 			{
-				$arr[sizeof($arr)-1] = '';
-			}
+				if(strpos($arr[sizeof($arr)-1], '.') !== false)
+				{
+					$arr[sizeof($arr)-1] = '';
+				}
 
-			$arr = array_filter($arr);
-			$urlParts['path'] = implode('/', $arr);
+				$arr = array_filter($arr);
+				$urlParts['path'] = implode('/', $arr);
+			}
 		}
 
 		if(empty($urlParts['host']) && empty($urlParts['path']))
@@ -307,6 +310,7 @@ class nodeListParser
 					if(!$url)
 					{
 						// no usable url ignore this entry
+						$this->_addCommunityMessage('url broken');
 						continue;
 					}
 
@@ -341,6 +345,10 @@ class nodeListParser
 						$parsedSources[] = $url;
 						break;
 					}
+				}
+				else
+				{
+					$this->_addCommunityMessage('url or type missing');
 				}
 			}
 
@@ -468,22 +476,47 @@ class nodeListParser
 		foreach($routers AS $router)
 		{
 			$counter++;
-			if(empty($router->geo[0]) || empty($router->geo[1]))
-			{
-				// router has no location
-				$skipped++;
-				continue;
-			}
 
-			$thisRouter = array(
-				'id' => (string)$router->name,
-				'lat' => (string)$router->geo[0],
-				'long' => (string)$router->geo[1],
-				'name' => (string)$router->name,
-				'community' => $comName,
-				'status' => $router->flags->online ? 'online' : 'offline',
-				'clients' => (int)$router->clientcount
-			);
+			if(!empty($router->location))
+			{
+				// new style
+				if(empty($router->location->latitude) || empty($router->location->longitude))
+				{
+					// router has no location
+					$skipped++;
+					continue;
+				}
+
+				$thisRouter = array(
+					'id' => (string)$router->node_id,
+					'lat' => (string)$router->location->latitude,
+					'long' => (string)$router->location->longitude,
+					'name' => (string)$router->hostname,
+					'community' => $comName,
+					'status' => $router->flags->online ? 'online' : 'offline',
+					'clients' => (int)sizeof($router->clients)
+				);
+			}
+			else
+			{
+				// old style
+				if(empty($router->geo[0]) || empty($router->geo[1]))
+				{
+					// router has no location
+					$skipped++;
+					continue;
+				}
+
+				$thisRouter = array(
+					'id' => (string)$router->name,
+					'lat' => (string)$router->geo[0],
+					'long' => (string)$router->geo[1],
+					'name' => (string)$router->name,
+					'community' => $comName,
+					'status' => $router->flags->online ? 'online' : 'offline',
+					'clients' => (int)$router->clientcount
+				);
+			}
 
 			// add to routerlist for later use in JS
 			if($this->_addOrForget($thisRouter))
