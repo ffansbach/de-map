@@ -41,6 +41,17 @@ class nodeListParser
 		'source' => ''
 	);
 
+	/**
+	 * all communities that delivered a parsable nodelist
+	 *
+	 * If a valid nodelist has been found for a community, there will be no
+	 * further parseatempts for this comm. - we will not try to load netmon or ffmap
+	 * for those.
+	 *
+	 * @var array
+	 */
+	private $_nodelistCommunities = array();
+
 	public function __construct()
 	{
 
@@ -240,6 +251,73 @@ class nodeListParser
 	}
 
 	/**
+	 * search for and parse nodelists
+	 *
+	 * This looks for [nodeMaps] in format json - nodelist and parses them.
+	 * This format takes priority over all other nodeMaps
+	 *
+	 * @param  object $communityList all communities
+	 * @return void
+	 */
+	private function _parseNodeLists($communityList)
+	{
+		$parsedSources = array();
+
+		foreach($communityList AS $cName => $cUrl)
+		{
+
+			$this->_currentParseObject['name'] = $cName;
+			$this->_currentParseObject['source'] = $cUrl;
+
+			$communityData = $this->_getCommunityData($cUrl);
+
+			if($communityData == false)
+			{
+				$this->_addCommunityMessage('got no data');
+				continue;
+			}
+
+			if(!isset($communityData->nodeMaps))
+			{
+				$this->_addCommunityMessage('has no nodeMaps');
+				continue;
+			}
+
+			// iterate over all nodeMaps-entries annd look for nodelist
+			foreach($communityData->nodeMaps AS $nmEntry)
+			{
+				if(
+					isset($nmEntry->technicalType)
+					&&
+					isset($nmEntry->url)
+					&&
+					$nmEntry->technicalType == 'nodelist'
+				)
+				{
+					// we found one
+
+					if(in_array($nmEntry->url, $parsedSources))
+					{
+						// already parsed ( meta community?)
+						$this->_addCommunityMessage('already parsed - skipping - '.$url);
+						continue;
+					}
+
+					$this->_addCommunityMessage('parse as nodelist');
+					$data = $this->_getFromNodelist($cName, $nmEntry->url);
+
+					if($data)
+					{
+						$communityData->shortName = $cName;
+						$this->_addCommunity($communityData);
+					}
+				}
+			}
+		}
+
+	}
+
+	/**
 	 * parse all communities found in the api-file
 	 */
 	private function _parseList()
@@ -248,12 +326,25 @@ class nodeListParser
 		$parsedSources = array();
 		$communityList = $this->_getCommunityList();
 
+		/* first try to parse the nodelist-format
+		 * we would prefere to use this.
+		 * any community that delivers a nodelist will be skipped in the next step
+		 */
+		$this->_parseNodeLists($communityList);
+
 		foreach($communityList AS $cName => $cUrl)
 		{
 			$this->_log('------');
 			$this->_log('parsing '.$cName." ".$cUrl);
 			$this->_currentParseObject['name'] = $cName;
 			$this->_currentParseObject['source'] = $cUrl;
+
+			// check if community has delivered a nodelist
+			if(in_array($cName, $this->_nodelistCommunities))
+			{
+				$this->_addCommunityMessage('skipping - we already have found a nodelist');
+				continue;
+			}
 
 			$this->_addCommunityMessage('start parsing');
 
@@ -283,16 +374,9 @@ class nodeListParser
 				$this->_addCommunityMessage('Metacommunity:' . $communityData->metacommunity);
 			}
 
-			$thisComm = array('name' => $communityName, 'url' => $communityData->url);
+			$communityData->shortName = $cName;
 
-			if(!json_encode($thisComm))
-			{
-				$this->_addCommunityMessage('name or url corrupt - ignoring');
-				// error in some data - ignore community
-				continue;
-			}
-
-			$this->_communityList[$cName] = $thisComm;
+			$this->_addCommunity($communityData);
 
 			$data = false;
 
@@ -360,25 +444,148 @@ class nodeListParser
 
 		foreach($this->_additionals AS $cName => $community)
 		{
-			$thisComm = array('name' => $community['name'], 'url' => $community['url']);
+			$community->shortName = $cName;
+			$this->_addCommunity($community);
 
-			if(!json_encode($thisComm))
-			{
-				// error in some data - ignore community
-				continue;
-			}
-
-			$this->_communityList[$cName] = $thisComm;
-
-			$data = $this->_getFromNetmon($cName, $community['url']);
+			$data = $this->_getFromNetmon($cName, $community->url);
 
 			if($data !== false)
 			{
 				// found something
-				$parsedSources[] = $community['url'];
+				$parsedSources[] = $community->url;
 				break;
 			}
 		}
+	}
+
+	/**
+	 * adds a community with name and url to the communitylist for the result
+	 *
+	 * @param array $community
+	 */
+	private function _addCommunity($community)
+	{
+		if(isset($community->metacommunity))
+		{
+			$community->name = $community->metacommunity;
+		}
+
+		$thisComm = array('name' => $community->name, 'url' => $community->url);
+
+		if(!json_encode($thisComm))
+		{
+			$this->_addCommunityMessage('name or url corrupt - ignoring');
+			// error in some data - ignore community
+			continue;
+		}
+
+		$this->_communityList[$community->shortName] = $thisComm;
+	}
+
+	/**
+	 * parse a nodelist-format
+	 *
+	 * @param string $comName Name of community
+	 * @param string $comUrl url to fetch data from
+	 */
+	private function _getFromNodelist($comName, $comUrl)
+	{
+		$result = simpleCachedCurl($comUrl, $this->_curlCacheTime);
+
+		$responseObject = json_decode($result);
+
+		if(!$responseObject)
+		{
+			$this->_addCommunityMessage($comUrl.' returns no valid json');
+			return false;
+		}
+
+		$schemaString = file_get_contents(__DIR__.'/../schema/nodelist-schema-1.0.0.json');
+		$schema = json_decode($schemaString);
+		$validationResult = Jsv4::validate($responseObject, $schema);
+
+		if(!$validationResult)
+		{
+			$this->_addCommunityMessage($comUrl.' is no valid nodelist');
+			return false;
+		}
+
+		if(empty($responseObject->nodes))
+		{
+			$this->_addCommunityMessage($comUrl.' contains no nodes');
+			return false;
+		}
+
+		$routers = $responseObject->nodes;
+
+		// add community to the list of nodelist-communities
+		// this will make us skipp further search for other formats
+		$this->_nodelistCommunities[] = $comName;
+
+		$counter = 0;
+		$skipped = 0;
+		$duplicates = 0;
+		$added = 0;
+
+		foreach($routers AS $router)
+		{
+			$counter++;
+
+			if(	empty($router->position->lat)
+				||
+				(
+					empty($router->position->lon)
+					&&
+					empty($router->position->long)
+				)
+			)
+			{
+				// router has no location
+				$skipped++;
+				continue;
+			}
+
+			$thisRouter = array(
+				'id' => (string)$router->id,
+				'lat' => (string)$router->position->lat,
+				'long' => (!empty($router->position->lon) ? (string)$router->position->lon : (string)$router->position->long),
+				'name' => (string)$router->name,
+				'community' => $comName,
+				'status' => 'online',
+				'clients' => 0
+			);
+
+			if(isset($router->status))
+			{
+				if(isset($router->status->clients))
+				{
+					$thisRouter['clients'] = (int)$router->status->clients;
+				}
+
+				if(isset($router->status->online))
+				{
+					$thisRouter['status'] = (bool)$router->status->online ? 'online' : 'offline';
+				}
+			}
+
+			// add to routerlist for later use in JS
+			if($this->_addOrForget($thisRouter))
+			{
+				$added++;
+			}
+			else
+			{
+				$duplicates++;
+			}
+		}
+
+		$this->_addCommunityMessage('parsing done. '.
+										$counter.' nodes found, '.
+										$added.' added, '.
+										$skipped.' skipped, '.
+										$duplicates.' duplicates');
+
+		return true;
 	}
 
 	private function _getFromNetmon($comName, $comUrl)
@@ -400,7 +607,7 @@ class nodeListParser
 			return false;
 		}
 
-		$xml = simplexml_load_string($result, 'SimpleXMLElement');
+		$xml = @simplexml_load_string($result, 'SimpleXMLElement');
 
 		if(!$xml)
 		{
@@ -438,6 +645,8 @@ class nodeListParser
 			// add to routerlist for later use in JS
 			$this->_addOrForget($thisRouter);
 		}
+
+		return true;
 	}
 
 	private function _getFromFfmap($comName, $comUrl)
@@ -514,8 +723,13 @@ class nodeListParser
 					'name' => (string)$router->name,
 					'community' => $comName,
 					'status' => $router->flags->online ? 'online' : 'offline',
-					'clients' => (int)$router->clientcount
+					'clients' => 0
 				);
+
+				if(!empty($router->clientcount))
+				{
+					$thisRouter['clients'] = (int)$router->clientcount;
+				}
 			}
 
 			// add to routerlist for later use in JS
@@ -534,6 +748,8 @@ class nodeListParser
 										$added.' added, '.
 										$skipped.' skipped, '.
 										$duplicates.' duplicates');
+
+		return true;
 	}
 
 	private function _getFromOwm($comName, $comUrl)
@@ -586,6 +802,8 @@ class nodeListParser
 			// add to routerlist for later use in JS
 			$this->_addOrForget($thisRouter);
 		}
+
+		return true;
 	}
 
 	/**

@@ -293,7 +293,7 @@ function addPoints2Map(data)
 
 	// add layer controls for all layers
 	layerControl = L.control.layers({}, layers).addTo(map);
-	
+
 	// update stats
 	var countCom = 0;
 	for (var k in communities)
@@ -316,10 +316,15 @@ function addPoints2Map(data)
  */
 function getTooltipContent(routerData)
 {
-	var thisRouterCommunity = communities[routerData.community];
 	var tooltip = '<h3 class="router">'+routerData.name+'</h3>';
+
+	if(typeof communities[routerData.community] != 'undefined')
+	{
+		var thisRouterCommunity = communities[routerData.community];
 		tooltip += '<h4 class="comm"><a href="'+thisRouterCommunity.url+'" target="community_netmon">'+thisRouterCommunity.name+'</a></h4>';
-		tooltip += '<p>';
+	}
+
+	tooltip += '<p>';
 
 	if(routerData.clients != '?')
 	{

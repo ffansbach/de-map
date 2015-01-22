@@ -8,10 +8,12 @@ header('Cache-Control: no-cache, must-revalidate');
 $offset = 24 * 60 * 60;
 header ("Expires: " . gmdate ("D, d M Y H:i:s", time() + $offset) . " GMT");
 header('Content-Type: application/json');
-
+error_reporting(-1);
+ini_set('display_errors', 'On');
 require 'config.php';
 require 'lib/simpleCachedCurl.inc.php';
 require 'lib/nodelistparser.php';
+require 'lib/jsv4/jsv4.php';
 
 $apiUrl = 'https://raw.githubusercontent.com/freifunk/directory.api.freifunk.net/master/directory.json';
 
@@ -19,12 +21,12 @@ $parser = new nodeListParser();
 $parser->setCachePath(dirname(__FILE__).'/cache/');
 $parser->setSource($apiUrl);
 
-$parser->addAdditional('ffnw', array(
-		'name'	=> 'Freifunk NordWest',
-		'nameShort'	=> 'FF NordWest',
-		'url'	=> 'https://netmon.nordwest.freifunk.net/'
-	)
-);
+$ffnw = new stdClass;
+$ffnw->name = 'Freifunk NordWest';
+$ffnw->nameShort = 'Freifunk NordWest';
+$ffnw->url = 'https://netmon.nordwest.freifunk.net/';
+
+$parser->addAdditional('ffnw', $ffnw);
 
 $parseResult = $parser->getParsed(isset($_REQUEST[$forceReparseKey]));
 
