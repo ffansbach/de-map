@@ -54,7 +54,7 @@ class nodeListParser
 
 	public function __construct()
 	{
-
+		$this->_parseStatistics['timestamp'] = date('c');
 	}
 
 	public function __destruct()
@@ -111,6 +111,7 @@ class nodeListParser
 
 			$this->_toCache('routers', $this->_nodeList);
 			$this->_toCache('communities', $this->_communityList);
+			$this->_toCache('statistics', $this->_parseStatistics);
 		}
 		else
 		{
@@ -277,11 +278,16 @@ class nodeListParser
 				continue;
 			}
 
+			$this->_addCommunityMessage('try to find nodeMaps containing [nodeList]-Format');
+			$this->_addBasicLogInfo($communityData);
+
 			if(!isset($communityData->nodeMaps))
 			{
 				$this->_addCommunityMessage('has no nodeMaps');
 				continue;
 			}
+
+			$hasNodeList = false;
 
 			// iterate over all nodeMaps-entries annd look for nodelist
 			foreach($communityData->nodeMaps AS $nmEntry)
@@ -295,6 +301,7 @@ class nodeListParser
 				)
 				{
 					// we found one
+					$hasNodeList = true;
 
 					if(in_array($nmEntry->url, $parsedSources))
 					{
@@ -303,7 +310,7 @@ class nodeListParser
 						continue;
 					}
 
-					$this->_addCommunityMessage('parse as nodelist');
+					$this->_addCommunityMessage('parse as [nodeList]');
 					$data = $this->_getFromNodelist($cName, $nmEntry->url);
 
 					if($data)
@@ -312,6 +319,11 @@ class nodeListParser
 						$this->_addCommunity($communityData);
 					}
 				}
+			}
+
+			if(!$hasNodeList)
+			{
+				$this->_addCommunityMessage('has no [nodeList]');
 			}
 		}
 
@@ -342,7 +354,7 @@ class nodeListParser
 			// check if community has delivered a nodelist
 			if(in_array($cName, $this->_nodelistCommunities))
 			{
-				$this->_addCommunityMessage('skipping - we already have found a nodelist');
+				$this->_addCommunityMessage('skipping - we already have found a nodeList');
 				continue;
 			}
 
@@ -355,6 +367,9 @@ class nodeListParser
 				$this->_addCommunityMessage('got no data');
 				continue;
 			}
+
+			$this->_addCommunityMessage('try to find nodeMaps containing any parseable Format');
+			$this->_addBasicLogInfo($communityData);
 
 			if(!isset($communityData->nodeMaps))
 			{
@@ -623,12 +638,20 @@ class nodeListParser
 			return false;
 		}
 
+		$counter = 0;
+		$skipped = 0;
+		$duplicates = 0;
+		$added = 0;
+
 		foreach($routers AS $router)
 		{
+			$counter++;
+
 			if($router->latitude == '0' || $router->longitude == '0'
 				|| empty($router->latitude) || empty($router->longitude))
 			{
 				// router has no location
+				$skipped++;
 				continue;
 			}
 
@@ -643,8 +666,21 @@ class nodeListParser
 			);
 
 			// add to routerlist for later use in JS
-			$this->_addOrForget($thisRouter);
+			if($this->_addOrForget($thisRouter))
+			{
+				$added++;
+			}
+			else
+			{
+				$duplicates++;
+			}
 		}
+
+		$this->_addCommunityMessage('parsing done. '.
+										$counter.' nodes found, '.
+										$added.' added, '.
+										$skipped.' skipped, '.
+										$duplicates.' duplicates');
 
 		return true;
 	}
@@ -781,11 +817,17 @@ class nodeListParser
 			return false;
 		}
 
+		$counter = 0;
+		$skipped = 0;
+		$duplicates = 0;
+		$added = 0;
+
 		foreach($routers AS $router)
 		{
 			if(empty($router->value->latlng[0]) || empty($router->value->latlng[1]))
 			{
 				// router has no location
+				$skipped++;
 				continue;
 			}
 
@@ -800,8 +842,21 @@ class nodeListParser
 			);
 
 			// add to routerlist for later use in JS
-			$this->_addOrForget($thisRouter);
+			if($this->_addOrForget($thisRouter))
+			{
+				$added++;
+			}
+			else
+			{
+				$duplicates++;
+			}
 		}
+
+		$this->_addCommunityMessage('parsing done. '.
+										$counter.' nodes found, '.
+										$added.' added, '.
+										$skipped.' skipped, '.
+										$duplicates.' duplicates');
 
 		return true;
 	}
@@ -874,5 +929,26 @@ class nodeListParser
 		}
 
 		$this->_parseStatistics['errorCommunities'][$this->_currentParseObject['name']]['message'][] = $message;
+	}
+
+	/**
+	 * adds some basic information from the communityfile to the loging/debug-object
+	 *
+	 * @param simpleXML $community
+	 */
+	private function _addBasicLogInfo($community)
+	{
+		$statisticsNode = &$this->_parseStatistics['errorCommunities'][$this->_currentParseObject['name']];
+		$statisticsNode['claimed_nodecount'] = false;
+
+		if(!empty($community->state) && !empty($community->state->nodes))
+		{
+			$statisticsNode['claimed_nodecount'] = (int)$community->state->nodes;
+		}
+
+		if(isset($community->metacommunity))
+		{
+			$statisticsNode['metacommunity'] = $community->metacommunity;
+		}
 	}
 }
