@@ -12,6 +12,15 @@ $mapInitalView = array(
 	'zoom' => 10,
 );
 
+// db acces for logging
+// set to false to disable db-logging of nodecount
+$dbAccess = array(
+	'host' => 'localhost',
+	'db' => 'mydb',
+	'user' => 'myuser',
+	'pass' => 'mypass'
+);
+
 /*
  * this will be used for some css and js
  * don't forget to add a slash

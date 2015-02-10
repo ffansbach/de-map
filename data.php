@@ -14,6 +14,7 @@ require 'config.php';
 require 'lib/simpleCachedCurl.inc.php';
 require 'lib/nodelistparser.php';
 require 'lib/jsv4/jsv4.php';
+require 'lib/log.php';
 
 $apiUrl = 'https://raw.githubusercontent.com/freifunk/directory.api.freifunk.net/master/directory.json';
 
@@ -34,6 +35,13 @@ $response = array(
 	'communities' => $parseResult['communities'],
 	'allTheRouters' =>  $parseResult['routerList']
 );
+
+if(isset($_REQUEST[$forceReparseKey]) && is_array($dbAccess))
+{
+	$db = new mysqli($dbAccess['host'], $dbAccess['user'], $dbAccess['pass'], $dbAccess['db']);
+	$log = new log($db);
+	$log->add(sizeof($parseResult['routerList']));
+}
 
 /**
  * if processonly is set we handle a reparse cron request
