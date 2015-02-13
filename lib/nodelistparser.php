@@ -850,13 +850,18 @@ class nodeListParser
 				continue;
 			}
 
+			$date = date_create((string)$router->value->mtime);
+
+			// was online in last 24h ?
+			$isOnline = ((time() - $date->getTimestamp()) < 60*60*24);
+
 			$thisRouter = array(
 				'id' => (string)$router->id,
 				'lat' => (string)$router->value->latlng[0],
 				'long' => (string)$router->value->latlng[1],
 				'name' => (string)$router->value->hostname,
 				'community' => $comName,
-				'status' => '?',
+				'status' => $isOnline ? 'online' : 'offline',
 				'clients' => '?'
 			);
 
