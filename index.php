@@ -16,8 +16,6 @@ require 'config.php';
 		<link rel="stylesheet" href="css/site.css" />
 
 		<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
-		<link rel="stylesheet" href="css/MarkerCluster.Default.css" />
-		<link rel="stylesheet" href="css/MarkerCluster.css" />
 	</head>
 	<body>
 		<div id="map"></div>
@@ -95,9 +93,10 @@ require 'config.php';
 		<script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
 		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
 		<script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
-		<script src="js/leaflet.markercluster-src.js"></script>
+		<script src="js/prunecluster/PruneCluster.js"></script>
 		<script src="js/heatmap.min.js"></script>
 		<script src="js/leaflet-heatmap.js"></script>
+		<script src="js/graham_scan.js"></script>
 
 		<script src="js/meta_map.js"></script>
 		<script src="js/site.js"></script>

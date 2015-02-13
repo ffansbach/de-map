@@ -585,7 +585,7 @@ class nodeListParser
 				'long' => (!empty($router->position->lon) ? (string)$router->position->lon : (string)$router->position->long),
 				'name' => (string)$router->name,
 				'community' => $comName,
-				'status' => 'online',
+				'status' => 'unknown',
 				'clients' => 0
 			);
 

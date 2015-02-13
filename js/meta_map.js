@@ -68,6 +68,16 @@ var layerControl;
 var locMarker, locArea;
 
 /**
+ * will contain the outer hull of a cluster
+ */
+var clusterArea;
+
+/*
+ * configure prunecluster
+ */
+PruneCluster.Cluster.ENABLE_MARKERS_LIST = true;
+
+/**
  * initialize map
  *
  * prepare mapcontainer
@@ -75,6 +85,8 @@ var locMarker, locArea;
  */
 function init()
 {
+	extendIcons();
+
 	var requestedLat = parseFloat(getURLParameter('lat'));
 	var requestedLng = parseFloat(getURLParameter('lng'));
 	var requestedZoom = parseInt(getURLParameter('z'));
@@ -100,8 +112,8 @@ function init()
 
 	L.tileLayer(tileServerUrl,
 	{
-	    attribution: tileServerAttribution,
-	    maxZoom: 18
+		attribution: tileServerAttribution,
+		maxZoom: 18
 	}).addTo(map);
 
 	map.addControl(centerOnPosition);
@@ -191,25 +203,8 @@ function prepareIcon()
  */
 function addPoints2Map(data)
 {
-	// prepare cluster overlay
-	var markers = L.markerClusterGroup(
-	{
-		maxClusterRadius: function(zoom)
-		{
-			var clusterRadius = 70;
-			if(zoom == 18)
-			{
-				clusterRadius = 10;
-			}
-			else if(zoom >= 16)
-			{
-				clusterRadius = 40;
-			}
+	var pruneCluster = preparePruneCluster();
 
-			return clusterRadius;
-		}
-	});
-	
 	// prepare heatmap overlay
 	var heatmapLayer = new HeatmapOverlay({
 		"radius": 30,
@@ -221,37 +216,38 @@ function addPoints2Map(data)
 	// add all entries to clustergroup and heatmap
 	$.each(data, function(i, router)
 	{
-		var markerSettings = {
-			title: router.name,
-			icon : icons.hotspot
-		};
-
-		if(router.status != 'online' && router.status != '?')
-		{
-			// router is not online. ignore unknown, simply show as offline
-			markerSettings.icon = icons.hotspotOffline;
-		}
-
-		var marker = L.marker(
-			new L.LatLng(router.lat, router.long),
-			markerSettings
-		);
-
-		marker.bindPopup(getTooltipContent(router));
-		markers.addLayer(marker);
-		
-		// heatmap data
 		heatMapData.push({
-			lat: router.lat, 
-			lng: router.long, 
+			lat: router.lat,
+			lng: router.long,
 			count: 1.1
 		});
+
+		var marker = new PruneCluster.Marker(router.lat, router.long);
+
+		marker.category = 0;
+		marker.data.icon = icons.hotspot;
+
+		if(router.status == 'online')
+		{
+			marker.category = 1;
+		}
+		else if(router.status == 'offline')
+		{
+			marker.category = 2;
+			marker.data.icon = icons.hotspotOffline;
+		}
+
+		marker.data.name = router.name;
+		marker.data.popup = getTooltipContent(router);
+
+		pruneCluster.RegisterMarker(marker);
 	});
 
-	// add layer with clustergroup to map
-	map.addLayer(markers);
 
-	// add heatmap layer	
+	// + Finally add the pruneCluster to the map Object.
+	map.addLayer(pruneCluster);
+
+	// add heatmap layer
 	map.addLayer(heatmapLayer);
 	heatmapLayer.setData({
 		max: 1,
@@ -260,8 +256,8 @@ function addPoints2Map(data)
 
 	var layers = {
 		// add the cluster layer
-		"Nodes": markers,
-		
+		"Nodes": pruneCluster,
+
 		// add the heatmap layer
 		"HeatMap": heatmapLayer
 	};
@@ -427,3 +423,186 @@ function onLocationFound(e)
 }
 
 var centerOnPosition = new L.Control.CenterOnPosition();
+
+/**
+ * shows the area of the hovered cluster
+ * @param  {object} cluster
+ */
+function showClusterHull(cluster)
+{
+	var convexHull = new ConvexHullGrahamScan();
+
+	$.each(cluster._clusterMarkers, function(i, marker)
+	{
+		convexHull.addPoint(marker.position.lat, marker.position.lng);
+	});
+
+	var hullPoints = convexHull.getHull();
+	var points = [];
+
+	$.each(hullPoints, function(i, point)
+	{
+		points.push([point.x, point.y]);
+	});
+
+	clusterArea = L.polygon(points,{
+		color: '#009ee0',
+		fillColor: '#009ee0',
+		fillOpacity: 0.5
+	}).addTo(map);
+}
+
+/**
+ * extend L.Icon for PruneCluster
+ */
+function extendIcons()
+{
+	// category-colors: status unknown, online, offline
+	var colors = ['#ff4b00', '#dc0067', '#666666'],
+		pi2 = Math.PI * 2;
+
+	L.Icon.MarkerCluster = L.Icon.extend(
+	{
+		options:
+		{
+			iconSize: new L.Point(44, 44),
+			className: 'prunecluster leaflet-markercluster-icon'
+		},
+		createIcon: function ()
+		{
+			// based on L.Icon.Canvas from shramov/leaflet-plugins (BSD licence)
+			var e = document.createElement('canvas');
+			this._setIconStyles(e, 'icon');
+			var s = this.options.iconSize;
+			e.width = s.x;
+			e.height = s.y;
+			this.draw(e.getContext('2d'), s.x, s.y);
+			return e;
+		},
+		createShadow: function ()
+		{
+			return null;
+		},
+		draw: function (canvas, width, height)
+		{
+			var lol = 0;
+			var start = 0;
+
+			for (var i = 0, l = colors.length; i < l; ++i)
+			{
+				var size = this.stats[i] / this.population;
+
+				if (size > 0)
+				{
+					canvas.beginPath();
+					canvas.moveTo(22, 22);
+					canvas.fillStyle = colors[i];
+					var from = start + 0.14,
+						to = start + size * pi2;
+
+					if (to < from)
+					{
+						from = start;
+					}
+
+					start = start + size * pi2;
+
+					canvas.arc(22, 22, 18, from, to);
+					canvas.lineTo(22, 22);
+					canvas.fill();
+					canvas.closePath();
+				}
+			}
+
+			canvas.beginPath();
+			canvas.fillStyle = 'white';
+			canvas.arc(22, 22, 14, 0, Math.PI * 2);
+			canvas.fill();
+			canvas.closePath();
+			canvas.fillStyle = '#666666';
+			canvas.textAlign = 'center';
+			canvas.textBaseline = 'middle';
+			canvas.font = 'bold 12px sans-serif';
+			canvas.fillText(this.population, 22, 22, 40);
+		}
+	});
+}
+
+/**
+ * creates a prune-cluster
+ *
+ * @return {object}
+ */
+function preparePruneCluster()
+{
+	// +--- Init the prune Cluste Plugin for Leaflet: https://github.com/SINTEF-9012/PruneCluster---------------
+	var pruneCluster = new PruneClusterForLeaflet();
+
+	pruneCluster.BuildLeafletCluster = function(cluster, position)
+	{
+		var m = new L.Marker(position,
+		{
+			icon: pruneCluster.BuildLeafletClusterIcon(cluster)
+		});
+
+		m.on('click', function()
+		{
+			map.removeLayer(clusterArea);
+
+			// Compute the  cluster bounds (it's slow : O(n))
+			var markersArea = pruneCluster.Cluster.FindMarkersInArea(cluster.bounds);
+			var b = pruneCluster.Cluster.ComputeBounds(markersArea);
+
+			if (b)
+			{
+				var bounds = new L.LatLngBounds(
+					new L.LatLng(b.minLat, b.maxLng),
+					new L.LatLng(b.maxLat, b.minLng));
+
+				var zoomLevelBefore = pruneCluster._map.getZoom();
+				var zoomLevelAfter = pruneCluster._map.getBoundsZoom(bounds, false, new L.Point(20, 20, null));
+
+				// If the zoom level doesn't change
+				if (zoomLevelAfter === zoomLevelBefore)
+				{
+					// Send an event for the LeafletSpiderfier
+					pruneCluster._map.fire('overlappingmarkers', {
+						cluster: pruneCluster,
+						markers: markersArea,
+						center: m.getLatLng(),
+						marker: m
+					});
+
+					pruneCluster._map.setView(position, zoomLevelAfter);
+				}
+				else
+				{
+					pruneCluster._map.fitBounds(bounds);
+				}
+			}
+		})
+		.on('mouseover', function()
+		{
+			showClusterHull(cluster);
+		})
+		.on('mouseout', function()
+		{
+			map.removeLayer(clusterArea);
+		});
+
+		return m;
+	};
+
+	// + Make a custom Icon for the Cluster. Also Taken from: https://github.com/SINTEF-9012/PruneCluster
+	pruneCluster.BuildLeafletClusterIcon = function (cluster)
+	{
+		var e = new L.Icon.MarkerCluster();
+		e.stats = cluster.stats;
+		e.population = cluster.population;
+		return e;
+	};
+
+	pruneCluster.Cluster.Size = 100;
+
+	return pruneCluster;
+}
