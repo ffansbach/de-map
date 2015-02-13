@@ -30,8 +30,22 @@ $ffnw = new stdClass;
 $ffnw->name = 'Freifunk NordWest';
 $ffnw->nameShort = 'Freifunk NordWest';
 $ffnw->url = 'https://netmon.nordwest.freifunk.net/';
-
+$ffnw->parser = 'Netmon';
 $parser->addAdditional('ffnw', $ffnw);
+
+$ffj = new stdClass;
+$ffj->name = 'Freifunk Jena';
+$ffj->nameShort = 'Freifunk Jena';
+$ffj->url = 'https://freifunk-jena.de/ffmap/';
+$ffj->parser = 'Ffmap';
+$parser->addAdditional('ffj', $ffj);
+
+$ffffm = new stdClass;
+$ffffm->name = 'Frankfurt am Main';
+$ffffm->nameShort = 'Frankfurt am Main';
+$ffffm->url = 'http://map.ffm.freifunk.net/';
+$ffffm->parser = 'Ffmap';
+$parser->addAdditional('ffffm', $ffffm);
 
 $parseResult = $parser->getParsed(isset($_REQUEST[$forceReparseKey]));
 

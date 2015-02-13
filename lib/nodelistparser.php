@@ -474,16 +474,20 @@ class nodeListParser
 
 		foreach($this->_additionals AS $cName => $community)
 		{
+			$this->_currentParseObject['name'] = $cName;
+			$this->_currentParseObject['source'] = $community->url;
+
 			$community->shortName = $cName;
 			$this->_addCommunity($community);
 
-			$data = $this->_getFromNetmon($cName, $community->url);
+			$parser = "_getFrom".$community->parser;
+
+			$data = $this->{$parser}($cName, $community->url);
 
 			if($data !== false)
 			{
 				// found something
 				$parsedSources[] = $community->url;
-				break;
 			}
 		}
 	}
