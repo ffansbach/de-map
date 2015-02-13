@@ -7,6 +7,12 @@ class nodeListParser
 	private $_cachePath = '';
 
 	/**
+	 * show debug-output
+	 * @var boolean
+	 */
+	private $_debug = false;
+
+	/**
 	 * timeout for result-cache
 	 *
 	 * 24h
@@ -68,6 +74,15 @@ class nodeListParser
 	public function setSource($url)
 	{
 		$this->_sourceUrl = $url;
+	}
+
+	/**
+	 * (de)activate debug-output
+	 * @param boolean $allowDebug
+	 */
+	public function setDebug($allowDebug)
+	{
+		$this->_debug = (bool)$allowDebug;
 	}
 
 	public function setCachePath($path)
@@ -179,7 +194,7 @@ class nodeListParser
 
 	private function _getCommunityList()
 	{
-		$result = simpleCachedCurl($this->_sourceUrl, $this->_curlCacheTime);
+		$result = simpleCachedCurl($this->_sourceUrl, $this->_curlCacheTime, $this->_debug);
 		$communityList = json_decode($result);
 
 		return $communityList;
@@ -187,7 +202,7 @@ class nodeListParser
 
 	public function _getCommunityData($cUrl)
 	{
-		$communityFile = simpleCachedCurl($cUrl, $this->_curlCacheTime);
+		$communityFile = simpleCachedCurl($cUrl, $this->_curlCacheTime, $this->_debug);
 
 		if($communityFile)
 		{
@@ -505,7 +520,7 @@ class nodeListParser
 	 */
 	private function _getFromNodelist($comName, $comUrl)
 	{
-		$result = simpleCachedCurl($comUrl, $this->_curlCacheTime);
+		$result = simpleCachedCurl($comUrl, $this->_curlCacheTime, $this->_debug);
 
 		$responseObject = json_decode($result);
 
@@ -614,7 +629,7 @@ class nodeListParser
 						)
 				);
 
-		$result = simpleCachedCurl($url, $this->_curlCacheTime);
+		$result = simpleCachedCurl($url, $this->_curlCacheTime, $this->_debug);
 
 		if(!$result)
 		{
@@ -689,7 +704,7 @@ class nodeListParser
 	{
 		$comUrl .= 'nodes.json';
 
-		$result = simpleCachedCurl($comUrl, $this->_curlCacheTime);
+		$result = simpleCachedCurl($comUrl, $this->_curlCacheTime, $this->_debug);
 
 		if(!$result)
 		{
@@ -793,7 +808,7 @@ class nodeListParser
 		$comUrl .= 'api/view_nodes';
 		$comUrl = str_replace('www.', '', $comUrl);
 
-		$result = simpleCachedCurl($comUrl, $this->_curlCacheTime);
+		$result = simpleCachedCurl($comUrl, $this->_curlCacheTime, $this->_debug);
 
 		if(!$result)
 		{

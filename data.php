@@ -19,6 +19,10 @@ require 'lib/log.php';
 $apiUrl = 'https://raw.githubusercontent.com/freifunk/directory.api.freifunk.net/master/directory.json';
 
 $parser = new nodeListParser();
+
+// uncomment to enable debugoutput from simplecachedcurl
+// $parser->setDebug(true);
+
 $parser->setCachePath(dirname(__FILE__).'/cache/');
 $parser->setSource($apiUrl);
 
