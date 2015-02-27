@@ -47,6 +47,8 @@ class nodeListParser
 		'source' => ''
 	);
 
+	private $_maxAge = 3;
+
 	/**
 	 * all communities that delivered a parsable nodelist
 	 *
@@ -560,6 +562,7 @@ class nodeListParser
 		$skipped = 0;
 		$duplicates = 0;
 		$added = 0;
+		$dead = 0;
 
 		foreach($routers AS $router)
 		{
@@ -602,6 +605,20 @@ class nodeListParser
 				}
 			}
 
+			if( $thisRouter['status'] == 'offline' && !empty($router->status->lastcontact))
+			{
+				$date = date_create((string)$router->status->lastcontact);
+
+				// was online in last days? ?
+				$isDead = ((time() - $date->getTimestamp()) > 60*60*24*$this->_maxAge);
+
+				if($isDead)
+				{
+					$dead++;
+					continue;
+				}
+			}
+
 			// add to routerlist for later use in JS
 			if($this->_addOrForget($thisRouter))
 			{
@@ -617,7 +634,8 @@ class nodeListParser
 										$counter.' nodes found, '.
 										$added.' added, '.
 										$skipped.' skipped, '.
-										$duplicates.' duplicates');
+										$duplicates.' duplicates, '.
+										$dead.' dead');
 
 		return true;
 	}
@@ -661,6 +679,7 @@ class nodeListParser
 		$skipped = 0;
 		$duplicates = 0;
 		$added = 0;
+		$dead = 0;
 
 		foreach($routers AS $router)
 		{
@@ -684,6 +703,18 @@ class nodeListParser
 				'clients' => (int)$router->statusdata->client_count
 			);
 
+			if( $thisRouter['status'] == 'offline' && !empty($router->update_date))
+			{
+				// was online in last days?
+				$isDead = ((time() - (int)$router->update_date) > 60*60*24*$this->_maxAge);
+
+				if($isDead)
+				{
+					$dead++;
+					continue;
+				}
+			}
+
 			// add to routerlist for later use in JS
 			if($this->_addOrForget($thisRouter))
 			{
@@ -699,7 +730,8 @@ class nodeListParser
 										$counter.' nodes found, '.
 										$added.' added, '.
 										$skipped.' skipped, '.
-										$duplicates.' duplicates');
+										$duplicates.' duplicates, '.
+										$dead.' dead');
 
 		return true;
 	}
@@ -840,6 +872,7 @@ class nodeListParser
 		$skipped = 0;
 		$duplicates = 0;
 		$added = 0;
+		$dead = 0;
 
 		foreach($routers AS $router)
 		{
@@ -854,6 +887,13 @@ class nodeListParser
 
 			// was online in last 24h ?
 			$isOnline = ((time() - $date->getTimestamp()) < 60*60*24);
+
+			if( (time() - $date->getTimestamp()) > 60*60*24*$this->_maxAge)
+			{
+				// router has been offline for a long time now
+				$dead++;
+				continue;
+			}
 
 			$thisRouter = array(
 				'id' => (string)$router->id,
@@ -880,7 +920,8 @@ class nodeListParser
 										$counter.' nodes found, '.
 										$added.' added, '.
 										$skipped.' skipped, '.
-										$duplicates.' duplicates');
+										$duplicates.' duplicates, '.
+										$dead.' dead');
 
 		return true;
 	}

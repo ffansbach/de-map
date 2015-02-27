@@ -10,6 +10,10 @@
 <p>
 	Alle 60 Minuten werden die Daten neu verarbeitet und so aktualisiert.
 </p>
+<p>
+	Knoten/Zugangspunkte von denen bekannt ist, dass sie länger als 3 Tage offline sind, werden nicht auf der Karte gezeigt. Allerdings liefern nicht alle Datenquellen
+	diese Information, so dass nicht immer einige Knoten auf der Karte erscheinen, die länger nicht verfügbar sind.
+</p>
 <h3>Wer hat es gebaut</h3>
 <p>
 	Tino Dietel<br />
