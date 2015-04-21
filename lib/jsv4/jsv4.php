@@ -244,7 +244,7 @@ class Jsv4 {
 		if (!is_object($this->data)) {
 			return;
 		}
-		if (isset($this->schema->required)) {
+		if (isset($this->schema->required) && is_array($this->schema->required)) {
 			foreach ($this->schema->required as $index => $key) {
 				if (!array_key_exists($key, (array) $this->data)) {
 					if ($this->coerce && $this->createValueForProperty($key)) {
