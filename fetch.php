@@ -49,7 +49,9 @@ function fetchStats()
 	$db = new mysqli($dbAccess['host'], $dbAccess['user'], $dbAccess['pass'], $dbAccess['db']);
 	$log = new log($db);
 	$data = $log->get();
-	$newData = array();
+
+	$min = array();
+	$max = array();
 
 	$midOver = 12;
 	$dateOf = 6;
@@ -61,31 +63,9 @@ function fetchStats()
 
 	foreach ($data as $item)
 	{
-		$c++;
-
-		if($c == ($midOver + 1))
-		{
-			$mid = round(array_sum($set) / $midOver);
-			$newData[] = array($setDate, $mid);
-
-			$c = 1;
-			$set = array();
-			$setDate = false;
-		}
-		elseif($c == $dateOf)
-		{
-			$setDate = $item[0];
-		}
-
-		$set[] = $item[1];
-		$lastDate = $item[0];
+		$min[] = array($item['ts'], $item['min']);
+		$max[] = array($item['ts'], $item['max']);
 	}
 
-	if(!empty($set))
-	{
-		$mid = round(array_sum($set) / count($set));
-		$newData[] = array(($setDate ? $setDate : $lastDate), $mid);
-	}
-
-	return $newData;
+	return array($min, $max);
 }

@@ -16,7 +16,14 @@ class log
 
 	public function get()
 	{
-		$query = "SELECT TS, count FROM `log` WHERE `count` > 1000 ORDER BY ts";
+		$query = "SELECT TS,
+						MIN(count) AS daymin,
+						MAX(count) AS daymax
+					FROM `log`
+					WHERE `count` > 1000
+					GROUP BY DATE(`ts`)
+					ORDER BY ts";
+
 		$result = $this->_db->query($query);
 
 		$resultArray = array();
@@ -25,7 +32,12 @@ class log
 		{
 			$date = date_create((string)$row['TS']);
 			$ts = $date->getTimestamp();
-			$resultArray[] = array($ts, $row['count']);
+
+			$resultArray[] = array(
+				'ts' => $ts,
+				'max' => $row['daymax'],
+				'min' => $row['daymin']
+			);
 		}
 
 		return $resultArray;
