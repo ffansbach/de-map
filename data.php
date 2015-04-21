@@ -5,7 +5,7 @@
  * this will try to load a cched result if not older than 24h
  */
 header('Cache-Control: no-cache, must-revalidate');
-$offset = 24 * 60 * 60;
+$offset = 1 * 60 * 60;
 header ("Expires: " . gmdate ("D, d M Y H:i:s", time() + $offset) . " GMT");
 header('Content-Type: application/json');
 error_reporting(-1);
