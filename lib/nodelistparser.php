@@ -401,7 +401,6 @@ class nodeListParser
 			// use meta-communityname
 			if(isset($communityData->metacommunity))
 			{
-				$cName = $communityData->metacommunity;
 				$communityName = $communityData->metacommunity;
 
 				$this->_addCommunityMessage('Metacommunity:' . $communityData->metacommunity);
@@ -502,12 +501,17 @@ class nodeListParser
 	 */
 	private function _addCommunity($community)
 	{
+		$thisComm = array(
+			'name' => $community->name,
+			'url' => $community->url,
+			'meta' => false,
+		);
+
+		// add metacommunity if set
 		if(isset($community->metacommunity))
 		{
-			$community->name = $community->metacommunity;
+			$thisComm['meta'] = $community->metacommunity;
 		}
-
-		$thisComm = array('name' => $community->name, 'url' => $community->url);
 
 		if(!json_encode($thisComm))
 		{

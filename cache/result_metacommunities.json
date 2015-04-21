@@ -15,17 +15,25 @@
   "Freifunk Oldenburg": {},
   "Freifunk Reihen": {},
   "Freifunk Rhein-Neckar": {},
-  "Freifunk Rheinland": {},
+  "Freifunk Rheinland": {
+    "url": "https://freifunk-rheinland.net/"
+  },
   "Freifunk Rheinland e.V.": {
     "url": "https://freifunk-rheinland.net/"
   },
-  "Freifunk Rheinland e.V. Domäne Rheinufer": {},
-  "Freifunk Ruhrgebiet": {},
+  "Freifunk Rheinland e.V. Domäne Rheinufer": {
+    "url": "https://freifunk-rheinland.net/"
+  },
+  "Freifunk Ruhrgebiet": {
+    "url": "https://freifunk-rheinland.net/"
+  },
+  "Rheinland - Domäne Ruhrgebiet": {
+    "url": "https://freifunk-rheinland.net/"
+  },
   "Freifunk-NRW": {},
   "Funkfeuer": {},
   "Gadow/Zootzen": {},
   "Opennet Initiative e.V.": {},
-  "Rheinland - Domäne Ruhrgebiet": {},
   "Saarland": {},
   "Schleswig-Holstein": {
     "url": "http://freifunk.in-kiel.de/"

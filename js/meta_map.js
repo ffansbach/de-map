@@ -13,6 +13,7 @@ $(function() {
 		success: function(response)
 		{
 			communities = response.communities;
+			metaCommunities = response.metaCommunities;
 			addPoints2Map(response.allTheRouters);
 		},
 		complete : function()
@@ -43,7 +44,7 @@ var icons;
  *
  * @var {object}
  */
-var communities; // todo: make this none global
+var communities, metaCommunities; // todo: make this none global
 
 /**
  * a window timeout used for the modal shown if the ajax-fetch takes very long
@@ -317,9 +318,26 @@ function getTooltipContent(routerData)
 	if(typeof communities[routerData.community] != 'undefined')
 	{
 		var thisRouterCommunity = communities[routerData.community];
-		tooltip += '<h4 class="comm"><a href="'+thisRouterCommunity.url+'" target="community_netmon">'+thisRouterCommunity.name+'</a></h4>';
-	}
+		tooltip += '<h4 class="comm" title="Community">Freifunk-Gruppe: <a href="'+thisRouterCommunity.url+'" target="community_netmon">'+thisRouterCommunity.name+'</a></h4>';
 
+		if(thisRouterCommunity.meta !== false)
+		{
+			var metaName = thisRouterCommunity.meta;
+
+			if(
+				typeof metaCommunities[metaName] != 'undefined'
+				&&
+				typeof metaCommunities[metaName].url != 'undefined'
+			)
+			{
+				// add link to metacommunity
+				metaName = '<a href="'+metaCommunities[metaName].url+'" target="community_netmon">'+metaName+'</a>';
+			}
+
+			tooltip += '<h4 class="comm" title="Metacommunity">Übergruppe: '+metaName+'</h4>';
+		}
+
+	}
 	tooltip += '<p>';
 
 	if(routerData.clients != '?')

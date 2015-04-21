@@ -17,7 +17,9 @@ table.display tr:nth-child(even) {
 }
 
 #map .leaflet-popup h3.router {
-	font-size: 15px;
+	font-size:		15px;
+	color:			#dc0067;
+	font-weight:	bold;
 }
 #map .leaflet-popup h4.comm {
 	font-size: 13px;

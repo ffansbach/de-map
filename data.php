@@ -10,71 +10,104 @@ header ("Expires: " . gmdate ("D, d M Y H:i:s", time() + $offset) . " GMT");
 header('Content-Type: application/json');
 error_reporting(-1);
 ini_set('display_errors', 'On');
+
 require 'config.php';
-require 'lib/simpleCachedCurl.inc.php';
-require 'lib/nodelistparser.php';
-require 'lib/jsv4/jsv4.php';
-require 'lib/log.php';
 
-$apiUrl = 'https://raw.githubusercontent.com/freifunk/directory.api.freifunk.net/master/directory.json';
-
-$parser = new nodeListParser();
-
-// uncomment to enable debugoutput from simplecachedcurl
-// $parser->setDebug(true);
-
-$parser->setCachePath(dirname(__FILE__).'/cache/');
-$parser->setSource($apiUrl);
-
-$ffnw = new stdClass;
-$ffnw->name = 'Freifunk NordWest';
-$ffnw->nameShort = 'Freifunk NordWest';
-$ffnw->url = 'https://netmon.nordwest.freifunk.net/';
-$ffnw->parser = 'Netmon';
-$parser->addAdditional('ffnw', $ffnw);
-
-$ffj = new stdClass;
-$ffj->name = 'Freifunk Jena';
-$ffj->nameShort = 'Freifunk Jena';
-$ffj->url = 'https://freifunk-jena.de/ffmap/';
-$ffj->parser = 'Ffmap';
-$parser->addAdditional('ffj', $ffj);
-
-$ffffm = new stdClass;
-$ffffm->name = 'Frankfurt am Main';
-$ffffm->nameShort = 'Frankfurt am Main';
-$ffffm->url = 'http://map.ffm.freifunk.net/';
-$ffffm->parser = 'Ffmap';
-$parser->addAdditional('ffffm', $ffffm);
-
-$parseResult = $parser->getParsed(isset($_REQUEST[$forceReparseKey]));
-
-$response = array(
-	'communities' => $parseResult['communities'],
-	'allTheRouters' =>  $parseResult['routerList']
-);
-
-if(isset($_REQUEST[$forceReparseKey]) && is_array($dbAccess))
+if(!isset($_REQUEST[$forceReparseKey]))
 {
-	$db = new mysqli($dbAccess['host'], $dbAccess['user'], $dbAccess['pass'], $dbAccess['db']);
-	$log = new log($db);
-	$log->add(sizeof($parseResult['routerList']));
+	// fetch cached result - the shortcut
+	$response = array(
+		'communities' =>		getFromCache('communities'),
+		'allTheRouters' =>		getFromCache('routers'),
+		'metaCommunities' =>	getFromCache('metacommunities'),
+		'isCachedresult' =>		true,
+	);
+}
+else
+{
+	// reparse requested
+	// actually parse now
+
+	require 'lib/simpleCachedCurl.inc.php';
+	require 'lib/nodelistparser.php';
+	require 'lib/jsv4/jsv4.php';
+	require 'lib/log.php';
+
+	$apiUrl = 'https://raw.githubusercontent.com/freifunk/directory.api.freifunk.net/master/directory.json';
+
+	$parser = new nodeListParser();
+
+	// uncomment to enable debugoutput from simplecachedcurl
+	// $parser->setDebug(true);
+
+	$parser->setCachePath(dirname(__FILE__).'/cache/');
+	$parser->setSource($apiUrl);
+
+	$ffnw = new stdClass;
+	$ffnw->name = 'Freifunk NordWest';
+	$ffnw->nameShort = 'Freifunk NordWest';
+	$ffnw->url = 'https://netmon.nordwest.freifunk.net/';
+	$ffnw->parser = 'Netmon';
+	$parser->addAdditional('ffnw', $ffnw);
+
+	$ffj = new stdClass;
+	$ffj->name = 'Freifunk Jena';
+	$ffj->nameShort = 'Freifunk Jena';
+	$ffj->url = 'https://freifunk-jena.de/ffmap/';
+	$ffj->parser = 'Ffmap';
+	$parser->addAdditional('ffj', $ffj);
+
+	$ffffm = new stdClass;
+	$ffffm->name = 'Frankfurt am Main';
+	$ffffm->nameShort = 'Frankfurt am Main';
+	$ffffm->url = 'http://map.ffm.freifunk.net/';
+	$ffffm->parser = 'Ffmap';
+	$parser->addAdditional('ffffm', $ffffm);
+	$parseResult = $parser->getParsed(true);
+
+	$response = array(
+		'communities' => $parseResult['communities'],
+		'allTheRouters' =>  $parseResult['routerList']
+	);
+
+	if(is_array($dbAccess))
+	{
+		$db = new mysqli($dbAccess['host'], $dbAccess['user'], $dbAccess['pass'], $dbAccess['db']);
+		$log = new log($db);
+		$log->add(sizeof($parseResult['routerList']));
+	}
+
 }
 
 /**
  * if processonly is set we handle a reparse cron request
  */
-if(!isset($_REQUEST['processonly']))
-{
-	echo json_encode($response, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
-}
-else
+if(isset($_REQUEST['processonly']) && isset($parser))
 {
 	$report = array(
-		'communities'	=> sizeof($parseResult['communities']),
-		'nodes'	=> sizeof($parseResult['routerList']),
-		'stats' => $parser->getParseStatistics()
+		'communities'	=> sizeof($response['communities']),
+		'nodes'			=> sizeof($response['allTheRouters']),
+		'stats'			=> $parser->getParseStatistics(),
 	);
 
 	echo json_encode($report, JSON_PRETTY_PRINT);
+}
+else
+{
+	echo json_encode($response, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
+}
+
+function getFromCache($key)
+{
+	$filename = dirname(__FILE__).'/cache/result_'.$key.'.json';
+
+	if ( !file_exists($filename) )
+	{
+		return false;
+	}
+	else
+	{
+		return json_decode(file_get_contents($filename));
+	}
+
 }
