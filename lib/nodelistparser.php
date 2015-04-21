@@ -15,12 +15,14 @@ class nodeListParser
 	/**
 	 * timeout for result-cache
 	 *
-	 * 24h
+	 * 365d
 	 * this is for the parsed result
+	 * If the result is older, we force a reparse.
+	 * This usulally should not happen on a normal mapp-view => the long timeout
 	 *
 	 * @var integer
 	 */
-	private $_cacheTime = 86400;
+	private $_cacheTime = 31536000;
 
 	/**
 	 * cahcetime for curl
@@ -158,7 +160,7 @@ class nodeListParser
 	 */
 	private function _fromCache($key)
 	{
-		$filename = $this->_cachePath.'result_'.$key.'.cache';
+		$filename = $this->_cachePath.'result_'.$key.'.json';
 		$changed = file_exists($filename) ? filemtime($filename) : 0;
 		$now = time();
 		$diff = $now - $changed;
@@ -169,7 +171,7 @@ class nodeListParser
 		}
 		else
 		{
-			return unserialize(file_get_contents($filename));
+			return json_decode(file_get_contents($filename));
 		}
 	}
 
@@ -182,9 +184,9 @@ class nodeListParser
 	private function _toCache($key, $data)
 	{
 		$this->_log('writing cache for '.$key);
-		$filename = $this->_cachePath.'result_'.$key.'.cache';
+		$filename = $this->_cachePath.'result_'.$key.'.json';
 		$cache = fopen($filename, 'wb');
-		$write = fwrite($cache, serialize($data));
+		$write = fwrite($cache, json_encode($data));
 		fclose($cache);
 
 		return ($write == true);
@@ -363,7 +365,6 @@ class nodeListParser
 
 		foreach($communityList AS $cName => $cUrl)
 		{
-			$this->_log('------');
 			$this->_log('parsing '.$cName." ".$cUrl);
 			$this->_currentParseObject['name'] = $cName;
 			$this->_currentParseObject['source'] = $cUrl;
