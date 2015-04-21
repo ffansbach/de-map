@@ -69,6 +69,8 @@ function simpleCachedCurl($url,$expires,$debug=false)
 		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 		curl_setopt($ch, CURLOPT_MAXREDIRS, 2);
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT ,5);
+		curl_setopt($ch, CURLOPT_TIMEOUT, 20);
 		curl_setopt($ch, CURLOPT_USERAGENT,'php parser for http://de-map.freifunk-emskirchen.de/');
 		$rawData = curl_exec($ch);
 
@@ -158,6 +160,8 @@ function _curlGetHeader($url)
 	curl_setopt($curl, CURLOPT_NOBODY, true);
 	curl_setopt($curl, CURLOPT_HEADER, true);
 	curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($curl, CURLOPT_CONNECTTIMEOUT ,5);
+	curl_setopt($curl, CURLOPT_TIMEOUT, 20);
 	$header = curl_exec($curl);
 	curl_close($curl);
 	return $header;
