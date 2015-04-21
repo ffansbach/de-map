@@ -2,16 +2,14 @@
   "$schema": "http://json-schema.org/draft-03/schema#",
   "description": "nodelistjson schema",
   "type": "object",
+  "required" : ["version"],
   "properties": {
     "version": {
       "type": "string",
-      "enum": [
-        "1.0.0",
-        "1.0.1"
-      ],
-      "default": "1.0.1",
-      "required": true
-    },
+      "enum" : ["1.0.1"],
+      "default" : "1.0.1",
+      "required" : true
+ 	},
     "updated_at": {
       "type": "string"
     },
