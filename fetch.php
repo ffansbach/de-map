@@ -12,6 +12,9 @@ $supported = array(
 		'tpl' => 'templates/stats.tpl',
 		'contr' => 'fetchStats',
 	),
+	'gpxfile' => array(
+		'tpl' => 'templates/gpxfile.tpl',
+	),
 );
 
 if(isset($_REQUEST['content']) && isset($supported[$_REQUEST['content']]))
