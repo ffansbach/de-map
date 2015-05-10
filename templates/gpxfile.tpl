@@ -1,5 +1,16 @@
 <?php
 
+$haveBounds = false;
+if (isset($_REQUEST['minlat']) && isset($_REQUEST['maxlat']) && isset($_REQUEST['minlon']) && isset($_REQUEST['maxlon']))
+{
+    $minLat = $_REQUEST['minlat'];
+    $minLon = $_REQUEST['minlon'];
+    $maxLat = $_REQUEST['maxlat'];
+    $maxLon = $_REQUEST['maxlon'];
+    $haveBounds = true;
+}
+
+
 header("Content-Type: text/xml");
 header('Content-Disposition: attachment; filename="ffnodes.gpx"');
 
@@ -18,6 +29,11 @@ else
 	$routerArray = json_decode(file_get_contents($filename));
 	foreach ($routerArray as $r)
 	{
+		if ($haveBounds && ($r->lat < $minLat || $r->lat > $maxLat || $r->long < $minLon || $r->long > $maxLon))
+		{
+			continue;
+		}
+
 		echo '<wpt lon="'.$r->long.'" lat="'.$r->lat.'">
 <name>'.htmlspecialchars($r->name).'</name>
 <desc>'.htmlspecialchars($r->name).' ('.htmlspecialchars($r->community).')</desc>

@@ -53,6 +53,7 @@ require 'config.php';
 									<ul>Verarbeitete Knoten: <span id="countNodes"></ul>
 									<h3>Download</h3>
 									<p><a href="fetch.php?content=gpxfile">Alle Knoten als GPX-Datei</a></p>
+									<p><a href="#" id="gpxlink">Aktuell sichtbare Knoten als GPX-Datei</a></p>
 								</div>
 								<div role="tabpanel" class="tab-pane" id="about"></div>
 								<div role="tabpanel" class="tab-pane" id="stats"></div>
