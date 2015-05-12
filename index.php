@@ -40,7 +40,7 @@ require 'config.php';
 							<ul class="nav nav-tabs modalMainTabs" role="tablist">
 								<li role="presentation" class="active"><a href="#home" aria-controls="home" role="tab" data-toggle="tab">Infos</a></li>
 								<li role="presentation"><a href="#about" aria-controls="profile" role="tab" data-toggle="tab" data-tabsource="fetch.php?content=about">Über die Karte</a></li>
-								<li role="presentation"><a href="#stats" aria-controls="profile" role="tab" data-toggle="tab" data-tabsource="fetch.php?content=stats&2">Statistik</a></li>
+								<li role="presentation"><a href="#stats" aria-controls="profile" role="tab" data-toggle="tab" data-tabsource="fetch.php?content=stats">Statistik</a></li>
 							</ul>
 
 							<!-- Tab panes -->
