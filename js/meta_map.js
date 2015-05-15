@@ -173,6 +173,12 @@ function setDirectLink()
 	}
 
 	$('#direktlink').text(newLink);
+
+
+	// set link to limited GPX file:
+	var bounds = map.getBounds();
+	var newGpxLink = document.location.origin + '/fetch.php?content=gpxfile&minlat='+bounds.getSouth()+'&maxlat='+bounds.getNorth()+'&minlon='+bounds.getWest()+'&maxlon='+bounds.getEast();
+	$('#gpxlink').attr("href", newGpxLink)
 }
 
 /**
