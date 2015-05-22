@@ -62,7 +62,7 @@ $(function() {
 			var date = item.datapoint[0],
 				nodes = item.datapoint[1];
 			var dateO = new Date(date);
-			var minmax = item.seriesIndex == 0 ? 'minimal' : 'maximal';
+			var minmax = item.seriesIndex == 0 ? 'maximal' : 'minimal';
 			var dateStr = pad(dateO.getDate(), 2)+'.'+pad(dateO.getMonth()+1, 2)+'.'+dateO.getFullYear();
 
 			$("#fltooltip").html(minmax + ' ' + nodes + " Knoten am " + dateStr)
