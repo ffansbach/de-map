@@ -615,12 +615,22 @@ class nodeListParser
 				}
 			}
 
-			if( $thisRouter['status'] == 'offline' && !empty($router->status->lastcontact))
-			{
-				$date = date_create((string)$router->status->lastcontact);
 
-				// was online in last days? ?
-				$isDead = ((time() - $date->getTimestamp()) > 60*60*24*$this->_maxAge);
+			if( $thisRouter['status'] == 'offline' )
+			{
+				$isDead = false;
+
+				if(empty($router->status->lastcontact))
+				{
+					$isDead = true;
+				}
+				else
+				{
+					$date = date_create((string)$router->status->lastcontact);
+
+					// was online in last days? ?
+					$isDead = ((time() - $date->getTimestamp()) > 60*60*24*$this->_maxAge);
+				}
 
 				if($isDead)
 				{
@@ -713,13 +723,22 @@ class nodeListParser
 				'clients' => (int)$router->statusdata->client_count
 			);
 
-			if( $thisRouter['status'] == 'offline' && !empty($router->update_date))
+			if( $thisRouter['status'] == 'offline')
 			{
-				// was online in last days?
-				$isDead = ((time() - (int)$router->update_date) > 60*60*24*$this->_maxAge);
-
-				if($isDead)
+				if(!empty($router->statusdata->last_seen))
 				{
+					// was online in last days?
+					$date = date_create((string)$router->statusdata->last_seen);
+
+					if( (time() - $date->getTimestamp()) > 60*60*24*$this->_maxAge)
+					{
+						$dead++;
+						continue;
+					}
+				}
+				else
+				{
+					// offline for unknown-time - skip
 					$dead++;
 					continue;
 				}
@@ -781,18 +800,59 @@ class nodeListParser
 		$skipped = 0;
 		$duplicates = 0;
 		$added = 0;
+		$dead = 0;
 
 		foreach($routers AS $router)
 		{
 			$counter++;
 
-			if(!empty($router->location))
+			if(!empty($router->nodeinfo->location))
+			{
+				// new style
+				if(empty($router->nodeinfo->location->latitude) || empty($router->nodeinfo->location->longitude))
+				{
+					// router has no location
+					$skipped++;
+					continue;
+				}
+
+				if(!$router->flags->online)
+				{
+					$date = date_create((string)$router->lastseen);
+
+					// was online in last 24h ?
+					if( (time() - $date->getTimestamp()) > 60*60*24*$this->_maxAge)
+					{
+						// router has been offline for a long time now
+						$dead++;
+						continue;
+					}
+				}
+
+				$thisRouter = array(
+					'id' => (string)$router->nodeinfo->node_id,
+					'lat' => (string)$router->nodeinfo->location->latitude,
+					'long' => (string)$router->nodeinfo->location->longitude,
+					'name' => (string)$router->nodeinfo->hostname,
+					'community' => $comName,
+					'status' => $router->flags->online ? 'online' : 'offline',
+					'clients' => (int)$router->statistics->clients
+				);
+			}
+			elseif(!empty($router->location))
 			{
 				// new style
 				if(empty($router->location->latitude) || empty($router->location->longitude))
 				{
 					// router has no location
 					$skipped++;
+					continue;
+				}
+
+				if(!$router->flags->online)
+				{
+					// touter is offline and we don't know how long - skip
+					$dead++;
 					continue;
 				}
 
@@ -813,6 +873,13 @@ class nodeListParser
 				{
 					// router has no location
 					$skipped++;
+					continue;
+				}
+
+				if(!$router->flags->online)
+				{
+					// touter is offline and we don't know how long - skip
+					$dead++;
 					continue;
 				}
 
@@ -847,7 +914,8 @@ class nodeListParser
 										$counter.' nodes found, '.
 										$added.' added, '.
 										$skipped.' skipped, '.
-										$duplicates.' duplicates');
+										$duplicates.' duplicates, '.
+										$dead.' dead');
 
 		return true;
 	}
@@ -951,18 +1019,13 @@ class nodeListParser
 	{
 		$key = md5($node['name'].$node['id'].$node['lat'].$node['long']);
 
-		//if(!in_array($key, $this->_nodeListHashes))
 		if(!isset($this->_nodeListHashes[$key]))
 		{
 			array_push($this->_nodeList, $node);
-			//$this->_nodeListHashes[] = $key;
 			$this->_nodeListHashes[$key] = $this->_currentParseObject['name'];
 
 			return true;
 		}
-
-		// add this if info about duplication-source is needed
-		//$this->_addCommunityMessage(' dupplicate - source: '.$this->_nodeListHashes[$key]);
 
 		return false;
 	}
