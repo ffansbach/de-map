@@ -446,6 +446,11 @@ class nodeListParser
 					}
 					elseif($nmEntry->technicalType == 'ffmap')
 					{
+						if(preg_match('/\.json$/', $nmEntry->url))
+						{
+							$url = $nmEntry->url;
+						}
+
 						$this->_addCommunityMessage('parse as ffmap');
 						$data = $this->_getFromFfmap($cName, $url);
 					}
@@ -743,7 +748,10 @@ class nodeListParser
 
 	private function _getFromFfmap($comName, $comUrl)
 	{
-		$comUrl .= 'nodes.json';
+		if(!preg_match('/\.json$/', $comUrl))
+		{
+			$comUrl .= 'nodes.json';
+		}
 
 		$result = simpleCachedCurl($comUrl, $this->_curlCacheTime, $this->_debug);
 
