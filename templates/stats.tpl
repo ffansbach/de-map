@@ -44,13 +44,21 @@ $(function() {
 	var options = {
 		xaxis: {
 			mode: "time",
-			monthNames: monthNames
+			monthNames: monthNames,
+			timeformat: "%b %Y",
+			minTickSize: [1, "month"]
+		},
+		yaxis: {
+			tickFormatter : function(n){ return n.toLocaleString() }
 		},
 		lines: {
 			show: true
 		},
 		grid: {
 			hoverable: true
+		},
+		legend: {
+			position: 'nw'
 		}
 	};
 	$.plot($("#flot_target"), data, options);
