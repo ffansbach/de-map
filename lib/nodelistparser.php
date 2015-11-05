@@ -446,14 +446,14 @@ class nodeListParser
 						$this->_addCommunityMessage('parse as netmon');
 						$data = $this->_getFromNetmon($cName, $url);
 					}
-					elseif($nmEntry->technicalType == 'ffmap')
+					elseif($nmEntry->technicalType == 'ffmap' || $nmEntry->technicalType == 'meshviewer')
 					{
 						if(preg_match('/\.json$/', $nmEntry->url))
 						{
 							$url = $nmEntry->url;
 						}
 
-						$this->_addCommunityMessage('parse as ffmap');
+						$this->_addCommunityMessage('parse as ffmap/meshviewer');
 						$data = $this->_getFromFfmap($cName, $url);
 					}
 					elseif($nmEntry->technicalType == 'openwifimap')
