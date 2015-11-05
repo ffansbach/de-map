@@ -51,6 +51,8 @@ class nodeListParser
 
 	private $_maxAge = 3;
 
+	private $_urlBlackList = array('http://map.freifunk-ruhrgebiet.de/nodes.json');
+
 	/**
 	 * all communities that delivered a parsable nodelist
 	 *
@@ -770,6 +772,11 @@ class nodeListParser
 		if(!preg_match('/\.json$/', $comUrl))
 		{
 			$comUrl .= 'nodes.json';
+		}
+		if(in_array($comUrl, $this->_urlBlackList))
+		{
+			$this->_addCommunityMessage($comUrl.' is blacklisted - skipping');
+			return false;	
 		}
 
 		$result = simpleCachedCurl($comUrl, $this->_curlCacheTime, $this->_debug);
