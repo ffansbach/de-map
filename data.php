@@ -63,6 +63,14 @@ else
 	$ffffm->url = 'http://map.ffm.freifunk.net/';
 	$ffffm->parser = 'Ffmap';
 	$parser->addAdditional('ffffm', $ffffm);
+
+	$ff_ruhrg_fb = new stdClass;
+	$ff_ruhrg_fb->name = 'Freifunk Ruhrgebiet - FB';
+	$ff_ruhrg_fb->nameShort = 'Freifunk Ruhrgebiet - FB';
+	$ff_ruhrg_fb->url = 'http://map.freifunk-ruhrgebiet.de/data/';
+	$ff_ruhrg_fb->parser = 'Ffmap';
+	$parser->addAdditional('ff_ruhrg_fb', $ff_ruhrg_fb);
+
 	$parseResult = $parser->getParsed(true);
 
 	$response = array(
