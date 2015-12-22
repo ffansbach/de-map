@@ -220,6 +220,15 @@ function addPoints2Map(data)
 	});
 	var heatMapData = [];
 
+	var heatmapUserLayer = new HeatmapOverlay({
+		"radius": 50,
+		"scaleRadius": false,
+		"useLocalExtrema": false,
+		"valueField": 'count'
+	});
+	var heatMapUserData = [];
+
+
 	// add all entries to clustergroup and heatmap
 	$.each(data, function(i, router)
 	{
@@ -227,6 +236,12 @@ function addPoints2Map(data)
 			lat: router.lat,
 			lng: router.long,
 			count: 1.1
+		});
+
+		heatMapUserData.push({
+			lat: router.lat,
+			lng: router.long,
+			count: router.clients 
 		});
 
 		var marker = new PruneCluster.Marker(router.lat, router.long);
@@ -261,12 +276,19 @@ function addPoints2Map(data)
 		data: heatMapData
 	});
 
+	map.addLayer(heatmapUserLayer);
+	heatmapUserLayer.setData({
+		max: 1,
+		data: heatMapUserData
+	});
+
 	var layers = {
 		// add the cluster layer
 		"Nodes": pruneCluster,
 
 		// add the heatmap layer
-		"HeatMap": heatmapLayer
+		"HeatMapRouter": heatmapLayer,
+		"HeatMapUser": heatmapUserLayer
 	};
 
 	var selectedLayers = getURLParameter('l');
@@ -292,6 +314,7 @@ function addPoints2Map(data)
 	{
 		// hide heatmap layer by default
 		map.removeLayer(heatmapLayer);
+		map.removeLayer(heatmapUserLayer);
 	}
 
 	// add layer controls for all layers
