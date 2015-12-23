@@ -287,8 +287,8 @@ function addPoints2Map(data)
 		"Nodes": pruneCluster,
 
 		// add the heatmap layer
-		"HeatMapRouter": heatmapLayer,
-		"HeatMapUser": heatmapUserLayer
+		"HeatMap Router": heatmapLayer,
+		"HeatMap User": heatmapUserLayer
 	};
 
 	var selectedLayers = getURLParameter('l');
@@ -296,6 +296,7 @@ function addPoints2Map(data)
 	if(selectedLayers)
 	{
 		// layers have been preselected in the url
+		selectedLayers = selectedLayers.replace(/%20/g,' ');
 		selectedLayers = selectedLayers.split('|');
 
 		$.each(layers, function(key, layer)
