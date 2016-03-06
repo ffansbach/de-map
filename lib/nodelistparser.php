@@ -466,7 +466,7 @@ class nodeListParser
 					{
 						// found something
 						$parsedSources[] = $url;
-						//break;
+						// don't break here to enable more than one active map
 					}
 				}
 				else
