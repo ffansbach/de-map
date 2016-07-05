@@ -77,18 +77,13 @@ require 'config.php';
 					<div class="modal-body">
 						<div style="text-align:center"><img src="img/ajax-loader.gif" alt="spinner" /></div>
 						<p>
-							Bitte haben Sie einen Moment Geduld. Die Daten werden geladen und unter Umständen neu verarbeitet.
-						</p>
-						<p>
-							Falls Sie bisher gelesen haben werden die Daten tatsächlich neu von allen Communities eingelesen und verarbeitet.
-							Dies passiert alle 24 Stunden bei einem zufälligen Seitenaufruf.
-							Das Los ist auf Sie gefallen. Sie haben also gewonnen und sorgen nun so dafür, dass die nächsten Besucher die Karte deutlich schneller sehen werden.
+							Bitte haben Sie einen Moment Geduld. Die Daten werden geladen.
 						</p>
 						<p>
 							Nach spätestens einer Minute werden Sie die Freifunk-Knoten angezeigt bekommen.
 						</p>
 						<p>
-							Vielen Dank für Ihre Geduld und Mithilfe.
+							Vielen Dank für Ihre Geduld.
 						</p>
 					</div>
 				</div>
