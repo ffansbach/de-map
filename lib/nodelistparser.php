@@ -514,6 +514,11 @@ class nodeListParser
 			'meta' => false,
 		);
 
+		if(isset($community->homePage))
+		{
+			$thisComm['url'] = $community->homePage;
+		}
+
 		// add metacommunity if set
 		if(isset($community->metacommunity))
 		{
@@ -524,7 +529,7 @@ class nodeListParser
 		{
 			$this->_addCommunityMessage('name or url corrupt - ignoring');
 			// error in some data - ignore community
-			continue;
+			return false;
 		}
 
 		$this->_communityList[$community->shortName] = $thisComm;
