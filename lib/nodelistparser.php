@@ -673,7 +673,7 @@ class nodeListParser
 		$url .= '?'.http_build_query(
 						array(
 							'rquest' => 'routerlist',
-							'limit' => 1000,			// one day this will be not enough - TODO. add loop
+							'limit' => 3000,			// one day this will be not enough - TODO. add loop
 							'sort_by' => 'router_id'
 						)
 				);
