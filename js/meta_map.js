@@ -189,15 +189,15 @@ function prepareIcon()
 {
 	var icon = L.icon({
 		iconUrl: 'img/hotspot.png',
-		iconSize:     [42, 27], // size of the icon
-		iconAnchor:   [21, 13], // point of the icon which will correspond to marker's location
+		iconSize:     [36, 36], // size of the icon
+		iconAnchor:   [18, 18], // point of the icon which will correspond to marker's location
 		popupAnchor:  [0, -9] // point from which the popup should open relative to the iconAnchor
 	});
 
 	var icon_off = L.icon({
 		iconUrl:'img/hotspot_offline.png',
-		iconSize:     [42, 27], // size of the icon
-		iconAnchor:   [21, 13], // point of the icon which will correspond to marker's location
+		iconSize:     [36, 36], // size of the icon
+		iconAnchor:   [18, 18], // point of the icon which will correspond to marker's location
 		popupAnchor:  [0, -9] // point from which the popup should open relative to the iconAnchor
 	});
 
