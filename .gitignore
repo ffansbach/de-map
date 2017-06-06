@@ -4,5 +4,5 @@ cache/*.cache
 
 # IDEs
 /.project
-/nbproject/private/
+/nbproject
 /.vscode
