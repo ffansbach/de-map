@@ -8,6 +8,4 @@ services:
 
   de-map:
     build: .
-    volumes:
-      - .:/usr/src/code
     command: php data.php
