@@ -1,3 +1,5 @@
+all: images
+
 images:
 	docker-compose build
 
