@@ -1,0 +1,11 @@
+version: '2'
+services:
+  php:
+    build: .
+    image: "php"
+    volumes:
+      - .:/usr/src/code
+
+  de-map:
+    build: .
+    command: php data.php
