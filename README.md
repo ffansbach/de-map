@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/mjainta/de-map.svg?branch=master)](https://travis-ci.org/mjainta/de-map)
+
 de-map
 ======
 
@@ -24,3 +26,29 @@ Das JSON-Schema ist in schema/nodelist-schema.json zu finden, gegen das man die 
 Für den Export dieser Liste habe ich 2 PHP-Klassen beispielhaft implementiert https://github.com/StilgarBF/nodelistexport
 
 Die Karte wird dieses Format in Kürze auch verarbeiten.
+
+### Docker
+
+Build the images
+
+```shell
+make
+```
+
+Do a linting on all php-files
+
+```shell
+make lint
+```
+
+Fire a php server with de-map running data.php up (does not use code changed after `make` or `make images`)
+
+```shell
+make up
+```
+
+Execute a single command for the current source code (development)
+
+```shell
+docker-compose run --rm php php data.php
+```

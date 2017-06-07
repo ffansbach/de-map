@@ -1,4 +1,8 @@
 config.php
 
 cache/*.cache
+
+# IDEs
 /.project
+/nbproject
+/.vscode
