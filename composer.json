@@ -1,0 +1,19 @@
+{
+  "name": "vendor_name/freifunk-karte",
+  "description": "description",
+  "minimum-stability": "stable",
+  "license": "GNU General Public License v2.0",
+  "authors": [
+    {
+      "name": "Tino Dietel",
+      "email": "tino.dietel@projekt2k.de"
+    }
+  ],
+  "require": {
+  },
+
+  "autoload": {
+    "psr-4": {
+    }
+  }
+}
