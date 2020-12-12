@@ -1,0 +1,52 @@
+html{
+	height:100%;
+	overflow: hidden;
+}
+body {
+	height:100%;
+}
+table.display tr {
+	background-color:  white;
+}
+table.display tr:nth-child(even) {
+	background-color: #E2E4FF;
+}
+
+#map {
+	height:100%;
+}
+
+#map .leaflet-popup h3.router {
+	font-size:		15px;
+	color:			#dc0067;
+	font-weight:	bold;
+}
+#map .leaflet-popup h4.comm {
+	font-size: 13px;
+}
+
+#map .leaflet-popup p {
+	margin: 4px 0;
+}
+
+#map .leaflet-popup .errorNote {
+	color: red;
+	font-weight: bold;
+}
+
+#toList.btn {
+	position: absolute;
+	z-index: 10;
+	bottom: 15px;
+	left: 15px;
+}
+
+.leaflet-center-on-position
+{
+	background-image: url(../img/gps13.png);
+}
+
+#informationModal .tab-pane {
+	max-height: 560px;
+	overflow-y: auto;
+}

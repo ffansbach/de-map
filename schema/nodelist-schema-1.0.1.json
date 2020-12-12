@@ -1,0 +1,121 @@
+{
+  "$schema": "http://json-schema.org/draft-03/schema#",
+  "description": "nodelistjson schema",
+  "type": "object",
+  "required" : ["version"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "enum" : ["1.0.1"],
+      "default" : "1.0.1",
+      "required" : true
+ 	},
+    "updated_at": {
+      "type": "string"
+    },
+    "community": {
+      "type": "object",
+      "properties": {
+        "href": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": false,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "node_type": {
+            "type": "string"
+          },
+          "href": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "status": {
+            "type": "object",
+            "properties": {
+              "online": {
+                "type": "boolean"
+              },
+              "clients": {
+                "type": "integer"
+              },
+              "lastcontact": {
+                "type": "string"
+              }
+            }
+          },
+          "links": {
+            "type": "object",
+            "properties": {
+              "admin_c": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number"
+              },
+              "long": {
+                "type": "number"
+              },
+              "alt": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      }
+    },
+    "linked": {
+      "type": "object",
+      "properties": {
+        "people": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": false,
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "href": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
