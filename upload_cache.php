@@ -25,9 +25,19 @@ foreach ($files as $fileName) {
 
 foreach ($files as $fileName) {
     print_r('renaming: "'.$fileName.'.staging" to "'.$fileName.'"'."\n");
-    $sftp->rename(
+
+    if (!$sftp->delete($fileName)) {
+        print_r('delete failed for: "'.$fileName."\n");
+        continue;
+    }
+
+    if (!$sftp->rename(
         $fileName.'.staging',
         $fileName
-    );
+    )) {
+        print_r('rename failed for: "'.$fileName."\n");
+        continue;
+    }
+
     print_r('rename done'."\n");
 }
