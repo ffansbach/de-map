@@ -162,6 +162,12 @@ else
 	echo json_encode($response, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
 }
 
+if (isset($_REQUEST['upload'])
+    && sizeof($response['communities']) > 10
+    && sizeof($response['allTheRouters'])) {
+    include 'upload_cache.php';
+}
+
 function getFromCache($key)
 {
 	$filename = dirname(__FILE__).'/cache/result_'.$key.'.json';

@@ -10,6 +10,8 @@
     }
   ],
   "require": {
+    "phpseclib/phpseclib": "2.*",
+    "squizlabs/php_codesniffer": "3.5.*"
   },
 
   "autoload": {
