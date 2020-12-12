@@ -1,2 +1,8 @@
 config.php
 .idea
+
+/cache/*
+
+# composer
+composer.phar
+/vendor/
