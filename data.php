@@ -4,6 +4,11 @@
  *
  * this will try to load a cched result if not older than 24h
  */
+
+use Lib\InfluxLog;
+
+$startTS = microtime(true);
+
 $offset = 1 * 60 * 60;
 header('Cache-Control: public, max-age=' . $offset);
 header("Expires: " . gmdate("D, d M Y H:i:s", time() + $offset) . " GMT");
@@ -158,7 +163,29 @@ if (isset($_REQUEST['processonly']) && isset($parser)) {
 if (isset($_REQUEST['upload'])
     && sizeof($response['communities']) > 10
     && sizeof($response['allTheRouters'])) {
+
+    $parseTime = microtime(true) - $startTS;
+
     include 'upload_cache.php';
+
+    $uploadTime = microtime(true) - $startTS - $parseTime;
+
+    $influxLog = new InfluxLog(
+        $influxDB['host'],
+        $influxDB['port'],
+        $influxDB['user'],
+        $influxDB['password'],
+        $influxDB['dbName'],
+    );
+
+    $influxLog->logPoint([
+        'value' => sizeof($response['allTheRouters']),
+        'fields' => [
+            'communities' => sizeof($response['communities']),
+            'parse_time' => (int)$parseTime,
+            'upload_time' => (int)$uploadTime,
+        ]
+    ]);
 }
 
 /**

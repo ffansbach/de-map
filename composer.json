@@ -11,11 +11,13 @@
   ],
   "require": {
     "phpseclib/phpseclib": "2.*",
-    "squizlabs/php_codesniffer": "3.5.*"
+    "squizlabs/php_codesniffer": "3.5.*",
+    "influxdb/influxdb-php": "^1.15"
   },
 
   "autoload": {
     "psr-4": {
+      "Lib\\": "lib/"
     }
   }
 }
