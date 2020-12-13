@@ -6,3 +6,6 @@ cache/**
 # composer
 composer.phar
 /vendor/
+
+# my test file
+test.php
