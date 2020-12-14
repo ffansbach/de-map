@@ -744,6 +744,8 @@ class nodeListParser
             $urls[] = $comUrl . 'nodes.json';
             $urls[] = $comUrl . 'data/nodes.json';
             $urls[] = $comUrl . 'json/nodes.json';
+            $urls[] = $comUrl . 'meshviewer/data/meshviewer.json';
+            $urls[] = $comUrl . 'data/meshviewer.json';
 
             if (preg_match('/\/meshviewer\//', $comUrl)) {
                 $comUrl = str_replace('/meshviewer', '', $comUrl);
@@ -848,10 +850,18 @@ class nodeListParser
                     continue;
                 }
 
-                if (!$router->flags->online) {
-                    // touter is offline and we don't know how long - skip
+                if (isset($router->flags) && !$router->flags->online) {
+                    // router is offline and we don't know how long - skip
                     $dead++;
                     continue;
+                } elseif (isset($router->is_online)) {
+                    if(!$router->is_online) {
+                        // router is offline and we don't know how long - skip
+                        $dead++;
+                        continue;
+                    }
+                    $router->flags = new stdClass();
+                    $router->flags->online = true;
                 }
 
                 $thisRouter = array(
