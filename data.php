@@ -132,8 +132,8 @@ if (!isset($_REQUEST[$forceReparseKey])) {
 
     foreach(["wtbg","sdlh","hd","mdb","doerfer","ln","hlb","bs","mb","mq","su","wa","ar"] as $index => $identifier) {
       ${'ff_winterb_'.$index} = new stdClass;
-      ${'ff_winterb_'.$index}->name = 'Freifunk Winterberg '.identifier;
-      ${'ff_winterb_'.$index}->nameShort = 'Winterberg'.identifier;
+      ${'ff_winterb_'.$index}->name = 'Freifunk Winterberg '.$identifier;
+      ${'ff_winterb_'.$index}->nameShort = 'Winterberg'.$identifier;
       ${'ff_winterb_'.$index}->url = 'https://map.freifunk-winterberg.net/data/'.$identifier.'/meshviewer.json';
       ${'ff_winterb_'.$index}->homePage = 'https://map.freifunk-winterberg.net/';
       ${'ff_winterb_'.$index}->parser = 'Ffmap';
