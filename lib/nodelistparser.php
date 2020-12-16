@@ -1119,10 +1119,10 @@ class nodeListParser
     /**
      * adds some basic information from the communityfile to the logging/debug-object
      *
-     * @param simpleXML $community
+     * @param object $community
      * @return void
      */
-    private function addBasicLogInfo(simpleXML $community)
+    private function addBasicLogInfo(object $community)
     {
         $statisticsNode = &$this->parseStatistics['errorCommunities'][$this->currentParseObject['name']];
         $statisticsNode['claimed_nodecount'] = false;
