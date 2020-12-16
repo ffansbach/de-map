@@ -864,15 +864,23 @@ class nodeListParser
                     $router->flags->online = true;
                 }
 
-                $thisRouter = array(
+                $clientCount = 0;
+
+                if (is_array($router->clients)) {
+                    $clientCount = sizeof($router->clients);
+                } elseif (is_numeric($router->clients)) {
+                    $clientCount = (int)$router->clients;
+                }
+
+                $thisRouter = [
                     'id' => (string)$router->node_id,
                     'lat' => (string)$router->location->latitude,
                     'long' => (string)$router->location->longitude,
                     'name' => (string)$router->hostname,
                     'community' => $comName,
                     'status' => $router->flags->online ? 'online' : 'offline',
-                    'clients' => (int)sizeof($router->clients)
-                );
+                    'clients' => $clientCount,
+                ];
             } else {
                 // old style
                 if (empty($router->geo[0]) || empty($router->geo[1])) {
