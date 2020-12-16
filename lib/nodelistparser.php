@@ -445,7 +445,7 @@ class nodeListParser
             $community->shortName = $cName;
             $this->addCommunity($community);
 
-            $parser = "_getFrom" . $community->parser;
+            $parser = "getFrom" . $community->parser;
 
             $data = $this->{$parser}($cName, $community->url);
 
