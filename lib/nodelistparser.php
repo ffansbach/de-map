@@ -827,17 +827,15 @@ class nodeListParser
                     }
                 }
 
-                $clientCount = isset($router->statistics->clients) ? (int)$router->statistics->clients : 0;
-
-                $thisRouter = array(
+                $thisRouter = [
                     'id' => (string)$router->nodeinfo->node_id,
                     'lat' => (string)$router->nodeinfo->location->latitude,
                     'long' => (string)$router->nodeinfo->location->longitude,
                     'name' => (string)$router->nodeinfo->hostname,
                     'community' => $comName,
                     'status' => $router->flags->online ? 'online' : 'offline',
-                    'clients' => $clientCount
-                );
+                    'clients' => isset($router->statistics->clients) ? $this->getClientCount($router->statistics->clients) : 0,
+                ];
 
                 if (!empty($router->nodeinfo->network->mac)) {
                     $thisRouter['mac'] = (string)$router->nodeinfo->network->mac;
@@ -855,21 +853,13 @@ class nodeListParser
                     $dead++;
                     continue;
                 } elseif (isset($router->is_online)) {
-                    if(!$router->is_online) {
+                    if (!$router->is_online) {
                         // router is offline and we don't know how long - skip
                         $dead++;
                         continue;
                     }
                     $router->flags = new stdClass();
                     $router->flags->online = true;
-                }
-
-                $clientCount = 0;
-
-                if (is_array($router->clients)) {
-                    $clientCount = sizeof($router->clients);
-                } elseif (is_numeric($router->clients)) {
-                    $clientCount = (int)$router->clients;
                 }
 
                 $thisRouter = [
@@ -879,7 +869,7 @@ class nodeListParser
                     'name' => (string)$router->hostname,
                     'community' => $comName,
                     'status' => $router->flags->online ? 'online' : 'offline',
-                    'clients' => $clientCount,
+                    'clients' => isset($router->clients) ? $this->getClientCount($router->clients) : 0,
                 ];
             } else {
                 // old style
@@ -926,6 +916,23 @@ class nodeListParser
             $dead . ' dead');
 
         return true;
+    }
+
+    /**
+     * @param $clients mixed[]|int
+     * @return int
+     */
+    private function getClientCount($clients): int
+    {
+        $clientCount = 0;
+
+        if (is_array($clients) or is_object($clients)) {
+            $clientCount = sizeof($clients);
+        } elseif (is_numeric($clients)) {
+            $clientCount = (int)$clients;
+        }
+
+        return $clientCount;
     }
 
     private function _getFromOwm($comName, $comUrl)
