@@ -1,6 +1,6 @@
 <?php
 /**
- * @var nodeListParser $parser
+ * @var NodeListParser $parser
  */
 $ffffm = new stdClass();
 $ffffm->name = 'Frankfurt am Main';

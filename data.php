@@ -5,7 +5,11 @@
  * this will try to load a cched result if not older than 24h
  */
 
+namespace ffmap;
+
 use Lib\InfluxLog;
+
+require __DIR__ . '/vendor/autoload.php';
 
 $startTS = microtime(true);
 
@@ -38,18 +42,20 @@ if (!isset($_REQUEST[$forceReparseKey])) {
     // actually parse now
 
     require 'lib/simpleCachedCurl.inc.php';
-    require 'lib/nodelistparser.php';
-    require 'lib/jsv4/jsv4.php';
+    //require 'lib/NodeListParser.php';
+    require 'lib/jsv4/Jsv4.php';
     require 'lib/log.php';
 
     $apiUrl = 'https://raw.githubusercontent.com/freifunk/directory.api.freifunk.net/master/directory.json';
 
-    $parser = new nodeListParser();
+    $cachePath = dirname(__FILE__) . '/cache/';
+    $cache = new CommunityCacheHandler($cachePath);
+    $parser = new NodeListParser($cache);
 
     // uncomment to enable debugoutput from simplecachedcurl
     // $parser->setDebug(true);
 
-    $parser->setCachePath(dirname(__FILE__) . '/cache/');
+    $parser->setCachePath($cachePath);
     $parser->setSource($apiUrl);
 
     require 'fixedCommunities.php';

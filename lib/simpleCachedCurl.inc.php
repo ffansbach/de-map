@@ -41,17 +41,16 @@ function simpleCachedCurl($url,$expires,$debug=false)
 
     $status = curl_getinfo($ch);
 
-    if($status['http_code'] == 301 || $status['http_code'] == 302)
-    {
+    if($status['http_code'] == 301 || $status['http_code'] == 302) {
         $headerData = _curlGetHeader($url);
         list($header) = explode("\r\n\r\n", $headerData, 2);
 
-        if($header != '') {
+        if ($header != '') {
             $matches = array();
             preg_match("/(Location:|URI:)[^(\n)]*/", $header, $matches);
-            $url = trim(str_replace($matches[1],"",$matches[0]));
+            $url = trim(str_replace($matches[1], "", $matches[0]));
             $url_parsed = parse_url($url);
-            return (isset($url_parsed))? simpleCachedCurl($url, $expires, $debug):'';
+            return (isset($url_parsed)) ? simpleCachedCurl($url, $expires, $debug) : '';
         }
     }
 
