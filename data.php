@@ -180,22 +180,24 @@ if (isset($_REQUEST['upload'])
 
     $uploadTime = microtime(true) - $startTS - $parseTime;
 
-    $influxLog = new InfluxLog(
-        $influxDB['host'],
-        $influxDB['port'],
-        $influxDB['user'],
-        $influxDB['password'],
-        $influxDB['dbName'],
-    );
+    if (!empty($influxDB)) {
+        $influxLog = new InfluxLog(
+            $influxDB['host'],
+            $influxDB['port'],
+            $influxDB['user'],
+            $influxDB['password'],
+            $influxDB['dbName'],
+        );
 
-    $influxLog->logPoint([
-        'value' => sizeof($response['allTheRouters']),
-        'fields' => [
-            'communities' => sizeof($response['communities']),
-            'parse_time' => (int)$parseTime,
-            'upload_time' => (int)$uploadTime,
-        ]
-    ]);
+        $influxLog->logPoint([
+            'value' => sizeof($response['allTheRouters']),
+            'fields' => [
+                'communities' => sizeof($response['communities']),
+                'parse_time' => (int)$parseTime,
+                'upload_time' => (int)$uploadTime,
+            ]
+        ]);
+    }
 }
 
 /**
