@@ -4,6 +4,10 @@ require_once 'config.php';
 
 use phpseclib\Net\SFTP;
 
+if (empty($serverUpload)) {
+    return;
+}
+
 $sftp = new SFTP($serverUpload['host']);
 
 if (!$sftp->login($serverUpload['user'], $serverUpload['password'])) {
