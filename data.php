@@ -42,7 +42,6 @@ if (!isset($_REQUEST[$forceReparseKey])) {
     // actually parse now
 
     require 'lib/simpleCachedCurl.inc.php';
-    //require 'lib/NodeListParser.php';
     require 'lib/jsv4/Jsv4.php';
     require 'lib/log.php';
 
@@ -109,13 +108,16 @@ if (isset($_REQUEST['upload'])
             $influxDB['dbName'],
         );
 
+        $fields = [
+            'communities' => sizeof($response['communities']),
+            'parse_time' => (int)$parseTime,
+            'upload_time' => (int)$uploadTime,
+            'env' => isset($influxDB['add_tag_env']) ? $influxDB['add_tag_env'] : 'undefined'
+        ];
+
         $influxLog->logPoint([
             'value' => sizeof($response['allTheRouters']),
-            'fields' => [
-                'communities' => sizeof($response['communities']),
-                'parse_time' => (int)$parseTime,
-                'upload_time' => (int)$uploadTime,
-            ]
+            'fields' => $fields,
         ]);
     }
 }
