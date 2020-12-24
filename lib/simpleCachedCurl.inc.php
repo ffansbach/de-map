@@ -45,11 +45,14 @@ function simpleCachedCurl($url,$expires,$debug=false)
     {
         $headerData = _curlGetHeader($url);
         list($header) = explode("\r\n\r\n", $headerData, 2);
-        $matches = array();
-        preg_match("/(Location:|URI:)[^(\n)]*/", $header, $matches);
-        $url = trim(str_replace($matches[1],"",$matches[0]));
-        $url_parsed = parse_url($url);
-        return (isset($url_parsed))? simpleCachedCurl($url, $expires, $debug):'';
+
+        if($header != '') {
+            $matches = array();
+            preg_match("/(Location:|URI:)[^(\n)]*/", $header, $matches);
+            $url = trim(str_replace($matches[1],"",$matches[0]));
+            $url_parsed = parse_url($url);
+            return (isset($url_parsed))? simpleCachedCurl($url, $expires, $debug):'';
+        }
     }
 
     if(!$rawData)
