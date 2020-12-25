@@ -20,5 +20,8 @@
       "Lib\\": "lib/",
       "ffmap\\": "lib/"
     }
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^9"
   }
 }
