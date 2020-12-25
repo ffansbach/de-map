@@ -1,4 +1,5 @@
 config.php
+.phpunit.result.cache
 .idea
 
 cache/**

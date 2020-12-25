@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e0c496ad047450e9a29d5183d3d32332",
+    "content-hash": "96074a73303f31877ca12a68634d046f",
     "packages": [
         {
             "name": "guzzlehttp/guzzle",
@@ -687,6 +687,47 @@
                 }
             ],
             "time": "2020-11-10T18:47:58+00:00"
+        },
+        {
+            "name": "lukaswhite/directory",
+            "version": "0.0.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/lukaswhite/directory.git",
+                "reference": "77b73d637197b19a7840cc030296962e4e6ae59c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/lukaswhite/directory/zipball/77b73d637197b19a7840cc030296962e4e6ae59c",
+                "reference": "77b73d637197b19a7840cc030296962e4e6ae59c",
+                "shasum": ""
+            },
+            "require-dev": {
+                "phpunit/php-code-coverage": "^6.0",
+                "phpunit/phpunit": "7.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Lukaswhite\\Directory\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Lukas White",
+                    "email": "hello@lukaswhite.com"
+                }
+            ],
+            "description": "A PHP class for manipulating a directory on a filesystem",
+            "support": {
+                "issues": "https://github.com/lukaswhite/directory/issues",
+                "source": "https://github.com/lukaswhite/directory/tree/0.0.1"
+            },
+            "time": "2018-09-27T11:26:45+00:00"
         },
         {
             "name": "myclabs/deep-copy",
