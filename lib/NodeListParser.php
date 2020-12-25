@@ -218,7 +218,11 @@ class NodeListParser
     public function getCommunityData(string $cUrl, string $cName)
     {
         $cacheTimeout = '-1 day';
-        $communityData = $this->CommunityCacheHandler->readCache($cName, $cacheTimeout);
+        $communityData = $this->CommunityCacheHandler->readCache(
+            $cName,
+            'communityFile',
+            $cacheTimeout
+        );
 
         if ($communityData) {
             $this->log('using cached community data', false);
@@ -230,7 +234,11 @@ class NodeListParser
 
                 if ($communityData) {
                     $this->log('caching community data', false);
-                    $this->CommunityCacheHandler->storeCache($communityData, $cName);
+                    $this->CommunityCacheHandler->storeCache(
+                        $cName,
+                        'communityFile',
+                        $communityData
+                    );
                     return $communityData;
                 } else {
                     return false;

@@ -43,14 +43,12 @@ class CommunityCacheHandler
     }
 
     /**
-     * TODO external filehandler-class
-     * @param string $key
-     * @param string $cacheTimeout
-     * @return false|object
+     * @param string $communityKey
+     * @return false|mixed
      */
-    public function readCache(string $key, string $cacheTimeout)
+    protected function getFromCacheFile(string $communityKey)
     {
-        $filePath = $this->getCachePathByKey($key);
+        $filePath = $this->getCachePathByKey($communityKey);
 
         if (!file_exists($filePath)) {
             return false;
@@ -64,12 +62,30 @@ class CommunityCacheHandler
             return false;
         }
 
-        if (!isset($cacheData->communityFile->updated)) {
+        return $cacheData;
+    }
+
+    /**
+     * TODO external filehandler-class
+     * @param string $communityKey
+     * @param string $entryKey
+     * @param string $cacheTimeout
+     * @return false|object
+     */
+    public function readCache(string $communityKey, string $entryKey, string $cacheTimeout)
+    {
+        $cacheData = $this->getFromCacheFile($communityKey);
+
+        if (!$cacheData) {
+            return false;
+        }
+
+        if (!isset($cacheData->$entryKey->updated)) {
             // strange, how is that even possible?
             return false;
         }
 
-        $updated = new \DateTime($cacheData->communityFile->updated);
+        $updated = new \DateTime($cacheData->$entryKey->updated);
         $cacheInvalidationTime = new \DateTime($cacheTimeout);
 
         // is it older than our $cacheTimeout limit?
@@ -77,24 +93,31 @@ class CommunityCacheHandler
             return false;
         }
 
-        return isset($cacheData->communityFile->content)
+        return isset($cacheData->$entryKey->content)
             ? $cacheData->communityFile->content
             : false;
     }
 
     /**
      * TODO external filehandler-class
+     * @param string $communityKey
+     * @param string $entryKey
      * @param object $data
-     * @param string $key
      */
-    public function storeCache(object $data, string $key)
+    public function storeCache(string $communityKey, string $entryKey, object $data)
     {
+        $cacheData = $this->getFromCacheFile($communityKey);
+
+        if (!$cacheData) {
+            $cacheData = (object) [
+
+            ];
+        }
+
         $now = new \DateTime();
-        $cacheData = (object) [
-            'communityFile' => [
-                'updated' => $now->format(\DateTime::ATOM),
-                'content' => $data,
-            ]
+        $cacheData->$entryKey = (object) [
+            'updated' => $now->format(\DateTime::ATOM),
+            'content' => $data
         ];
 
         $targetDir = $this->cachePath . '/communities';
@@ -103,7 +126,7 @@ class CommunityCacheHandler
             mkdir($targetDir);
         }
 
-        $filePath = $this->getCachePathByKey($key);
+        $filePath = $this->getCachePathByKey($communityKey);
         file_put_contents($filePath, json_encode($cacheData));
         chmod($filePath, 0777);
     }
