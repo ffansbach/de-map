@@ -34,7 +34,9 @@ final class CommunityCacheHandlerTest extends TestCase
     }
 
     /**
+     * While we do not have a mocked file-system, remove the test-directory again.
      *
+     * @return void
      */
     protected function tearDown() : void
     {
@@ -42,6 +44,9 @@ final class CommunityCacheHandlerTest extends TestCase
         $parent->delete();
     }
 
+    /**
+     * We should get a false in cases where the cache does not exist.
+     */
     public function testReadCacheNotExisting() : void
     {
         $subject = new CommunityCacheHandler($this->cacheDirPath);
@@ -84,32 +89,41 @@ final class CommunityCacheHandlerTest extends TestCase
     public function readCacheExistingProvider(): array
     {
         $now = new DateTime();
+        $nowTS = $now->format(DateTime::ATOM);
         $older = new DateTime();
         $older->modify('-2 days');
+        $oldTS = $older->format(DateTime::ATOM);
 
         return [
-            [
-                '{"communityFile": {"updated": "'.$now->format(DateTime::ATOM)
-                .'","content": {"name": "Berlin"}}}',
+            'valid and cacheHit' => [
+                '{"communityFile": {"updated": "'.$nowTS.'","content": {"name": "Berlin"}}}',
                 true,
                 (object) ['name' => 'Berlin'],
             ],
-            [
-                '{"communityFile": {"updated": "'.$now->format(DateTime::ATOM)
-                .'","content": {"name": "Berlin", "metacommunity":"Berlin"}}}',
+            'valid and cacheHit 2' => [
+                '{"communityFile": {"updated": "'.$nowTS.'","content": {"name": "Berlin", "metacommunity":"Berlin"}}}',
                 true,
                 (object) ['name' => 'Berlin', "metacommunity" => "Berlin"],
             ],
-            [
-                // case with broken json
+            'json is broken' => [
                 '{"faulty json',
                 false,
                 (object) [],
             ],
-            [
+            'cache is outdated' => [
                 // case with outdated cache
-                '{"communityFile": {"updated": "'.$older->format(DateTime::ATOM)
-                .'","content": {"name": "Berlin"}}}',
+                '{"communityFile": {"updated": "'.$oldTS.'","content": {"name": "Berlin"}}}',
+                false,
+                (object) [],
+            ],
+            'searched key is missing' => [
+                // case valid json but no entry for the searched "communityFile"
+                '{"somethingElse": {"updated": "'.$nowTS.'","content": {"name": "Berlin"}}}',
+                false,
+                (object) [],
+            ],
+            'cache entry for key exists, but no content' => [
+                '{"communityFile": {"updated": "'.$nowTS.'"}}',
                 false,
                 (object) [],
             ],
