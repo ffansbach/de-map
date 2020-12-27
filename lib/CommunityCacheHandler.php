@@ -4,7 +4,7 @@ namespace ffmap;
 
 /**
  * Class CommunityCacheHandler
- * @package lib
+ * @package ffmap
  */
 class CommunityCacheHandler
 {
