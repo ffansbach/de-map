@@ -43,3 +43,11 @@ foreach (["wtbg","sdlh","hd","mdb","doerfer","ln","hlb","bs","mb","mq","su","wa"
     ${'ff_winterb_'.$index}->parser = 'Ffmap';
     $parser->addAdditional('ff_winterberg_'.$index, ${'ff_winterb_'.$index});
 }
+
+$ff_lz = new stdClass();
+$ff_lz->name = 'Freifunk Leipzig';
+$ff_lz->nameShort = 'Leipzig';
+$ff_lz->url = 'http://db.leipzig.freifunk.net/uptime/hopglass/v2/nodes.json';
+$ff_lz->homePage = 'http://leipzig.freifunk.net/';
+$ff_lz->parser = 'Ffmap';
+$parser->addAdditional('ff_lz', $ff_lz);
