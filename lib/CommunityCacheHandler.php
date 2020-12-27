@@ -94,7 +94,7 @@ class CommunityCacheHandler
         }
 
         return isset($cacheData->$entryKey->content)
-            ? $cacheData->communityFile->content
+            ? $cacheData->$entryKey->content
             : false;
     }
 
