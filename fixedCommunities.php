@@ -70,8 +70,18 @@ $parser->addAdditional('ff_eb', $ff_eb);
 
 $ff_en = new stdClass();
 $ff_en->name = 'Freifunk Ennepetal';
-$ff_en->nameShort = 'Ennepetal ';
+$ff_en->nameShort = 'Ennepetal';
 $ff_en->url = 'https://karte.ff-en.de/data/meshviewer.json';
 $ff_en->homePage = 'https://freifunk-en.de/';
 $ff_en->parser = 'Ffmap';
 $parser->addAdditional('ff_en', $ff_en);
+
+foreach (range(1, 4) as $index) {
+    ${'ff_gt_'.$index} = new stdClass();
+    ${'ff_gt_'.$index}->name = 'Freifunk Kreis GT '.$index;
+    ${'ff_gt_'.$index}->nameShort = 'Gütersloh'.$index;
+    ${'ff_gt_'.$index}->url = 'https://map03.4830.org/data/map_0'.$index.'/nodes.json';
+    ${'ff_gt_'.$index}->homePage = 'https://freifunk-kreisgt.de/';
+    ${'ff_gt_'.$index}->parser = 'Ffmap';
+    $parser->addAdditional('ff_gt_'.$index, ${'ff_gt_'.$index});
+}
