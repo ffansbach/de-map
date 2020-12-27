@@ -9,12 +9,6 @@ class NodeListParser
     private string $cachePath = '';
 
     /**
-     * show debug-output
-     * @var bool
-     */
-    private bool $debug = false;
-
-    /**
      * timeout for result-cache
      *
      * 365d
@@ -25,13 +19,6 @@ class NodeListParser
      * @var int
      */
     private int $cacheTime = 31536000;
-
-    /**
-     * cachetime for curl
-     *
-     * @var int
-     */
-    private int $curlCacheTime = 86400;
 
     private array $additionals = array();
 
@@ -72,12 +59,19 @@ class NodeListParser
     private CommunityCacheHandler $CommunityCacheHandler;
 
     /**
+     * @var CurlHelper
+     */
+    private CurlHelper $curlHelper;
+
+    /**
      * NodeListParser constructor.
      * @param CommunityCacheHandler $cache
+     * @param CurlHelper $curlHelper
      */
-    public function __construct(CommunityCacheHandler $cache)
+    public function __construct(CommunityCacheHandler $cache, CurlHelper $curlHelper)
     {
         $this->CommunityCacheHandler = $cache;
+        $this->curlHelper = $curlHelper;
         $this->parseStatistics['timestamp'] = date('c');
     }
 
@@ -91,15 +85,6 @@ class NodeListParser
     public function setSource($url)
     {
         $this->sourceUrl = $url;
-    }
-
-    /**
-     * (de)activate debug-output
-     * @param bool $allowDebug
-     */
-    public function setDebug(bool $allowDebug)
-    {
-        $this->debug = (bool)$allowDebug;
     }
 
     public function setCachePath($path)
@@ -125,7 +110,6 @@ class NodeListParser
     public function getParsed($force = false): array
     {
         if ($force === true) {
-            $this->curlCacheTime = 0;
             $this->cacheTime = 0;
         }
 
@@ -206,7 +190,7 @@ class NodeListParser
      */
     private function getCommunityList()
     {
-        $result = simpleCachedCurl($this->sourceUrl, $this->curlCacheTime, $this->debug);
+        $result = $this->curlHelper->doCall($this->sourceUrl);
         return json_decode($result);
     }
 
@@ -227,7 +211,7 @@ class NodeListParser
         if ($communityData) {
             $this->log('using cached community data', false);
         } else {
-            $communityFile = simpleCachedCurl($cUrl, $this->curlCacheTime, $this->debug); #TODO inject a curl handler
+            $communityFile = $this->curlHelper->doCall($cUrl);
 
             if ($communityFile) {
                 $communityData = json_decode($communityFile);
@@ -588,7 +572,7 @@ class NodeListParser
      */
     private function getFromNodelist(string $comName, string $comUrl): bool
     {
-        $result = simpleCachedCurl($comUrl, $this->curlCacheTime, $this->debug);
+        $result = $this->curlHelper->doCall($comUrl);
 
         $responseObject = json_decode($result);
 
@@ -710,7 +694,7 @@ class NodeListParser
             'sort_by' => 'router_id'
         ]);
 
-        $result = simpleCachedCurl($url, $this->curlCacheTime, $this->debug);
+        $result = $this->curlHelper->doCall($url);
 
         if (!$result) {
             $this->addCommunityMessage($url . ' returns no result');
@@ -810,7 +794,7 @@ class NodeListParser
         if ($cachedValidSourceUrl !== false) {
             $this->addCommunityMessage('cache-entry found: '.$cachedValidSourceUrl->resultUrl);
             do {
-                $result = simpleCachedCurl($cachedValidSourceUrl->resultUrl, $this->curlCacheTime, $this->debug);
+                $result = $this->curlHelper->doCall($cachedValidSourceUrl->resultUrl);
 
                 if (!$result) {
                     $this->addCommunityMessage($cachedValidSourceUrl->resultUrl . ' returns no result');
@@ -859,7 +843,7 @@ class NodeListParser
                 // try to get config.json
                 $configUrl = $comUrl . '/config.json';
                 $this->addCommunityMessage('Looking for config.json at ' . $configUrl);
-                $configResult = simpleCachedCurl($configUrl, $this->curlCacheTime, $this->debug);
+                $configResult = $this->curlHelper->doCall($configUrl);
 
                 if (!$configResult) {
                     $this->addCommunityMessage($configUrl . ' returns no result');
@@ -917,7 +901,7 @@ class NodeListParser
                     continue;
                 }
 
-                $result = simpleCachedCurl($urlTry, $this->curlCacheTime, $this->debug);
+                $result = $this->curlHelper->doCall($urlTry);
 
                 if (!$result) {
                     $this->addCommunityMessage($urlTry . ' returns no result');
@@ -1112,7 +1096,7 @@ class NodeListParser
         $comUrl .= 'api/view_nodes';
         $comUrl = str_replace('www.', '', $comUrl);
 
-        $result = simpleCachedCurl($comUrl, $this->curlCacheTime, $this->debug);
+        $result = $this->curlHelper->doCall($comUrl);
 
         if (!$result) {
             $this->addCommunityMessage($comUrl . ' returns no result');

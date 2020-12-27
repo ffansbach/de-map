@@ -41,7 +41,6 @@ if (!isset($_REQUEST[$forceReparseKey])) {
     // reparse requested
     // actually parse now
 
-    require 'lib/simpleCachedCurl.inc.php';
     require 'lib/jsv4/Jsv4.php';
     require 'lib/log.php';
 
@@ -49,10 +48,8 @@ if (!isset($_REQUEST[$forceReparseKey])) {
 
     $cachePath = dirname(__FILE__) . '/cache/';
     $cache = new CommunityCacheHandler($cachePath);
-    $parser = new NodeListParser($cache);
-
-    // uncomment to enable debugoutput from simplecachedcurl
-    // $parser->setDebug(true);
+    $curlHelper = new CurlHelper();
+    $parser = new NodeListParser($cache, $curlHelper);
 
     $parser->setCachePath($cachePath);
     $parser->setSource($apiUrl);
@@ -112,6 +109,7 @@ if (isset($_REQUEST['upload'])
             'communities' => sizeof($response['communities']),
             'parse_time' => (int)$parseTime,
             'upload_time' => (int)$uploadTime,
+            'curl_calls' => (int)$curlHelper->getCallCounter(),
             'env' => isset($influxDB['add_tag_env']) ? $influxDB['add_tag_env'] : 'undefined'
         ];
 
