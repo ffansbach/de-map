@@ -407,13 +407,8 @@ class NodeListParser
                 continue;
             }
 
-            $communityName = $communityData->name;
-
             // this community belongs to a meta-community.
-            // use meta-communityname
             if (isset($communityData->metacommunity)) {
-                $communityName = $communityData->metacommunity;
-
                 $this->addCommunityMessage('Metacommunity:' . $communityData->metacommunity);
             }
 
@@ -422,6 +417,30 @@ class NodeListParser
             $this->addCommunity($communityData);
 
             $data = false;
+
+            $cachedNodeSource = $this->CommunityCacheHandler->readCache($cName, 'nodeSource', '-1 day');
+
+            if ($cachedNodeSource != false) {
+                $cachedUrl = $cachedNodeSource->url;
+                $cachedType = $cachedNodeSource->type;
+
+                $this->addCommunityMessage('found cached url "'.$cachedUrl
+                    .'" of type "'.$cachedType.'" less than one day old');
+
+                if (in_array($cachedUrl, $parsedSources)) {
+                    // already parsed ( meta community?)
+                    $this->addCommunityMessage('already parsed - skipping - ' . $cachedUrl);
+                    continue;
+                }
+
+                $parser = "getFrom".$cachedType;
+                $data = $this->{$parser}($cName, $cachedUrl);
+
+                if ($data !== false) {
+                    // found something
+                    $parsedSources[] = $cachedUrl;
+                }
+            }
 
             foreach ($communityData->nodeMaps as $nmEntry) {
                 if (isset($nmEntry->technicalType)
@@ -442,10 +461,22 @@ class NodeListParser
                     }
 
                     $this->addCommunityMessage('try to find parser for: ' . $url);
+                    $this->addCommunityMessage('technical type: ' . $nmEntry->technicalType);
 
                     if ($nmEntry->technicalType == 'netmon') {
                         $this->addCommunityMessage('parse as netmon');
                         $data = $this->getFromNetmon($cName, $url);
+
+                        if ($data !== false) {
+                            $this->CommunityCacheHandler->storeCache(
+                                $cName,
+                                'nodeSource',
+                                (object) [
+                                    'url' => $url,
+                                    'type' => 'Netmon',
+                                ]
+                            );
+                        }
                     } elseif ($nmEntry->technicalType == 'ffmap' || $nmEntry->technicalType == 'meshviewer') {
                         if (preg_match('/\.json$/', $nmEntry->url)) {
                             $url = $nmEntry->url;
@@ -453,9 +484,33 @@ class NodeListParser
 
                         $this->addCommunityMessage('parse as ffmap/meshviewer');
                         $data = $this->getFromFfmap($cName, $url);
+
+                        if ($data !== false) {
+                            $this->CommunityCacheHandler->storeCache(
+                                $cName,
+                                'nodeSource',
+                                (object) [
+                                    'url' => $url,
+                                    'type' => 'Ffmap',
+                                ]
+                            );
+                        }
                     } elseif ($nmEntry->technicalType == 'openwifimap') {
                         $this->addCommunityMessage('parse as openwifimap');
                         $data = $this->getFromOwm($cName, $url);
+
+                        if ($data !== false) {
+                            $this->CommunityCacheHandler->storeCache(
+                                $cName,
+                                'nodeSource',
+                                (object) [
+                                    'url' => $url,
+                                    'type' => 'Owm',
+                                ]
+                            );
+                        }
+                    } else {
+                        $this->addCommunityMessage('no parser for: ' . $nmEntry->technicalType);
                     }
 
                     if ($data !== false) {
@@ -739,102 +794,163 @@ class NodeListParser
     /**
      * @param string $comName
      * @param string $comUrl
+     * @return array[]
+     */
+    private function getNodesFromCachedFfmapUrl(string $comName, string $comUrl)
+    {
+        $routers = [];
+        // try readying cache
+        $this->addCommunityMessage('checking for cached ffmap/meshviewer source URLs');
+        $cachedValidSourceUrl = $this->CommunityCacheHandler->readCache(
+            $comName,
+            'ffmapWorkingUrl'.md5($comUrl),
+            '-7 days'
+        );
+
+        if ($cachedValidSourceUrl !== false) {
+            $this->addCommunityMessage('cache-entry found: '.$cachedValidSourceUrl->resultUrl);
+            do {
+                $result = simpleCachedCurl($cachedValidSourceUrl->resultUrl, $this->curlCacheTime, $this->debug);
+
+                if (!$result) {
+                    $this->addCommunityMessage($cachedValidSourceUrl->resultUrl . ' returns no result');
+                    break;
+                }
+
+                $responseObject = json_decode($result);
+
+                if (!$responseObject) {
+                    $this->addCommunityMessage($cachedValidSourceUrl->resultUrl . ' returns no valid json');
+                    break;
+                }
+
+                $routers = $responseObject->nodes;
+
+                if (!$routers) {
+                    $this->addCommunityMessage($cachedValidSourceUrl->resultUrl . ' contains no nodes');
+                    break;
+                }
+
+                $this->addCommunityMessage($cachedValidSourceUrl->resultUrl . ' returned something usable from cache');
+            } while (false);
+        }
+
+        return $routers;
+    }
+
+    /**
+     * @param string $comName
+     * @param string $comUrl
      * @return bool
      */
     private function getFromFfmap(string $comName, string $comUrl): bool
     {
-        $urls = array();
+        $urls = [];
         $gotResult = false;
+        $routers = [];
 
-        if (!preg_match('/\.json$/', $comUrl)) {
-            // try to get config.json
-            $configUrl = $comUrl . '/config.json';
-            $this->addCommunityMessage('Looking for config.json at ' . $configUrl);
-            $configResult = simpleCachedCurl($configUrl, $this->curlCacheTime, $this->debug);
+        $routers = $this->getNodesFromCachedFfmapUrl($comName, $comUrl);
+        $gotResult = !empty($routers);
 
-            if (!$configResult) {
-                $this->addCommunityMessage($configUrl . ' returns no result');
-            } else {
-                $responseObject = json_decode($configResult);
+        if (!$gotResult) {
+            $gotResult = false;
 
-                if (!$responseObject) {
-                    $this->addCommunityMessage($configUrl . ' returns no valid json');
-                } elseif (empty($responseObject->dataPath)) {
-                    $this->addCommunityMessage($configUrl . ' contains no dataPath');
+            if (!preg_match('/\.json$/', $comUrl)) {
+                // try to get config.json
+                $configUrl = $comUrl . '/config.json';
+                $this->addCommunityMessage('Looking for config.json at ' . $configUrl);
+                $configResult = simpleCachedCurl($configUrl, $this->curlCacheTime, $this->debug);
+
+                if (!$configResult) {
+                    $this->addCommunityMessage($configUrl . ' returns no result');
                 } else {
-                    if (!is_array($responseObject->dataPath)) {
-                        $responseObject->dataPath = array($responseObject->dataPath);
+                    $responseObject = json_decode($configResult);
+
+                    if (!$responseObject) {
+                        $this->addCommunityMessage($configUrl . ' returns no valid json');
+                    } elseif (empty($responseObject->dataPath)) {
+                        $this->addCommunityMessage($configUrl . ' contains no dataPath');
                     } else {
-                        $this->addCommunityMessage('this seems to be a HopGlass-config');
-                    }
-
-                    foreach ($responseObject->dataPath as $path) {
-                        $path = $path . 'nodes.json';
-
-                        if (!preg_match('/https?:/', $path)) {
-                            $parts = parse_url($comUrl);
-
-                            $path = $parts['scheme'] . '://' . $parts['host'] . '/' . ltrim($path, '/');
-                            // add domain to relative path
-                            //$path = $comUrl.ltrim($path, '/');
+                        if (!is_array($responseObject->dataPath)) {
+                            $responseObject->dataPath = array($responseObject->dataPath);
+                        } else {
+                            $this->addCommunityMessage('this seems to be a HopGlass-config');
                         }
 
-                        $this->addCommunityMessage('adding dataPath:' . $path . ' to url-list');
-                        $urls[] = $path;
+                        foreach ($responseObject->dataPath as $path) {
+                            $path = $path . 'nodes.json';
+
+                            if (!preg_match('/https?:/', $path)) {
+                                $parts = parse_url($comUrl);
+
+                                $path = $parts['scheme'] . '://' . $parts['host'] . '/' . ltrim($path, '/');
+                            }
+
+                            $this->addCommunityMessage('adding dataPath:' . $path . ' to url-list');
+                            $urls[] = $path;
+                        }
                     }
-
                 }
-            }
 
-            $urls[] = $comUrl . 'nodes.json';
-            $urls[] = $comUrl . 'data/nodes.json';
-            $urls[] = $comUrl . 'json/nodes.json';
-            $urls[] = $comUrl . 'meshviewer/data/meshviewer.json';
-            $urls[] = $comUrl . 'data/meshviewer.json';
-
-            if (preg_match('/\/meshviewer\//', $comUrl)) {
-                $comUrl = str_replace('/meshviewer', '', $comUrl);
                 $urls[] = $comUrl . 'nodes.json';
                 $urls[] = $comUrl . 'data/nodes.json';
                 $urls[] = $comUrl . 'json/nodes.json';
-                $urls[] = $comUrl . 'json/ffka/nodes.json';
-            }
-        }
+                $urls[] = $comUrl . 'meshviewer/data/meshviewer.json';
+                $urls[] = $comUrl . 'data/meshviewer.json';
 
-        $urls[] = $comUrl;
-
-        foreach ($urls as $urlTry) {
-            $this->addCommunityMessage($urlTry . ' try to fetch');
-
-            if (in_array($urlTry, $this->urlBlackList)) {
-                $this->addCommunityMessage($urlTry . ' is blacklisted - skipping');
-                continue;
+                if (preg_match('/\/meshviewer\//', $comUrl)) {
+                    $comUrl = str_replace('/meshviewer', '', $comUrl);
+                    $urls[] = $comUrl . 'nodes.json';
+                    $urls[] = $comUrl . 'data/nodes.json';
+                    $urls[] = $comUrl . 'json/nodes.json';
+                    $urls[] = $comUrl . 'json/ffka/nodes.json';
+                }
             }
 
-            $result = simpleCachedCurl($urlTry, $this->curlCacheTime, $this->debug);
+            $urls[] = $comUrl;
 
-            if (!$result) {
-                $this->addCommunityMessage($urlTry . ' returns no result');
-                continue;
+            foreach ($urls as $urlTry) {
+                $this->addCommunityMessage($urlTry . ' try to fetch');
+
+                if (in_array($urlTry, $this->urlBlackList)) {
+                    $this->addCommunityMessage($urlTry . ' is blacklisted - skipping');
+                    continue;
+                }
+
+                $result = simpleCachedCurl($urlTry, $this->curlCacheTime, $this->debug);
+
+                if (!$result) {
+                    $this->addCommunityMessage($urlTry . ' returns no result');
+                    continue;
+                }
+
+                $responseObject = json_decode($result);
+
+                if (!$responseObject) {
+                    $this->addCommunityMessage($urlTry . ' returns no valid json');
+                    continue;
+                }
+
+                $routers = $responseObject->nodes;
+
+                if (!$routers) {
+                    $this->addCommunityMessage($urlTry . ' contains no nodes');
+                    continue;
+                }
+
+                $this->CommunityCacheHandler->storeCache(
+                    $comName,
+                    'ffmapWorkingUrl' . md5($comUrl),
+                    (object)[
+                        'resultUrl' => $urlTry,
+                        'mapUrl' => $comUrl
+                    ]
+                );
+
+                // we have something to work with
+                $gotResult = true;
+                break;
             }
-
-            $responseObject = json_decode($result);
-
-            if (!$responseObject) {
-                $this->addCommunityMessage($urlTry . ' returns no valid json');
-                continue;
-            }
-
-            $routers = $responseObject->nodes;
-
-            if (!$routers) {
-                $this->addCommunityMessage($urlTry . ' contains no nodes');
-                continue;
-            }
-
-            // we have something to work with
-            $gotResult = true;
-            break;
         }
 
         if (!$gotResult) {
