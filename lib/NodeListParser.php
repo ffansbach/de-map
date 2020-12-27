@@ -119,7 +119,7 @@ class NodeListParser
         if ($routerList == false) {
             $this->log('need to reparse');
             $this->parseList();
-            $this->log('_parseList done');
+            $this->log('parseList done');
 
             $routerList = $this->nodeList;
             $communities = $this->communityList;
@@ -292,7 +292,7 @@ class NodeListParser
         $parsedSources = array();
 
         foreach ($communityList as $cName => $cUrl) {
-            $this->log('_parseNodeLists ' . $cName);
+            $this->log('parseNodeLists ' . $cName);
 
             $this->currentParseObject['name'] = $cName;
             $this->currentParseObject['source'] = $cUrl;
