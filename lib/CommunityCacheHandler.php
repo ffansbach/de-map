@@ -14,6 +14,11 @@ class CommunityCacheHandler
     protected string $cachePath;
 
     /**
+     * @var array
+     */
+    protected array $memoryCache = [];
+
+    /**
      * CommunityCacheHandler constructor.
      * @param string $path
      */
@@ -74,14 +79,20 @@ class CommunityCacheHandler
      */
     public function readCache(string $communityKey, string $entryKey, string $cacheTimeout)
     {
-        $cacheData = $this->getFromCacheFile($communityKey);
+        if (isset($this->memoryCache[$communityKey])) {
+            $cacheData = $this->memoryCache[$communityKey];
+        } else {
+            $cacheData = $this->getFromCacheFile($communityKey);
 
-        if (!$cacheData) {
-            return false;
+            if (!$cacheData) {
+                return false;
+            }
+
+            $this->memoryCache[$communityKey] = $cacheData;
         }
 
+
         if (!isset($cacheData->$entryKey->updated)) {
-            // strange, how is that even possible?
             return false;
         }
 
@@ -129,5 +140,7 @@ class CommunityCacheHandler
         $filePath = $this->getCachePathByKey($communityKey);
         file_put_contents($filePath, json_encode($cacheData));
         chmod($filePath, 0777);
+
+        $this->memoryCache[$communityKey] = $cacheData;
     }
 }
