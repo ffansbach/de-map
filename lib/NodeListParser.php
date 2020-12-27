@@ -461,7 +461,7 @@ class NodeListParser
                                 ]
                             );
                         }
-                    } elseif ($nmEntry->technicalType == 'ffmap' || $nmEntry->technicalType == 'meshviewer') {
+                    } elseif (in_array($nmEntry->technicalType, ['ffmap', 'meshviewer', 'hopglass'])) {
                         if (preg_match('/\.json$/', $nmEntry->url)) {
                             $url = $nmEntry->url;
                         }
