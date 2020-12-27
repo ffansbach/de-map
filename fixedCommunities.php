@@ -51,3 +51,27 @@ $ff_lz->url = 'http://db.leipzig.freifunk.net/uptime/hopglass/v2/nodes.json';
 $ff_lz->homePage = 'http://leipzig.freifunk.net/';
 $ff_lz->parser = 'Ffmap';
 $parser->addAdditional('ff_lz', $ff_lz);
+
+$ff_lp = new stdClass();
+$ff_lp->name = 'Freifunk Lippe';
+$ff_lp->nameShort = 'Lippe ';
+$ff_lp->url = 'https://map.freifunk-lippe.de/map/data/meshviewer.json';
+$ff_lp->homePage = 'http://freifunk-lippe.de/';
+$ff_lp->parser = 'Ffmap';
+$parser->addAdditional('ff_lp', $ff_lp);
+
+$ff_eb = new stdClass();
+$ff_eb->name = 'Freifunk Einbeck';
+$ff_eb->nameShort = 'Einbeck ';
+$ff_eb->url = 'http://vps643489.ovh.net/meshviewer/data/meshviewer.json';
+$ff_eb->homePage = 'https://freifunk-einbeck.de/';
+$ff_eb->parser = 'Ffmap';
+$parser->addAdditional('ff_eb', $ff_eb);
+
+$ff_en = new stdClass();
+$ff_en->name = 'Freifunk Ennepetal';
+$ff_en->nameShort = 'Ennepetal ';
+$ff_en->url = 'https://karte.ff-en.de/data/meshviewer.json';
+$ff_en->homePage = 'https://freifunk-en.de/';
+$ff_en->parser = 'Ffmap';
+$parser->addAdditional('ff_en', $ff_en);
