@@ -113,10 +113,14 @@ if (isset($_REQUEST['upload'])
             'env' => isset($influxDB['add_tag_env']) ? $influxDB['add_tag_env'] : 'undefined'
         ];
 
-        $influxLog->logPoint([
-            'value' => sizeof($response['allTheRouters']),
-            'fields' => $fields,
-        ]);
+        try {
+            $influxLog->logPoint([
+                'value' => sizeof($response['allTheRouters']),
+                'fields' => $fields,
+            ]);
+        } catch (\InfluxDB\Exception $e) {
+            echo 'Logging to InfluxDB failed: ' . $e->getMessage;
+        }
     }
 }
 
