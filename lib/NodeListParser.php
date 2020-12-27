@@ -974,7 +974,11 @@ class NodeListParser
         $clientCount = 0;
 
         if (is_array($clients) or is_object($clients)) {
-            $clientCount = sizeof($clients);
+            if (is_countable($clients)) {
+                $clientCount = sizeof($clients);
+            } elseif (isset($clients->total)) {
+                $clientCount = sizeof($clients->total);
+            }
         } elseif (is_numeric($clients)) {
             $clientCount = (int)$clients;
         }
