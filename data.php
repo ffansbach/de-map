@@ -29,15 +29,7 @@ ini_set('memory_limit', '1024M');
 
 require 'config.php';
 
-if (!isset($_REQUEST[$forceReparseKey])) {
-    // fetch cached result - the shortcut
-    $response = array(
-        'communities' => getFromCache('communities'),
-        'allTheRouters' => getFromCache('routers'),
-        'metaCommunities' => getFromCache('metacommunities'),
-        'isCachedresult' => true,
-    );
-} else {
+if (isset($_REQUEST[$forceReparseKey])) {
     // reparse requested
     // actually parse now
 
@@ -68,7 +60,14 @@ if (!isset($_REQUEST[$forceReparseKey])) {
         $log = new log($db);
         $log->add(sizeof($parseResult['routerList']));
     }
-
+} else {
+    // fetch cached result - the shortcut
+    $response = array(
+        'communities' => getFromCache('communities'),
+        'allTheRouters' => getFromCache('routers'),
+        'metaCommunities' => getFromCache('metacommunities'),
+        'isCachedresult' => true,
+    );
 }
 
 /**
