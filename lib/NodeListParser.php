@@ -955,7 +955,10 @@ class NodeListParser
 
             if (!empty($router->nodeinfo->location)) {
                 // new style
-                if (empty($router->nodeinfo->location->latitude) || empty($router->nodeinfo->location->longitude)) {
+                if (empty($router->nodeinfo->location->latitude)
+                    || empty($router->nodeinfo->location->longitude)
+                    || !is_numeric($router->nodeinfo->location->latitude)
+                    || !is_numeric($router->nodeinfo->location->longitude)) {
                     // router has no location
                     $skipped++;
                     continue;

@@ -232,6 +232,11 @@ function addPoints2Map(data)
 	// add all entries to clustergroup and heatmap
 	$.each(data, function(i, router)
 	{
+		if (isNaN(router.lat) || isNaN(router.long)) {
+			// usually none-numeric values should not reach this point, but lets be save
+			return;
+		}
+
 		heatMapData.push({
 			lat: router.lat,
 			lng: router.long,
