@@ -89,9 +89,8 @@ if (isset($_REQUEST['processonly']) && isset($parser)) {
 if (isset($_REQUEST['upload'])
     && $response['communities'] > 10
     && $response['allTheRouters'] > 1000) {
-    include 'upload_cache.php';
-
     $parseTime = microtime(true) - $startTS;
+    include 'upload_cache.php';
     $uploadTime = microtime(true) - $startTS - $parseTime;
 
     if (!empty($influxDB)) {
