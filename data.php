@@ -63,7 +63,7 @@ if (!isset($_REQUEST[$forceReparseKey])) {
         'allTheRouters' => $parseResult['routerList']
     );
 
-    if (is_array($dbAccess)) {
+    if (!empty($dbAccess)) {
         $db = new mysqli($dbAccess['host'], $dbAccess['user'], $dbAccess['pass'], $dbAccess['db']);
         $log = new log($db);
         $log->add(sizeof($parseResult['routerList']));
