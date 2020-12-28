@@ -172,7 +172,7 @@ class NodeListParser
      */
     private function toCache(string $key, $data): bool
     {
-        $this->log('writing cache for ' . $key);
+        $this->log('writing cache for ' . $key, false);
         $filename = $this->cachePath . 'result_' . $key . '.json';
         $cache = fopen($filename, 'wb');
         $write = fwrite($cache, json_encode($data));
@@ -1215,11 +1215,11 @@ class NodeListParser
      */
     private function log(string $msg, bool $inlcudeStats = true)
     {
-        echo date("d.m.Y, H:i:s", time()) . ' ' . $msg . "<br>\n";
+        echo date("d.m.Y, H:i:s", time()) . ' ' . $msg . "\n";
 
         if ($inlcudeStats) {
-            echo 'MemoryUsage: ' . round(memory_get_peak_usage(true) / 1024 / 1024, 1) . "MB<br>\n";
-            echo "Found nodes: " . count($this->nodeList) . "<br>\n<br>\n";
+            echo 'MemoryUsage: ' . round(memory_get_peak_usage(true) / 1024 / 1024, 1) . "MB\n";
+            echo "Found nodes: " . count($this->nodeList) . "\n\n";
         }
 
         flush();
