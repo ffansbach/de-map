@@ -108,6 +108,8 @@ if (isset($_REQUEST['upload'])
             'communities' => sizeof($response['communities']),
             'parse_time' => (int)$parseTime,
             'upload_time' => (int)$uploadTime,
+            'upload_time_float' => (float)$uploadTime,
+            'mem_usage' => memory_get_peak_usage(true),
             'curl_calls' => (int)$curlHelper->getCallCounter(),
             'env' => isset($influxDB['add_tag_env']) ? $influxDB['add_tag_env'] : 'undefined'
         ];
