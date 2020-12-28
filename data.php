@@ -51,8 +51,9 @@ if (isset($_REQUEST[$forceReparseKey])) {
     $parseResult = $parser->getParsed(true);
 
     $response = array(
-        'communities' => $parseResult['communities'],
-        'allTheRouters' => $parseResult['routerList']
+        'communities' => count((array)$parseResult['communities']),
+        'allTheRouters' => count($parseResult['routerList']),
+        'memoryUsed' => round(memory_get_peak_usage(true) / 1024 / 1024, 1) . 'Mb',
     );
 
     if (!empty($dbAccess)) {
@@ -75,9 +76,9 @@ if (isset($_REQUEST[$forceReparseKey])) {
  */
 if (isset($_REQUEST['processonly']) && isset($parser)) {
     $report = array(
-        'communities' => sizeof($response['communities']),
-        'nodes' => sizeof($response['allTheRouters']),
-        'stats' => $parser->getParseStatistics(),
+        'communities' => $response['communities'],
+        'nodes' => $response['allTheRouters'],
+        'memoryUsed' => round(memory_get_peak_usage(true) / 1024 / 1024, 1) . 'Mb',
     );
 
     echo json_encode($report, JSON_PRETTY_PRINT);
@@ -86,13 +87,11 @@ if (isset($_REQUEST['processonly']) && isset($parser)) {
 }
 
 if (isset($_REQUEST['upload'])
-    && sizeof($response['communities']) > 10
-    && sizeof($response['allTheRouters'])) {
-
-    $parseTime = microtime(true) - $startTS;
-
+    && $response['communities'] > 10
+    && $response['allTheRouters'] > 1000) {
     include 'upload_cache.php';
 
+    $parseTime = microtime(true) - $startTS;
     $uploadTime = microtime(true) - $startTS - $parseTime;
 
     if (!empty($influxDB)) {
@@ -105,7 +104,7 @@ if (isset($_REQUEST['upload'])
         );
 
         $fields = [
-            'communities' => sizeof($response['communities']),
+            'communities' => (int)$response['communities'],
             'parse_time' => (int)$parseTime,
             'upload_time' => (int)$uploadTime,
             'upload_time_float' => (float)$uploadTime,
@@ -116,7 +115,7 @@ if (isset($_REQUEST['upload'])
 
         try {
             $influxLog->logPoint([
-                'value' => sizeof($response['allTheRouters']),
+                'value' => (int)$response['allTheRouters'],
                 'fields' => $fields,
             ]);
         } catch (\InfluxDB\Exception $e) {
