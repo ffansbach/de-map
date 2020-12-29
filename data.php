@@ -95,6 +95,12 @@ if (isset($_REQUEST['upload'])
     include 'upload_cache.php';
     $uploadTime = microtime(true) - $startTS - $parseTime;
 
+    if (isset($environment) && $environment == 'live') {
+        echo "refreshing live statistics.\n";
+        $curlHelper = new CurlHelper();
+        $curlHelper->doCall('https://www.freifunk-karte.de/log_to_db.php?token='.$setDataLogPointToken);
+    }
+
     if (!empty($influxDB)) {
         $influxLog = new InfluxLog(
             $influxDB['host'],
