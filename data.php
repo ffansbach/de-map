@@ -11,7 +11,7 @@ use Lib\InfluxLog;
 
 require __DIR__ . '/vendor/autoload.php';
 
-define('APP_STARTED');
+define('APP_STARTED', true);
 
 $startTS = microtime(true);
 
