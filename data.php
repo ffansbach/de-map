@@ -11,6 +11,8 @@ use Lib\InfluxLog;
 
 require __DIR__ . '/vendor/autoload.php';
 
+define('APP_STARTED');
+
 $startTS = microtime(true);
 
 $offset = 1 * 60 * 60;
