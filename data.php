@@ -97,7 +97,6 @@ if (isset($_REQUEST['upload'])
 
     if (isset($environment) && $environment == 'live') {
         echo "refreshing live statistics.\n";
-        $curlHelper = new CurlHelper();
         $curlHelper->doCall('https://www.freifunk-karte.de/log_to_db.php?token='.$setDataLogPointToken);
     }
 
