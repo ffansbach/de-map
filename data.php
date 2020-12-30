@@ -115,7 +115,7 @@ if (isset($_REQUEST['upload'])
         $fields = [
             'communities' => (int)$response['communities'],
             'parse_time' => (int)$parseTime,
-            'upload_time' => (int)$uploadTime,
+            'upload_time' => (int)round($uploadTime),
             'upload_time_float' => (float)$uploadTime,
             'mem_usage' => memory_get_peak_usage(true),
             'curl_calls' => (int)$curlHelper->getCallCounter(),
