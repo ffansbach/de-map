@@ -442,12 +442,20 @@ class NodeListParser
                     continue;
                 }
 
-                $parser = "getFrom".$cachedType;
-                $data = $this->{$parser}($cName, $cachedUrl);
+                if (in_array(strtolower($cachedType), ['netmon', 'owm'])) {
+                    // todo - this may be removed once cached is free of those
+                    $this->addCommunityMessage(
+                        '│└  Parser for '.$cachedType.' has been removed. '
+                        .'As of Dec 2020 it was not in active use.'
+                    );
+                } else {
+                    $parser = "getFrom" . $cachedType;
+                    $data = $this->{$parser}($cName, $cachedUrl);
 
-                if ($data !== false) {
-                    // found something
-                    $parsedSources[] = $cachedUrl;
+                    if ($data !== false) {
+                        // found something
+                        $parsedSources[] = $cachedUrl;
+                    }
                 }
             }
 
@@ -497,19 +505,10 @@ class NodeListParser
                             );
                         }
                     } elseif ($nmEntry->technicalType == 'openwifimap') {
-                        $this->addCommunityMessage('│├ parse as openwifimap');
-                        $data = $this->getFromOwm($cName, $url);
-
-                        if ($data !== false) {
-                            $this->CommunityCacheHandler->storeCache(
-                                $cName,
-                                'nodeSource',
-                                (object) [
-                                    'url' => $url,
-                                    'type' => 'Owm',
-                                ]
-                            );
-                        }
+                        $this->addCommunityMessage(
+                            '│└  Parser for openwifimap has been removed. '
+                            .'As of Dec 2020 it was not in active use.'
+                        );
                     } elseif ($nmEntry->technicalType == 'nodelist') {
                         $this->addCommunityMessage('│├ type nodelist - has already been parsed');
                     } else {
@@ -1014,89 +1013,6 @@ class NodeListParser
         }
 
         return $clientCount;
-    }
-
-    /**
-     * @param string $comName
-     * @param string $comUrl
-     * @return bool
-     */
-    private function getFromOwm(string $comName, string $comUrl): bool
-    {
-        $comUrl .= 'api/view_nodes';
-        $comUrl = str_replace('www.', '', $comUrl);
-
-        $result = $this->curlHelper->doCall($comUrl);
-
-        if (!$result) {
-            $this->addCommunityMessage($comUrl . ' returns no result');
-            return false;
-        }
-
-        $responseObject = json_decode($result);
-
-        if (!$responseObject) {
-            $this->addCommunityMessage($comUrl . ' returns no valid json');
-            return false;
-        }
-
-        $routers = $responseObject->rows;
-
-        if (!$routers) {
-            $this->addCommunityMessage($comUrl . ' contains no nodes');
-            return false;
-        }
-
-        $counter = 0;
-        $skipped = 0;
-        $duplicates = 0;
-        $added = 0;
-        $dead = 0;
-
-        foreach ($routers as $router) {
-            if (empty($router->value->latlng[0]) || empty($router->value->latlng[1])) {
-                // router has no location
-                $skipped++;
-                continue;
-            }
-
-            $date = date_create((string)$router->value->mtime);
-
-            // was online in last 24h ?
-            $isOnline = ((time() - $date->getTimestamp()) < 60 * 60 * 24);
-
-            if ((time() - $date->getTimestamp()) > 60 * 60 * 24 * $this->maxAge) {
-                // router has been offline for a long time now
-                $dead++;
-                continue;
-            }
-
-            $thisRouter = array(
-                'id' => (string)$router->id,
-                'lat' => (string)$router->value->latlng[0],
-                'long' => (string)$router->value->latlng[1],
-                'name' => (string)$router->value->hostname,
-                'community' => $comName,
-                'status' => $isOnline ? 'online' : 'offline',
-                'clients' => '?'
-            );
-
-            // add to routerlist for later use in JS
-            if ($this->addOrForget($thisRouter)) {
-                $added++;
-            } else {
-                $duplicates++;
-            }
-        }
-
-        $this->addCommunityMessage('parsing done. ' .
-            $counter . ' nodes found, ' .
-            $added . ' added, ' .
-            $skipped . ' skipped, ' .
-            $duplicates . ' duplicates, ' .
-            $dead . ' dead');
-
-        return true;
     }
 
     /**
