@@ -519,6 +519,8 @@ class NodeListParser
                                 ]
                             );
                         }
+                    } elseif ($nmEntry->technicalType == 'nodelist') {
+                        $this->addCommunityMessage('│├ type nodelist - has already been parsed');
                     } else {
                         $this->addCommunityMessage('│├ no parser for: ' . $nmEntry->technicalType);
                     }
@@ -813,7 +815,7 @@ class NodeListParser
     {
         $routers = [];
         // try readying cache
-        $this->addCommunityMessage('checking for cached ffmap/meshviewer source URLs');
+        $this->addCommunityMessage('│├ checking for cached ffmap/meshviewer source URLs');
         $cachedValidSourceUrl = $this->CommunityCacheHandler->readCache(
             $comName,
             'ffmapWorkingUrl'.md5($comUrl),
@@ -821,30 +823,30 @@ class NodeListParser
         );
 
         if ($cachedValidSourceUrl !== false) {
-            $this->addCommunityMessage('cache-entry found: '.$cachedValidSourceUrl->resultUrl);
+            $this->addCommunityMessage('│├ cache-entry found: ' . $cachedValidSourceUrl->resultUrl);
             do {
                 $result = $this->curlHelper->doCall($cachedValidSourceUrl->resultUrl);
 
                 if (!$result) {
-                    $this->addCommunityMessage($cachedValidSourceUrl->resultUrl . ' returns no result');
+                    $this->addCommunityMessage('│└ ' . $cachedValidSourceUrl->resultUrl . ' returns no result');
                     break;
                 }
 
                 $responseObject = json_decode($result);
 
                 if (!$responseObject) {
-                    $this->addCommunityMessage($cachedValidSourceUrl->resultUrl . ' returns no valid json');
+                    $this->addCommunityMessage('│└ ' . $cachedValidSourceUrl->resultUrl . ' returns no valid json');
                     break;
                 }
 
                 $routers = $responseObject->nodes;
 
                 if (!$routers) {
-                    $this->addCommunityMessage($cachedValidSourceUrl->resultUrl . ' contains no nodes');
+                    $this->addCommunityMessage('│└ ' . $cachedValidSourceUrl->resultUrl . ' contains no nodes');
                     break;
                 }
 
-                $this->addCommunityMessage($cachedValidSourceUrl->resultUrl . ' returned something usable from cache');
+                $this->addCommunityMessage('│├ ' . $cachedValidSourceUrl->resultUrl . ' returned something usable from cache');
             } while (false);
         }
 
@@ -967,11 +969,11 @@ class NodeListParser
         }
 
         if (!$gotResult) {
-            $this->addCommunityMessage('sorry - found no nodes.json :-(');
+            $this->addCommunityMessage('│└ sorry - found no nodes.json :-(');
             return false;
         }
 
-        $this->addCommunityMessage('found a nodes.json - start parsing');
+        $this->addCommunityMessage('│├ found a nodes.json - start parsing');
 
         $counter = 0;
         $skipped = 0;
@@ -1087,7 +1089,7 @@ class NodeListParser
             }
         }
 
-        $this->addCommunityMessage('parsing done. ' .
+        $this->addCommunityMessage('│└ parsing done. ' .
             $counter . ' nodes found, ' .
             $added . ' added, ' .
             $skipped . ' skipped, ' .
