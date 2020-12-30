@@ -50,3 +50,7 @@ table.display tr:nth-child(even) {
 	max-height: 560px;
 	overflow-y: auto;
 }
+
+textarea#log {
+	font-family: monospace;
+}
