@@ -43,8 +43,11 @@ if (isset($_REQUEST[$forceReparseKey])) {
     $cachePath = dirname(__FILE__) . '/cache/';
     $cache = new CommunityCacheHandler($cachePath);
     $curlHelper = new CurlHelper();
+    $communityDebug = new CommunityDebug();
+
     $parser = new NodeListParser($cache, $curlHelper);
 
+    $parser->setCommunityDebug($communityDebug);
     $parser->setCachePath($cachePath);
     $parser->setSource($apiUrl);
 
