@@ -474,19 +474,10 @@ class NodeListParser
                     $this->addCommunityMessage('│├ try to find parser for: ' . $url);
 
                     if ($nmEntry->technicalType == 'netmon') {
-                        $this->addCommunityMessage('│├ parse as netmon');
-                        $data = $this->getFromNetmon($cName, $url);
-
-                        if ($data !== false) {
-                            $this->CommunityCacheHandler->storeCache(
-                                $cName,
-                                'nodeSource',
-                                (object) [
-                                    'url' => $url,
-                                    'type' => 'Netmon',
-                                ]
-                            );
-                        }
+                        $this->addCommunityMessage(
+                            '│└  Parser for netmon has been removed. '
+                            .'As of Dec 2020 it was not in active use.'
+                        );
                     } elseif (in_array($nmEntry->technicalType, ['ffmap', 'meshviewer', 'hopglass'])) {
                         if (preg_match('/\.json$/', $nmEntry->url)) {
                             $url = $nmEntry->url;
@@ -702,101 +693,6 @@ class NodeListParser
         }
 
         $this->addCommunityMessage('│└ parsing done. ' .
-            $counter . ' nodes found, ' .
-            $added . ' added, ' .
-            $skipped . ' skipped, ' .
-            $duplicates . ' duplicates, ' .
-            $dead . ' dead');
-
-        return true;
-    }
-
-    /**
-     * @param string $comName
-     * @param string $comUrl
-     * @return bool
-     */
-    private function getFromNetmon(string $comName, string $comUrl): bool
-    {
-        $url = rtrim($comUrl, '/') . '/api/rest/api.php';
-        $url .= '?' . http_build_query([
-            'rquest' => 'routerlist',
-            'limit' => 3000,            // one day this will be not enough - TODO. add loop
-            'sort_by' => 'router_id'
-        ]);
-
-        $result = $this->curlHelper->doCall($url);
-
-        if (!$result) {
-            $this->addCommunityMessage($url . ' returns no result');
-            return false;
-        }
-
-        $xml = @simplexml_load_string($result);
-
-        if (!$xml) {
-            $this->addCommunityMessage($url . ' returns no valid xml');
-            return false;
-        }
-
-        $routers = $xml->routerlist->router;
-
-        if (!$routers) {
-            $this->addCommunityMessage($url . ' contains no nodes');
-            return false;
-        }
-
-        $counter = 0;
-        $skipped = 0;
-        $duplicates = 0;
-        $added = 0;
-        $dead = 0;
-
-        foreach ($routers as $router) {
-            $counter++;
-
-            if ($router->latitude == '0' || $router->longitude == '0'
-                || empty($router->latitude) || empty($router->longitude)) {
-                // router has no location
-                $skipped++;
-                continue;
-            }
-
-            $thisRouter = array(
-                'id' => (int)$router->router_id,
-                'lat' => (string)$router->latitude,
-                'long' => (string)$router->longitude,
-                'name' => (string)$router->hostname,
-                'community' => $comName,
-                'status' => (string)$router->statusdata->status,
-                'clients' => (int)$router->statusdata->client_count
-            );
-
-            if ($thisRouter['status'] == 'offline') {
-                if (!empty($router->statusdata->last_seen)) {
-                    // was online in last days?
-                    $date = date_create((string)$router->statusdata->last_seen);
-
-                    if ((time() - $date->getTimestamp()) > 60 * 60 * 24 * $this->maxAge) {
-                        $dead++;
-                        continue;
-                    }
-                } else {
-                    // offline for unknown-time - skip
-                    $dead++;
-                    continue;
-                }
-            }
-
-            // add to routerlist for later use in JS
-            if ($this->addOrForget($thisRouter)) {
-                $added++;
-            } else {
-                $duplicates++;
-            }
-        }
-
-        $this->addCommunityMessage('parsing done. ' .
             $counter . ' nodes found, ' .
             $added . ' added, ' .
             $skipped . ' skipped, ' .
