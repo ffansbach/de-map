@@ -347,11 +347,11 @@ class NodeListParser
 
                     if (in_array($nmEntry->url, $parsedSources)) {
                         // already parsed ( meta community?)
-                        $this->addCommunityMessage('├ already parsed - skipping - ' . $nmEntry->url);
+                        $this->addCommunityMessage('│├ already parsed - skipping - ' . $nmEntry->url);
                         continue;
                     }
 
-                    $this->addCommunityMessage('├ parse as "nodeList"');
+                    $this->addCommunityMessage('│├ parse as "nodeList"');
                     $data = $this->getFromNodelist($cName, $nmEntry->url);
 
                     if ($data) {
