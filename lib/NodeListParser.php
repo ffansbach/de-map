@@ -633,31 +633,41 @@ class NodeListParser
         );
 
         if ($cachedValidSourceUrl !== false) {
-            $this->addCommunityMessage('│├ cache-entry found: ' . $cachedValidSourceUrl->resultUrl);
-            do {
-                $result = $this->curlHelper->doCall($cachedValidSourceUrl->resultUrl);
+            if (is_string($cachedValidSourceUrl->resultUrl)) {
+                $cachedValidSourceUrl->resultUrl = [$cachedValidSourceUrl->resultUrl];
+            }
 
-                if (!$result) {
-                    $this->addCommunityMessage('│└ ' . $cachedValidSourceUrl->resultUrl . ' returns no result');
-                    break;
-                }
+            foreach ($cachedValidSourceUrl->resultUrl as $url) {
+                $this->addCommunityMessage('│├ cache-entry found: ' . $url);
+                do {
+                    $result = $this->curlHelper->doCall($url);
 
-                $responseObject = json_decode($result);
+                    if (!$result) {
+                        $this->addCommunityMessage('│└ ' . $url . ' returns no result');
+                        break;
+                    }
 
-                if (!$responseObject) {
-                    $this->addCommunityMessage('│└ ' . $cachedValidSourceUrl->resultUrl . ' returns no valid json');
-                    break;
-                }
+                    $responseObject = json_decode($result);
 
-                $routers = $responseObject->nodes;
+                    if (!$responseObject) {
+                        $this->addCommunityMessage('│└ ' . $url . ' returns no valid json');
+                        break;
+                    }
 
-                if (!$routers) {
-                    $this->addCommunityMessage('│└ ' . $cachedValidSourceUrl->resultUrl . ' contains no nodes');
-                    break;
-                }
+                    $routers = array_merge($routers, (array)$responseObject->nodes);
 
-                $this->addCommunityMessage('│├ ' . $cachedValidSourceUrl->resultUrl . ' returned something usable from cache');
-            } while (false);
+                    if (!$routers) {
+                        $this->addCommunityMessage('│└ ' . $url . ' contains no nodes');
+                        break;
+                    }
+
+                    $this->addCommunityMessage('│├ ' . $url . ' returned something usable from cache');
+                } while (false);
+            }
+        }
+
+        if (empty($routers)) {
+            $this->CommunityCacheHandler->clearCacheEntry($comName, 'ffmapWorkingUrl'.md5($comUrl));
         }
 
         return $routers;
@@ -670,11 +680,15 @@ class NodeListParser
      */
     private function getFromFfmap(string $comName, string $comUrl): bool
     {
-        $urls = [];
-        $gotResult = false;
-        $routers = [];
+        $urls = [
+            'options' => [],
+            'must_check' => [],
+        ];
 
-        $routers = $this->getNodesFromCachedFfmapUrl($comName, $comUrl);
+        $routers = false;
+
+        $this->getNodesFromCachedFfmapUrl($comName, $comUrl);
+
         $gotResult = !empty($routers);
 
         if (!$gotResult) {
@@ -707,74 +721,86 @@ class NodeListParser
 
                             if (!preg_match('/https?:/', $path)) {
                                 $parts = parse_url($comUrl);
-
                                 $path = $parts['scheme'] . '://' . $parts['host'] . '/' . ltrim($path, '/');
                             }
 
                             $this->addCommunityMessage('adding dataPath:' . $path . ' to url-list');
-                            $urls[] = $path;
+                            $urls['must_check'][] = $path;
                         }
                     }
                 }
 
-                $urls[] = $comUrl . 'nodes.json';
-                $urls[] = $comUrl . 'data/nodes.json';
-                $urls[] = $comUrl . 'json/nodes.json';
-                $urls[] = $comUrl . 'meshviewer/data/meshviewer.json';
-                $urls[] = $comUrl . 'data/meshviewer.json';
+                $urls['options'][] = $comUrl . 'nodes.json';
+                $urls['options'][] = $comUrl . 'data/nodes.json';
+                $urls['options'][] = $comUrl . 'json/nodes.json';
+                $urls['options'][] = $comUrl . 'meshviewer/data/meshviewer.json';
+                $urls['options'][] = $comUrl . 'data/meshviewer.json';
 
                 if (preg_match('/\/meshviewer\//', $comUrl)) {
                     $comUrl = str_replace('/meshviewer', '', $comUrl);
-                    $urls[] = $comUrl . 'nodes.json';
-                    $urls[] = $comUrl . 'data/nodes.json';
-                    $urls[] = $comUrl . 'json/nodes.json';
-                    $urls[] = $comUrl . 'json/ffka/nodes.json';
+                    $urls['options'][] = $comUrl . 'nodes.json';
+                    $urls['options'][] = $comUrl . 'data/nodes.json';
+                    $urls['options'][] = $comUrl . 'json/nodes.json';
+                    $urls['options'][] = $comUrl . 'json/ffka/nodes.json';
                 }
             }
 
-            $urls[] = $comUrl;
+            $urls['options'][] = $comUrl;
+            $goodUrls = [];
 
-            foreach ($urls as $urlTry) {
-                $this->addCommunityMessage($urlTry . ' try to fetch');
+            foreach ($urls['must_check'] as $urlTry) {
+                $routersFound = $this->ffmapUrlCheck($urlTry);
 
-                if (in_array($urlTry, $this->urlBlackList)) {
-                    $this->addCommunityMessage($urlTry . ' is blacklisted - skipping');
+                if (empty($routersFound)) {
+                    // got nothing
                     continue;
                 }
 
-                $result = $this->curlHelper->doCall($urlTry);
+                $goodUrls[] = $urlTry;
 
-                if (!$result) {
-                    $this->addCommunityMessage($urlTry . ' returns no result');
-                    continue;
+                if (is_array($routers)) {
+                    array_merge($routers, $routersFound);
+                } else {
+                    $routers = $routersFound;
                 }
+            }
 
-                $responseObject = json_decode($result);
-
-                if (!$responseObject) {
-                    $this->addCommunityMessage($urlTry . ' returns no valid json');
-                    continue;
-                }
-
-                $routers = $responseObject->nodes;
-
-                if (!$routers) {
-                    $this->addCommunityMessage($urlTry . ' contains no nodes');
-                    continue;
-                }
-
+            if (!empty($routers)) {
                 $this->CommunityCacheHandler->storeCache(
                     $comName,
                     'ffmapWorkingUrl' . md5($comUrl),
                     (object)[
-                        'resultUrl' => $urlTry,
+                        'resultUrl' => $goodUrls,
                         'mapUrl' => $comUrl
                     ]
                 );
 
                 // we have something to work with
                 $gotResult = true;
-                break;
+            }
+
+            if (!$gotResult) {
+                foreach ($urls['options'] as $urlTry) {
+                    $routers = $this->ffmapUrlCheck($urlTry);
+
+                    if (empty($routers)) {
+                        // got nothing
+                        continue;
+                    }
+
+                    $this->CommunityCacheHandler->storeCache(
+                        $comName,
+                        'ffmapWorkingUrl' . md5($comUrl),
+                        (object)[
+                            'resultUrl' => [$urlTry],
+                            'mapUrl' => $comUrl
+                        ]
+                    );
+
+                    // we have something to work with
+                    $gotResult = true;
+                    break;
+                }
             }
         }
 
@@ -903,6 +929,43 @@ class NodeListParser
             $dead . ' dead');
 
         return true;
+    }
+
+    /**
+     * @param string $url
+     * @return array|object
+     */
+    private function ffmapUrlCheck(string $urlTry)
+    {
+        $this->addCommunityMessage($urlTry . ' try to fetch');
+
+        if (in_array($urlTry, $this->urlBlackList)) {
+            $this->addCommunityMessage($urlTry . ' is blacklisted - skipping');
+            return [];
+        }
+
+        $result = $this->curlHelper->doCall($urlTry);
+
+        if (!$result) {
+            $this->addCommunityMessage($urlTry . ' returns no result');
+            return [];
+        }
+
+        $responseObject = json_decode($result);
+
+        if (!$responseObject) {
+            $this->addCommunityMessage($urlTry . ' returns no valid json');
+            return [];
+        }
+
+        $routers = $responseObject->nodes;
+
+        if (!$routers) {
+            $this->addCommunityMessage($urlTry . ' contains no nodes');
+            return [];
+        }
+
+        return $routers;
     }
 
     /**
