@@ -95,9 +95,25 @@ $ff_weimar->parser = 'Ffmap';
 $parser->addAdditional('ff_weimar', $ff_weimar);
 
 $ff_chemnitz2 = new stdClass();
-$ff_chemnitz2->name = 'Freifunk Chemnit';
+$ff_chemnitz2->name = 'Freifunk Chemnitz';
 $ff_chemnitz2->nameShort = 'Chemnitz';
 $ff_chemnitz2->url = 'https://gianotti.routers.chemnitz.freifunk.net/nodelist.json';
 $ff_chemnitz2->homePage = 'https://www.chemnitz.freifunk.net/';
 $ff_chemnitz2->parser = 'nodelist';
 $parser->addAdditional('ff_chemnitz2', $ff_chemnitz2);
+
+$ff_kbumland = new stdClass();
+$ff_kbumland->name = 'Freifunk KoelnBonnUmland';
+$ff_kbumland->nameShort = 'KBU';
+$ff_kbumland->url = 'https://map.kbu.freifunk.net/data/ffkbuu/meshviewer.json';
+$ff_kbumland->homePage = 'https://map.kbu.freifunk.net/#!/de/map';
+$ff_kbumland->parser = 'nodelist';
+$parser->addAdditional('ff_kbumland', $ff_kbumland);
+
+$ff_euskirchen = new stdClass();
+$ff_euskirchen->name = 'Freifunk Euskirchen';
+$ff_euskirchen->nameShort = 'Euskirchen';
+$ff_euskirchen->url = 'https://map.kbu.freifunk.net/data/ffeu/meshviewer.json';
+$ff_euskirchen->homePage = 'https://ffeu.de/';
+$ff_euskirchen->parser = 'nodelist';
+$parser->addAdditional('ff_euskirchen', $ff_euskirchen);
