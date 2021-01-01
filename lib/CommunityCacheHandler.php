@@ -143,4 +143,35 @@ class CommunityCacheHandler
 
         $this->memoryCache[$communityKey] = $cacheData;
     }
+
+    /**
+     * @param string $communityKey
+     * @param string $entryKey
+     */
+    public function clearCacheEntry(string $communityKey, string $entryKey)
+    {
+        $cacheData = $this->getFromCacheFile($communityKey);
+
+        if (!$cacheData) {
+            return;
+        }
+
+        if (!isset($cacheData->$entryKey)) {
+            // is not set atm - do nothing
+            return;
+        }
+
+        unset($cacheData->$entryKey);
+        $targetDir = $this->cachePath . '/communities';
+
+        if (!is_dir($targetDir)) {
+            mkdir($targetDir);
+        }
+
+        $filePath = $this->getCachePathByKey($communityKey);
+        file_put_contents($filePath, json_encode($cacheData));
+        chmod($filePath, 0777);
+
+        $this->memoryCache[$communityKey] = $cacheData;
+    }
 }
