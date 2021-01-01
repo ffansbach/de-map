@@ -85,3 +85,11 @@ foreach (range(1, 4) as $index) {
     ${'ff_gt_'.$index}->parser = 'Ffmap';
     $parser->addAdditional('ff_gt_'.$index, ${'ff_gt_'.$index});
 }
+
+$ff_weimar = new stdClass();
+$ff_weimar->name = 'Freifunk Weimar';
+$ff_weimar->nameShort = 'Weimar';
+$ff_weimar->url = 'https://hopglass.weimarnetz.de/data/nodes.json';
+$ff_weimar->homePage = 'https://weimarnetz.de/';
+$ff_weimar->parser = 'Ffmap';
+$parser->addAdditional('ff_weimar', $ff_weimar);
