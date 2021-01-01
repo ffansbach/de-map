@@ -811,10 +811,6 @@ class NodeListParser
                         ? $this->getClientCount($router->statistics->clients)
                         : 0,
                 ];
-
-                if (!empty($router->nodeinfo->network->mac)) {
-                    $thisRouter['mac'] = (string)$router->nodeinfo->network->mac;
-                }
             } elseif (!empty($router->location)) {
                 // new style
                 if (empty($router->location->latitude) || empty($router->location->longitude)) {
@@ -924,11 +920,7 @@ class NodeListParser
      */
     public function addOrForget(array $node): bool
     {
-        if (!empty($node['mac'])) {
-            $identifier = $node['mac'];
-        } else {
-            $identifier = $node['name'] . $node['id'];
-        }
+        $identifier = $node['name'] . $node['id'];
 
         $key = md5($identifier . $node['lat'] . $node['long']);
 
