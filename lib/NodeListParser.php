@@ -320,8 +320,12 @@ class NodeListParser
 
         $parserNodeList->setMaxAge($this->maxAge);
         $this->parserNodeList = $parserNodeList;
+        $totalCommunityCount = count((array)$communityList);
+        $countIndex = 0;
 
         foreach ($communityList as $cName => $cUrl) {
+            $countIndex++;
+            $this->log('Step 1 of 3 - ' . $countIndex . ' / ' . $totalCommunityCount, false);
             $this->log('parseNodeLists ' . $cName);
 
             $this->currentParseObject['name'] = $cName;
@@ -398,7 +402,12 @@ class NodeListParser
         $this->log('_parseNodeLists');
         $this->parseNodeLists($communityList);
 
+        $totalCommunityCount = count((array)$communityList);
+        $countIndex = 0;
+
         foreach ($communityList as $cName => $cUrl) {
+            $countIndex++;
+            $this->log('Step 2 of 3 - ' . $countIndex . ' / ' . $totalCommunityCount, false);
             $this->log('parsing ' . $cName . " " . $cUrl);
             $this->currentParseObject['name'] = $cName;
             $this->currentParseObject['source'] = $cUrl;
@@ -546,7 +555,14 @@ class NodeListParser
             }
         }
 
+
+        $totalCommunityCount = count((array)$this->additionals);
+        $countIndex = 0;
+
         foreach ($this->additionals as $cName => $community) {
+            $countIndex++;
+            $this->log('Step 3 of 3 - ' . $countIndex . ' / ' . $totalCommunityCount, false);
+            $this->log('parse fixed community ' . $cName);
             $this->currentParseObject['name'] = $cName;
             $this->currentParseObject['source'] = $community->url;
 
