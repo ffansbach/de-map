@@ -93,3 +93,11 @@ $ff_weimar->url = 'https://hopglass.weimarnetz.de/data/nodes.json';
 $ff_weimar->homePage = 'https://weimarnetz.de/';
 $ff_weimar->parser = 'Ffmap';
 $parser->addAdditional('ff_weimar', $ff_weimar);
+
+$ff_chemnitz2 = new stdClass();
+$ff_chemnitz2->name = 'Freifunk Chemnit';
+$ff_chemnitz2->nameShort = 'Chemnitz';
+$ff_chemnitz2->url = 'https://gianotti.routers.chemnitz.freifunk.net/nodelist.json';
+$ff_chemnitz2->homePage = 'https://www.chemnitz.freifunk.net/';
+$ff_chemnitz2->parser = 'nodelist';
+$parser->addAdditional('ff_chemnitz2', $ff_chemnitz2);
