@@ -311,6 +311,16 @@ class NodeListParser
     {
         $parsedSources = array();
 
+        $parserNodeList = new parser\NodeList(
+            $this->CommunityCacheHandler,
+            $this->curlHelper,
+            $this->communityDebug,
+            [$this, 'addOrForget']
+        );
+
+        $parserNodeList->setMaxAge($this->maxAge);
+        $this->parserNodeList = $parserNodeList;
+
         foreach ($communityList as $cName => $cUrl) {
             $this->log('parseNodeLists ' . $cName);
 
@@ -352,7 +362,7 @@ class NodeListParser
                     }
 
                     $this->addCommunityMessage('│├ parse as "nodeList"');
-                    $data = $this->getFromNodelist($cName, $nmEntry->url);
+                    $data = $parserNodeList->getFrom($this->currentParseObject, $nmEntry->url);
 
                     if ($data) {
                         $communityData->shortName = $cName;
@@ -367,6 +377,8 @@ class NodeListParser
                 $this->addCommunityMessage('└ finished prioritized "nodelist" parsing');
             }
         }
+
+        $this->nodelistCommunities = $parserNodeList->getNodelistCommunities();
     }
 
     /**
@@ -448,6 +460,8 @@ class NodeListParser
                         '│└  Parser for '.$cachedType.' has been removed. '
                         .'As of Dec 2020 it was not in active use.'
                     );
+                } elseif (strtolower($cachedType) == 'nodelist') {
+                    $this->addCommunityMessage('│├ type nodelist - has already been parsed');
                 } else {
                     $parser = "getFrom" . $cachedType;
                     $data = $this->{$parser}($cName, $cachedUrl);
@@ -539,9 +553,12 @@ class NodeListParser
             $community->shortName = $cName;
             $this->addCommunity($community);
 
-            $parser = "getFrom" . $community->parser;
-
-            $data = $this->{$parser}($cName, $community->url);
+            if (strtolower($community->parser) == 'nodelist') {
+                $data = $this->parserNodeList->getFrom($this->currentParseObject, $community->url);
+            } else {
+                $parser = "getFrom" . $community->parser;
+                $data = $this->{$parser}($cName, $community->url);
+            }
 
             if ($data !== false) {
                 // found something
@@ -580,124 +597,6 @@ class NodeListParser
         }
 
         $this->communityList[$community->shortName] = $thisComm;
-        return true;
-    }
-
-    /**
-     * parse a nodelist-format
-     *
-     * @param string $comName Name of community
-     * @param string $comUrl url to fetch data from
-     * @return bool
-     */
-    private function getFromNodelist(string $comName, string $comUrl): bool
-    {
-        $result = $this->curlHelper->doCall($comUrl);
-
-        $responseObject = json_decode($result);
-
-        if (!$responseObject) {
-            $this->addCommunityMessage('│└ ' . $comUrl . ' returns no valid json');
-            return false;
-        }
-
-        $schemaString = file_get_contents(__DIR__ . '/../schema/nodelist-schema-1.0.0.json');
-        $schema = json_decode($schemaString);
-        $validationResult = \Jsv4::validate($responseObject, $schema);
-
-        if (!$validationResult) {
-            $this->addCommunityMessage('│├ ' . $comUrl . ' is no valid nodelist');
-            $this->addCommunityMessage('│└ check https://github.com/ffansbach/nodelist for nodelist-schema');
-            return false;
-        }
-
-        if (empty($responseObject->nodes)) {
-            $this->addCommunityMessage('│└ ' . $comUrl . ' contains no nodes');
-            return false;
-        }
-
-        $routers = $responseObject->nodes;
-
-        // add community to the list of nodelist-communities
-        // this will make us skipp further search for other formats
-        $this->nodelistCommunities[] = $comName;
-
-        $counter = 0;
-        $skipped = 0;
-        $duplicates = 0;
-        $added = 0;
-        $dead = 0;
-
-        foreach ($routers as $router) {
-            $counter++;
-
-            if (empty($router->position->lat)
-                ||
-                (
-                    empty($router->position->lon)
-                    &&
-                    empty($router->position->long)
-                )
-            ) {
-                // router has no location
-                $skipped++;
-                continue;
-            }
-
-            $thisRouter = array(
-                'id' => (string)$router->id,
-                'lat' => (string)$router->position->lat,
-                'long' => (!empty($router->position->lon)
-                    ? (string)$router->position->lon
-                    : (string)$router->position->long),
-                'name' => isset($router->name) ? (string)$router->name : (string)$router->id,
-                'community' => $comName,
-                'status' => 'unknown',
-                'clients' => 0
-            );
-
-            if (isset($router->status)) {
-                if (isset($router->status->clients)) {
-                    $thisRouter['clients'] = (int)$router->status->clients;
-                }
-
-                if (isset($router->status->online)) {
-                    $thisRouter['status'] = (bool)$router->status->online ? 'online' : 'offline';
-                }
-            }
-
-
-            if ($thisRouter['status'] == 'offline') {
-                if (empty($router->status->lastcontact)) {
-                    $isDead = true;
-                } else {
-                    $date = date_create((string)$router->status->lastcontact);
-
-                    // was online in last days? ?
-                    $isDead = ((time() - $date->getTimestamp()) > 60 * 60 * 24 * $this->maxAge);
-                }
-
-                if ($isDead) {
-                    $dead++;
-                    continue;
-                }
-            }
-
-            // add to routerlist for later use in JS
-            if ($this->addOrForget($thisRouter)) {
-                $added++;
-            } else {
-                $duplicates++;
-            }
-        }
-
-        $this->addCommunityMessage('│└ parsing done. ' .
-            $counter . ' nodes found, ' .
-            $added . ' added, ' .
-            $skipped . ' skipped, ' .
-            $duplicates . ' duplicates, ' .
-            $dead . ' dead');
-
         return true;
     }
 
@@ -1023,7 +922,7 @@ class NodeListParser
      * @param mixed[] $node
      * @return bool
      */
-    private function addOrForget(array $node): bool
+    public function addOrForget(array $node): bool
     {
         if (!empty($node['mac'])) {
             $identifier = $node['mac'];
