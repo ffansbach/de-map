@@ -236,7 +236,7 @@ class NodeListParser
             if ($communityFile) {
                 $communityData = json_decode($communityFile);
 
-                if ($communityData) {
+                if (is_object($communityData)) {
                     $this->log('caching community data', false);
                     $this->CommunityCacheHandler->storeCache(
                         $cName,
@@ -245,6 +245,7 @@ class NodeListParser
                     );
                     return $communityData;
                 } else {
+                    $this->log('community data is not an object', false);
                     return false;
                 }
             } else {
@@ -832,6 +833,11 @@ class NodeListParser
                 }
 
                 if (!$router->flags->online) {
+                    if (!isset($router->lastseen)) {
+                        $dead++;
+                        continue;
+                    }
+
                     $date = date_create((string)$router->lastseen);
 
                     // was online in last 24h ?
