@@ -10,22 +10,6 @@ $ff_ddfl->homePage = 'http://www.ffdus.de/';
 $ff_ddfl->parser = 'Ffmap';
 $parser->addAdditional('ff_duesseldorf-flingern', $ff_ddfl);
 
-$ff_kssl = new stdClass();
-$ff_kssl->name = 'Freifunk Kassel';
-$ff_kssl->nameShort = 'Kassel';
-$ff_kssl->url = 'http://www.projekt2k.de/externes/ffkarte/fetchkassel.php';
-$ff_kssl->homePage = 'https://freifunk-kassel.de/';
-$ff_kssl->parser = 'nodelist';
-$parser->addAdditional('ff_kassel', $ff_kssl);
-
-$ff_nu = new stdClass();
-$ff_nu->name = 'Freifunk Niersufer';
-$ff_nu->nameShort = 'Niersufer';
-$ff_nu->url = 'https://map.freifunk-niersufer.de/data/meshviewer.json';
-$ff_nu->homePage = 'http://www.freifunk-niersufer.de';
-$ff_nu->parser = 'Ffmap';
-$parser->addAdditional('ff_nu', $ff_nu);
-
 $ff_wt = new stdClass();
 $ff_wt->name = 'Freifunk Wuppertal';
 $ff_wt->nameShort = 'Wuppertal';
