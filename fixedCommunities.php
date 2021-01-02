@@ -70,6 +70,14 @@ foreach (range(1, 4) as $index) {
     $parser->addAdditional('ff_gt_'.$index, ${'ff_gt_'.$index});
 }
 
+$ff_goettingen = new stdClass();
+$ff_goettingen->name = 'Freifunk Göttingen';
+$ff_goettingen->nameShort = 'Göttingen';
+$ff_goettingen->url = 'https://cccgoe.de/map2data/nodes.json';
+$ff_goettingen->homePage = 'http://freifunk-goettingen.de';
+$ff_goettingen->parser = 'Ffmap';
+$parser->addAdditional('ff_goettingen', $ff_goettingen);
+
 $ff_weimar = new stdClass();
 $ff_weimar->name = 'Freifunk Weimar';
 $ff_weimar->nameShort = 'Weimar';
