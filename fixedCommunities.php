@@ -99,7 +99,7 @@ $ff_kbumland->name = 'Freifunk KoelnBonnUmland';
 $ff_kbumland->nameShort = 'KBU';
 $ff_kbumland->url = 'https://map.kbu.freifunk.net/data/ffkbuu/meshviewer.json';
 $ff_kbumland->homePage = 'https://map.kbu.freifunk.net/#!/de/map';
-$ff_kbumland->parser = 'nodelist';
+$ff_kbumland->parser = 'Ffmap';
 $parser->addAdditional('ff_kbumland', $ff_kbumland);
 
 $ff_euskirchen = new stdClass();
@@ -107,5 +107,5 @@ $ff_euskirchen->name = 'Freifunk Euskirchen';
 $ff_euskirchen->nameShort = 'Euskirchen';
 $ff_euskirchen->url = 'https://map.kbu.freifunk.net/data/ffeu/meshviewer.json';
 $ff_euskirchen->homePage = 'https://ffeu.de/';
-$ff_euskirchen->parser = 'nodelist';
+$ff_euskirchen->parser = 'Ffmap';
 $parser->addAdditional('ff_euskirchen', $ff_euskirchen);
