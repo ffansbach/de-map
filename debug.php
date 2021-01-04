@@ -5,7 +5,7 @@ header('Content-Type: text/html; charset=utf-8');
 require 'config.php';
 
 ?><!doctype html>
-<html lang="de" style="height:auto; overflow:auto">
+<html lang="de">
 	<head>
 		<meta charset="utf-8">
 		<meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -15,7 +15,7 @@ require 'config.php';
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
 		<link rel="stylesheet" href="css/site.css" />
 	</head>
-	<body style="height:auto">
+	<body>
 		<div class="container" style="margin-top: 20px">
 
 			<div class="jumbotron">
@@ -77,9 +77,6 @@ require 'config.php';
 		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
 
 		<script>
-		/**
-		 * initialize
-		 */
 		$(function(){
 			$.ajax({
 				dataType: "json",
@@ -92,11 +89,6 @@ require 'config.php';
 			$('#meta_communities').change(processMeta);
 		})
 
-		/**
-		 * response-handler for the ajax-result
-		 *
-		 * @param  string
-		 */
 		function processResult(res)
 		{
 			$('#jumbotext').text('Letzter Parserlauf: '+res.timestamp);
@@ -112,7 +104,6 @@ require 'config.php';
 			})
 			.appendTo($select);
 
-			// append all communities as options to the select
 			$.each(res.errorCommunities, function(key, value)
 			{
 				var newOption = $('<option>', {
@@ -121,7 +112,6 @@ require 'config.php';
 				})
 				.appendTo($select);
 
-				// check for metacommunity
 				if(
 					typeof value.metacommunity != 'undefined'
 					&&
@@ -137,7 +127,6 @@ require 'config.php';
 			$select = $('#meta_communities');
 			metacommunities.sort();
 
-			// add metacommunities to select
 			$.each(metacommunities, function(key, value)
 			{
 				var newOption = $('<option>', {
@@ -148,9 +137,6 @@ require 'config.php';
 
 		}
 
-		/**
-		 * changehandler for metac.select
-		 */
 		function processMeta()
 		{
 			var selected = $(this).val();
@@ -164,7 +150,6 @@ require 'config.php';
 			})
 			.appendTo($select);
 
-			// update/filter cummunity-list
 			$.each(communities, function(key, value)
 			{
 				if(
@@ -191,11 +176,6 @@ require 'config.php';
 
 		}
 
-		/**
-		 * changehandler for community-select
-		 *
-		 * shows debug-data for the selected community
-		 */
 		function processChange()
 		{
 			var selected = $(this).val();

@@ -3,7 +3,7 @@
 <h3>Entwicklung der Knotenzahl</h3>
 <div id="flot_target" style="width:100%;height:400px"></div>
 <p>
-	Seit 25.02.2015 werden Knoten, die länger als 3 Tage offline sind, ausgeblendet.
+	Knoten, die länger als 3 Tage offline sind, werden ausgeblendet (als tot gewertet).
 </p>
 <p>
 	Gezeigt werden die Minimal- und Maximalwerte pro Tag.<br>

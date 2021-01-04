@@ -15,7 +15,7 @@ require 'config.php';
 		<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.1/css/bootstrap.min.css">
 		<link rel="stylesheet" href="css/site.css" />
 
-		<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.css" />
+		<link rel="stylesheet" href="//unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 	</head>
 	<body>
 		<div id="map"></div>
@@ -92,7 +92,7 @@ require 'config.php';
 
 		<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
 		<script src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.1/js/bootstrap.min.js"></script>
-		<script src="//cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet-src.js"></script>
+		<script src="//unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 		<script src="js/prunecluster/PruneCluster.js"></script>
 		<script src="js/heatmap.min.js"></script>
 		<script src="js/leaflet-heatmap.js"></script>

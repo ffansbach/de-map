@@ -1,28 +1,48 @@
 <?php
 
-$forceReparseKey = 'neuladen';
+/*
+ * Weak secrets to prevent external trigger for some actions.
+ */
+$forceReparseKey = 'a_key_to_prevent_everyone_from_calling_data.php?reparse';
+$setDataLogPointToken = 'key/token for log_to_db,php';
 
-// want another style? check http://leaflet-extras.github.io/leaflet-providers/preview/
+$environment = 'dev';
+
 $tileServerUrl = 'http://{s}.tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png';
 $tileServerAttribution = '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
 $mapInitalView = array(
-	'latitude' => 49.447733,
-	'longitude' => 10.767502,
-	'zoom' => 10,
+    'latitude' => 51.16,
+    'longitude' => 10.45,
+    'zoom' => 6,
 );
 
-// db acces for logging
-// set to false to disable db-logging of nodecount
-$dbAccess = array(
-	'host' => 'localhost',
-	'db' => 'mydb',
-	'user' => 'myuser',
-	'pass' => 'mypass'
-);
+$dbAccess = [
+#    mysql connection parameters for node statistics
+#    empty if not wanted
+#    'host' => '',
+#    'db' => '',
+#    'user' => '',
+#    'pass' => ''
+];
 
-/*
- * this will be used for some css and js
- * don't forget to add a slash
- */
-$localNetmon = 'https://netmon.freifunk-emskirchen.de/';
+$serverUpload = [
+#    ftp for upload of results
+#    empty if not wanted
+#    'host' => '',
+#    'user' => '',
+#    'password' => '',
+#    'target' => '/cache',
+];
+
+$influxDB = [
+    'host' => 'your influxdb host',
+    'port' => '8086',
+    'dbName' => 'freifunk_karte',
+    'user' => 'influx user',
+    'password' => 'influx pass',
+
+    'add_tag_env' => $environment,
+];
+
+$trackingCode = "<!-- Piwik -->....<!-- End Piwik Code -->";
