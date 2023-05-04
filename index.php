@@ -15,7 +15,7 @@ require 'config.php';
 		<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.1/css/bootstrap.min.css">
 		<link rel="stylesheet" href="css/site.css" />
 
-		<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.css" />
+		<link rel="stylesheet" href="//unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 	</head>
 	<body>
 		<div id="map"></div>
@@ -77,18 +77,13 @@ require 'config.php';
 					<div class="modal-body">
 						<div style="text-align:center"><img src="img/ajax-loader.gif" alt="spinner" /></div>
 						<p>
-							Bitte haben Sie einen Moment Geduld. Die Daten werden geladen und unter Umständen neu verarbeitet.
-						</p>
-						<p>
-							Falls Sie bisher gelesen haben werden die Daten tatsächlich neu von allen Communities eingelesen und verarbeitet.
-							Dies passiert alle 24 Stunden bei einem zufälligen Seitenaufruf.
-							Das Los ist auf Sie gefallen. Sie haben also gewonnen und sorgen nun so dafür, dass die nächsten Besucher die Karte deutlich schneller sehen werden.
+							Bitte haben Sie einen Moment Geduld. Die Daten werden geladen.
 						</p>
 						<p>
 							Nach spätestens einer Minute werden Sie die Freifunk-Knoten angezeigt bekommen.
 						</p>
 						<p>
-							Vielen Dank für Ihre Geduld und Mithilfe.
+							Vielen Dank für Ihre Geduld.
 						</p>
 					</div>
 				</div>
@@ -97,7 +92,7 @@ require 'config.php';
 
 		<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
 		<script src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.1/js/bootstrap.min.js"></script>
-		<script src="//cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet-src.js"></script>
+		<script src="//unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 		<script src="js/prunecluster/PruneCluster.js"></script>
 		<script src="js/heatmap.min.js"></script>
 		<script src="js/leaflet-heatmap.js"></script>

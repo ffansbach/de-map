@@ -36,7 +36,7 @@ table.display tr:nth-child(even) {
 
 #toList.btn {
 	position: absolute;
-	z-index: 10;
+	z-index: 500;
 	bottom: 15px;
 	left: 15px;
 }
@@ -49,4 +49,8 @@ table.display tr:nth-child(even) {
 #informationModal .tab-pane {
 	max-height: 560px;
 	overflow-y: auto;
+}
+
+textarea#log {
+	font-family: monospace;
 }

@@ -1,4 +1,12 @@
 config.php
+.phpunit.result.cache
+.idea
 
-cache/*.cache
-/.project
+cache/**
+
+# composer
+composer.phar
+/vendor/
+
+# my test file
+test.php

@@ -514,6 +514,11 @@ class nodeListParser
 			'meta' => false,
 		);
 
+		if(isset($community->homePage))
+		{
+			$thisComm['url'] = $community->homePage;
+		}
+
 		// add metacommunity if set
 		if(isset($community->metacommunity))
 		{
@@ -524,7 +529,7 @@ class nodeListParser
 		{
 			$this->_addCommunityMessage('name or url corrupt - ignoring');
 			// error in some data - ignore community
-			continue;
+			return false;
 		}
 
 		$this->_communityList[$community->shortName] = $thisComm;
@@ -598,7 +603,7 @@ class nodeListParser
 				'id' => (string)$router->id,
 				'lat' => (string)$router->position->lat,
 				'long' => (!empty($router->position->lon) ? (string)$router->position->lon : (string)$router->position->long),
-				'name' => (string)$router->name,
+				'name' => isset($router->name) ? (string)$router->name : (string)$router->id,
 				'community' => $comName,
 				'status' => 'unknown',
 				'clients' => 0
@@ -668,7 +673,7 @@ class nodeListParser
 		$url .= '?'.http_build_query(
 						array(
 							'rquest' => 'routerlist',
-							'limit' => 1000,			// one day this will be not enough - TODO. add loop
+							'limit' => 3000,			// one day this will be not enough - TODO. add loop
 							'sort_by' => 'router_id'
 						)
 				);

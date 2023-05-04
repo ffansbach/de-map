@@ -4,118 +4,146 @@
  *
  * this will try to load a cched result if not older than 24h
  */
+
+namespace ffmap;
+
+use Lib\InfluxLog;
+
+require __DIR__ . '/vendor/autoload.php';
+
+define('APP_STARTED', true);
+
+$startTS = microtime(true);
+
 $offset = 1 * 60 * 60;
-header('Cache-Control: public, max-age='.$offset);
-header ("Expires: " . gmdate ("D, d M Y H:i:s", time() + $offset) . " GMT");
+header('Cache-Control: public, max-age=' . $offset);
+header("Expires: " . gmdate("D, d M Y H:i:s", time() + $offset) . " GMT");
 header('Content-Type: application/json');
-error_reporting(-1);
+
 ini_set('display_errors', 'On');
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+ini_set('max_execution_time', (60 * 60));
+set_time_limit((60 * 60));
+ini_set('memory_limit', '1024M');
 
 require 'config.php';
 
-if(!isset($_REQUEST[$forceReparseKey]))
-{
-	// fetch cached result - the shortcut
-	$response = array(
-		'communities' =>		getFromCache('communities'),
-		'allTheRouters' =>		getFromCache('routers'),
-		'metaCommunities' =>	getFromCache('metacommunities'),
-		'isCachedresult' =>		true,
-	);
-}
-else
-{
-	// reparse requested
-	// actually parse now
+if (isset($_REQUEST[$forceReparseKey])) {
+    // reparse requested
+    // actually parse now
 
-	require 'lib/simpleCachedCurl.inc.php';
-	require 'lib/nodelistparser.php';
-	require 'lib/jsv4/jsv4.php';
-	require 'lib/log.php';
+    require 'lib/jsv4/Jsv4.php';
+    require 'lib/log.php';
 
-	$apiUrl = 'https://raw.githubusercontent.com/freifunk/directory.api.freifunk.net/master/directory.json';
+    $apiUrl = 'https://raw.githubusercontent.com/freifunk/directory.api.freifunk.net/master/directory.json';
 
-	$parser = new nodeListParser();
+    $cachePath = dirname(__FILE__) . '/cache/';
+    $cache = new CommunityCacheHandler($cachePath);
+    $curlHelper = new CurlHelper();
+    $communityDebug = new CommunityDebug();
 
-	// uncomment to enable debugoutput from simplecachedcurl
-	// $parser->setDebug(true);
+    $parser = new NodeListParser($cache, $curlHelper);
 
-	$parser->setCachePath(dirname(__FILE__).'/cache/');
-	$parser->setSource($apiUrl);
+    $parser->setCommunityDebug($communityDebug);
+    $parser->setCachePath($cachePath);
+    $parser->setSource($apiUrl);
 
-	$ffnw = new stdClass;
-	$ffnw->name = 'Freifunk NordWest';
-	$ffnw->nameShort = 'Freifunk NordWest';
-	$ffnw->url = 'https://netmon.nordwest.freifunk.net/';
-	$ffnw->parser = 'Netmon';
-	$parser->addAdditional('ffnw', $ffnw);
+    require 'fixedCommunities.php';
 
-	$ffj = new stdClass;
-	$ffj->name = 'Freifunk Jena';
-	$ffj->nameShort = 'Freifunk Jena';
-	$ffj->url = 'https://freifunk-jena.de/ffmap/';
-	$ffj->parser = 'Ffmap';
-	$parser->addAdditional('ffj', $ffj);
+    $parseResult = $parser->getParsed(true);
 
-	$ffffm = new stdClass;
-	$ffffm->name = 'Frankfurt am Main';
-	$ffffm->nameShort = 'Frankfurt am Main';
-	$ffffm->url = 'http://map.ffm.freifunk.net/';
-	$ffffm->parser = 'Ffmap';
-	$parser->addAdditional('ffffm', $ffffm);
+    $response = array(
+        'communities' => count((array)$parseResult['communities']),
+        'allTheRouters' => count($parseResult['routerList']),
+        'memoryUsed' => round(memory_get_peak_usage(true) / 1024 / 1024, 1) . 'Mb',
+    );
 
-	$ff_ruhrg_fb = new stdClass;
-	$ff_ruhrg_fb->name = 'Freifunk Ruhrgebiet - FB';
-	$ff_ruhrg_fb->nameShort = 'Freifunk Ruhrgebiet - FB';
-	$ff_ruhrg_fb->url = 'http://map.freifunk-ruhrgebiet.de/data/';
-	$ff_ruhrg_fb->parser = 'Ffmap';
-	$parser->addAdditional('ff_ruhrg_fb', $ff_ruhrg_fb);
-
-	$parseResult = $parser->getParsed(true);
-
-	$response = array(
-		'communities' => $parseResult['communities'],
-		'allTheRouters' =>  $parseResult['routerList']
-	);
-
-	if(is_array($dbAccess))
-	{
-		$db = new mysqli($dbAccess['host'], $dbAccess['user'], $dbAccess['pass'], $dbAccess['db']);
-		$log = new log($db);
-		$log->add(sizeof($parseResult['routerList']));
-	}
-
+    if (!empty($dbAccess)) {
+        $db = new mysqli($dbAccess['host'], $dbAccess['user'], $dbAccess['pass'], $dbAccess['db']);
+        $log = new log($db);
+        $log->add(sizeof($parseResult['routerList']));
+    }
+} else {
+    // fetch cached result - the shortcut
+    $response = array(
+        'communities' => getFromCache('communities'),
+        'allTheRouters' => getFromCache('routers'),
+        'metaCommunities' => getFromCache('metacommunities'),
+        'isCachedresult' => true,
+    );
 }
 
 /**
  * if processonly is set we handle a reparse cron request
  */
-if(isset($_REQUEST['processonly']) && isset($parser))
-{
-	$report = array(
-		'communities'	=> sizeof($response['communities']),
-		'nodes'			=> sizeof($response['allTheRouters']),
-		'stats'			=> $parser->getParseStatistics(),
-	);
+if (isset($_REQUEST['processonly']) && isset($parser)) {
+    $report = array(
+        'communities' => $response['communities'],
+        'nodes' => $response['allTheRouters'],
+        'memoryUsed' => round(memory_get_peak_usage(true) / 1024 / 1024, 1) . 'Mb',
+    );
 
-	echo json_encode($report, JSON_PRETTY_PRINT);
-}
-else
-{
-	echo json_encode($response, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
+    echo json_encode($report, JSON_PRETTY_PRINT);
+} else {
+    echo json_encode($response, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
 }
 
-function getFromCache($key)
+if (isset($_REQUEST['upload'])
+    && $response['communities'] > 10
+    && $response['allTheRouters'] > 1000) {
+    $parseTime = microtime(true) - $startTS;
+    include 'upload_cache.php';
+    $uploadTime = microtime(true) - $startTS - $parseTime;
+
+    if (isset($environment) && $environment == 'live') {
+        echo "refreshing live statistics.\n";
+        $curlHelper->doCall('https://www.freifunk-karte.de/log_to_db.php?token='.$setDataLogPointToken);
+    }
+
+    if (!empty($influxDB)) {
+        $influxLog = new InfluxLog(
+            $influxDB['host'],
+            $influxDB['port'],
+            $influxDB['user'],
+            $influxDB['password'],
+            $influxDB['dbName'],
+        );
+
+        $fields = [
+            'communities' => (int)$response['communities'],
+            'parse_time' => (int)$parseTime,
+            'upload_time' => (int)round($uploadTime),
+            'upload_time_float' => (float)$uploadTime,
+            'mem_usage' => memory_get_peak_usage(true),
+            'curl_calls' => (int)$curlHelper->getCallCounter(),
+            'env' => isset($influxDB['add_tag_env']) ? $influxDB['add_tag_env'] : 'undefined'
+        ];
+
+        try {
+            $influxLog->logPoint([
+                'value' => (int)$response['allTheRouters'],
+                'fields' => $fields,
+            ]);
+        } catch (\InfluxDB\Exception $e) {
+            echo 'Logging to InfluxDB failed: ' . $e->getMessage;
+        }
+    }
+}
+
+/**
+ * @param $key string
+ * @return false|mixed
+ */
+function getFromCache(string $key)
 {
-	$filename = dirname(__FILE__).'/cache/result_'.$key.'.json';
+    $filename = dirname(__FILE__) . '/cache/result_' . $key . '.json';
 
-	if ( !file_exists($filename) )
-	{
-		return false;
-	}
-	else
-	{
-		return json_decode(file_get_contents($filename));
-	}
-
+    if (!file_exists($filename)) {
+        return false;
+    } else {
+        return json_decode(file_get_contents($filename));
+    }
 }
