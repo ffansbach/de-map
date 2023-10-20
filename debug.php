@@ -15,7 +15,7 @@ require 'config.php';
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
 		<link rel="stylesheet" href="css/site.css" />
 	</head>
-	<body>
+	<body id="debug">
 		<div class="container" style="margin-top: 20px">
 
 			<div class="jumbotron">

@@ -2,6 +2,9 @@ html{
 	height:100%;
 	overflow: hidden;
 }
+html#debug{
+	overflow: auto;
+}
 body {
 	height:100%;
 }
