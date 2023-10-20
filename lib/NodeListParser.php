@@ -417,9 +417,9 @@ class NodeListParser
 
             // check if community has delivered a nodelist
             if (in_array($cName, $this->nodelistCommunities)) {
-                $this->addCommunityMessage('skipping - we already have found a nodeList');
-                $this->addCommunityMessage('This is good! nodeLists have priority over other map types.');
-                $this->addCommunityMessage('Since we already found nodes for this community, no further search is required.');
+                $this->addCommunityMessage('├ skipping - we already have found a nodeList');
+                $this->addCommunityMessage('├ This is good! nodeLists have priority over other map types.');
+                $this->addCommunityMessage('└ Since we already found nodes for this community, no further search is required.');
                 continue;
             }
 
