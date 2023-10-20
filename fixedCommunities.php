@@ -36,22 +36,6 @@ $ff_lz->homePage = 'http://leipzig.freifunk.net/';
 $ff_lz->parser = 'Ffmap';
 $parser->addAdditional('ff_lz', $ff_lz);
 
-$ff_lp = new stdClass();
-$ff_lp->name = 'Freifunk Lippe';
-$ff_lp->nameShort = 'Lippe ';
-$ff_lp->url = 'https://map.freifunk-lippe.de/map/data/meshviewer.json';
-$ff_lp->homePage = 'http://freifunk-lippe.de/';
-$ff_lp->parser = 'Ffmap';
-$parser->addAdditional('ff_lp', $ff_lp);
-
-$ff_eb = new stdClass();
-$ff_eb->name = 'Freifunk Einbeck';
-$ff_eb->nameShort = 'Einbeck ';
-$ff_eb->url = 'http://vps643489.ovh.net/meshviewer/data/meshviewer.json';
-$ff_eb->homePage = 'https://freifunk-einbeck.de/';
-$ff_eb->parser = 'Ffmap';
-$parser->addAdditional('ff_eb', $ff_eb);
-
 $ff_en = new stdClass();
 $ff_en->name = 'Freifunk Ennepetal';
 $ff_en->nameShort = 'Ennepetal';
@@ -60,7 +44,7 @@ $ff_en->homePage = 'https://freifunk-en.de/';
 $ff_en->parser = 'Ffmap';
 $parser->addAdditional('ff_en', $ff_en);
 
-foreach (range(1, 4) as $index) {
+foreach (range(1, 11) as $index) {
     ${'ff_gt_'.$index} = new stdClass();
     ${'ff_gt_'.$index}->name = 'Freifunk Kreis GT '.$index;
     ${'ff_gt_'.$index}->nameShort = 'Gütersloh'.$index;
@@ -70,14 +54,6 @@ foreach (range(1, 4) as $index) {
     $parser->addAdditional('ff_gt_'.$index, ${'ff_gt_'.$index});
 }
 
-$ff_goettingen = new stdClass();
-$ff_goettingen->name = 'Freifunk Göttingen';
-$ff_goettingen->nameShort = 'Göttingen';
-$ff_goettingen->url = 'https://cccgoe.de/map2data/nodes.json';
-$ff_goettingen->homePage = 'http://freifunk-goettingen.de';
-$ff_goettingen->parser = 'Ffmap';
-$parser->addAdditional('ff_goettingen', $ff_goettingen);
-
 $ff_weimar = new stdClass();
 $ff_weimar->name = 'Freifunk Weimar';
 $ff_weimar->nameShort = 'Weimar';
@@ -85,14 +61,6 @@ $ff_weimar->url = 'https://hopglass.weimarnetz.de/data/nodes.json';
 $ff_weimar->homePage = 'https://weimarnetz.de/';
 $ff_weimar->parser = 'Ffmap';
 $parser->addAdditional('ff_weimar', $ff_weimar);
-
-$ff_chemnitz2 = new stdClass();
-$ff_chemnitz2->name = 'Freifunk Chemnitz';
-$ff_chemnitz2->nameShort = 'Chemnitz';
-$ff_chemnitz2->url = 'https://gianotti.routers.chemnitz.freifunk.net/nodelist.json';
-$ff_chemnitz2->homePage = 'https://www.chemnitz.freifunk.net/';
-$ff_chemnitz2->parser = 'nodelist';
-$parser->addAdditional('ff_chemnitz2', $ff_chemnitz2);
 
 $ff_kbumland = new stdClass();
 $ff_kbumland->name = 'Freifunk KoelnBonnUmland';
@@ -109,3 +77,70 @@ $ff_euskirchen->url = 'https://map.kbu.freifunk.net/data/ffeu/meshviewer.json';
 $ff_euskirchen->homePage = 'https://ffeu.de/';
 $ff_euskirchen->parser = 'Ffmap';
 $parser->addAdditional('ff_euskirchen', $ff_euskirchen);
+
+$ff_nordwest = new stdClass();
+$ff_nordwest->name = 'Freifunk Nordwest';
+$ff_nordwest->nameShort = 'Nordwest';
+$ff_nordwest->url = 'https://map.ffnw.de/data/meshviewer.json';
+$ff_nordwest->homePage = 'https://ffnw.de/';
+$ff_nordwest->parser = 'Ffmap';
+$parser->addAdditional('ff_nordwest', $ff_nordwest);
+
+
+$ff_ansbach = new stdClass();
+$ff_ansbach->name = 'Freifunk Ansbach';
+$ff_ansbach->nameShort = 'Ansbach';
+$ff_ansbach->url = 'https://karte.freifunk-ansbach.de/data/nodelist.json';
+$ff_ansbach->homePage = 'http://www.freifunk-ansbach.de';
+$ff_ansbach->parser = 'nodelist';
+$parser->addAdditional('ff_ansbach', $ff_ansbach);
+
+$ff_emskirchen = new stdClass();
+$ff_emskirchen->name = 'Freifunk Emskirchen';
+$ff_emskirchen->nameShort = 'Emskirchen';
+$ff_emskirchen->url = 'https://karte.freifunk-emskirchen.de/data/nodelist.json';
+$ff_emskirchen->homePage = 'http://www.freifunk-emskirchen.de';
+$ff_emskirchen->parser = 'nodelist';
+$parser->addAdditional('ff_emskirchen', $ff_emskirchen);
+
+$ff_heilsbronn = new stdClass();
+$ff_heilsbronn->name = 'Freifunk Heilsbronn';
+$ff_heilsbronn->nameShort = 'Heilsbronn';
+$ff_heilsbronn->url = 'https://karte.freifunk-heilsbronn.de/data/nodelist.json';
+$ff_heilsbronn->homePage = 'http://www.freifunk-heilsbronn.de';
+$ff_heilsbronn->parser = 'nodelist';
+$parser->addAdditional('ff_heilsbronn', $ff_heilsbronn);
+
+$ff_neuendettelsau = new stdClass();
+$ff_neuendettelsau->name = 'Freifunk Neuendettelsau';
+$ff_neuendettelsau->nameShort = 'Neuendettelsau';
+$ff_neuendettelsau->url = 'https://karte.freifunk-neuendettelsau.de/data/nodelist.json';
+$ff_neuendettelsau->homePage = 'http://www.freifunk-neuendettelsau.de';
+$ff_neuendettelsau->parser = 'nodelist';
+$parser->addAdditional('ff_neuendettelsau', $ff_neuendettelsau);
+
+$ff_nea = new stdClass();
+$ff_nea->name = 'Freifunk Neustadt Aisch';
+$ff_nea->nameShort = 'NEA';
+$ff_nea->url = 'https://karte.freifunk-neustadt-aisch.de/data/nodelist.json';
+$ff_nea->homePage = 'http://www.freifunk-neustadt-aisch.de';
+$ff_nea->parser = 'nodelist';
+$parser->addAdditional('ff_nea', $ff_nea);
+
+
+$ff_goett = new stdClass();
+$ff_goett->name = 'Freifunk Göttingen';
+$ff_goett->nameShort = 'Göttingen';
+$ff_goett->url = 'https://map.cccgoe.de/data/meshviewer.json';
+$ff_goett->homePage = 'https://map.cccgoe.de/';
+$ff_goett->parser = 'Ffmap';
+$parser->addAdditional('ff_goett', $ff_goett);
+
+
+$ff_lippe = new stdClass();
+$ff_lippe->name = 'Freifunk Lippe';
+$ff_lippe->nameShort = 'Lippe';
+$ff_lippe->url = 'https://map.freifunk-lippe.de/map/data/meshviewer.json';
+$ff_lippe->homePage = 'https://map.freifunk-lippe.de/';
+$ff_lippe->parser = 'Ffmap';
+$parser->addAdditional('ff_lippe', $ff_lippe);
