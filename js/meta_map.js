@@ -214,9 +214,10 @@ function addPoints2Map(data)
 
 	// prepare heatmap overlay
 	var heatmapLayer = new HeatmapOverlay({
-		"radius": 30,
+		"radius": 18,
+		"maxOpacity": .8,
 		"scaleRadius": false,
-		"useLocalExtrema": false
+		"useLocalExtrema": true
 	});
 	var heatMapData = [];
 
