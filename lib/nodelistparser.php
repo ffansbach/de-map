@@ -466,7 +466,7 @@ class nodeListParser
 					{
 						// found something
 						$parsedSources[] = $url;
-						break;
+						// don't break here to enable more than one active map
 					}
 				}
 				else
@@ -781,7 +781,7 @@ class nodeListParser
 		if(in_array($comUrl, $this->_urlBlackList))
 		{
 			$this->_addCommunityMessage($comUrl.' is blacklisted - skipping');
-			return false;	
+			return false;
 		}
 
 		$result = simpleCachedCurl($comUrl, $this->_curlCacheTime, $this->_debug);
