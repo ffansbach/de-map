@@ -38,6 +38,9 @@ if (isset($_REQUEST[$forceReparseKey])) {
     require 'lib/jsv4/Jsv4.php';
     require 'lib/log.php';
 
+    $healthCheck = new HealthCheck($healtcheckIdentifier);
+    $healthCheck->pingRuntimeStart();
+
     $apiUrl = 'https://raw.githubusercontent.com/freifunk/directory.api.freifunk.net/master/directory.json';
 
     $cachePath = dirname(__FILE__) . '/cache/';
@@ -66,6 +69,8 @@ if (isset($_REQUEST[$forceReparseKey])) {
         $log = new log($db);
         $log->add(sizeof($parseResult['routerList']));
     }
+
+    $healthCheck->ping();
 } else {
     // fetch cached result - the shortcut
     $response = array(
