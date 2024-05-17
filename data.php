@@ -53,6 +53,10 @@ if (isset($_REQUEST[$forceReparseKey])) {
     $parser->setCommunityDebug($communityDebug);
     $parser->setCachePath($cachePath);
     $parser->setSource($apiUrl);
+    $parser->setSkipCommunities([
+        'ansbach', 'badgandersheim', 'brandenburg', 'emskirchen', 'goettingen', 'heilsbronn', 'lueneburg', 'neuendettelsau',
+        'neustadt-aisch', 'niersufer', 'recklinghausen'
+    ]);
 
     require 'fixedCommunities.php';
 

@@ -28,6 +28,8 @@ class NodeListParser
     private array $communityList = array();
 
     private $logFile = null;
+
+    private $skipCommunities = array();
     private $parserNodeList;
 
     private array $parseStatistics = array(
@@ -86,6 +88,14 @@ class NodeListParser
         if (!empty($this->logFile)) {
             fclose($this->logFile);
         }
+    }
+
+    /**
+     * @param array $skipCommunities
+     */
+    public function setSkipCommunities (array $skipCommunities)
+    {
+        $this->skipCommunities = $skipCommunities;
     }
 
     /**
@@ -408,6 +418,7 @@ class NodeListParser
         $countIndex = 0;
 
         foreach ($communityList as $cName => $cUrl) {
+            $communityTime = microtime(true);
             $countIndex++;
             $this->log('Step 2 of 3 - ' . $countIndex . ' / ' . $totalCommunityCount, false);
             $this->log('parsing ' . $cName . " " . $cUrl);
@@ -421,6 +432,12 @@ class NodeListParser
                 $this->addCommunityMessage('├ skipping - we already have found a nodeList');
                 $this->addCommunityMessage('├ This is good! nodeLists have priority over other map types.');
                 $this->addCommunityMessage('└ Since we already found nodes for this community, no further search is required.');
+                continue;
+            }
+
+            if (in_array($cName, $this->skipCommunities)) {
+                $this->addCommunityMessage('!!! Skipping this community because it continued to deliver no data but caused long loading times.');
+                $this->log('skipping ' . $cName);
                 continue;
             }
 
@@ -554,6 +571,14 @@ class NodeListParser
                 $this->addCommunityMessage('└ no parsable nodeMap found');
             } else {
                 $this->addCommunityMessage('└ parse nodeMap done');
+            }
+
+
+            $communityTime = microtime(true) - $communityTime;
+            $this->addCommunityMessage('time used: '.round($communityTime, 1).'s');
+
+            if($communityTime > 10) {
+                $this->addCommunityMessage('red flag');
             }
         }
 
