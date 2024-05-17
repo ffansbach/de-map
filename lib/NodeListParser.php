@@ -28,6 +28,7 @@ class NodeListParser
     private array $communityList = array();
 
     private $logFile = null;
+    private $parserNodeList;
 
     private array $parseStatistics = array(
         'errorCommunities' => array()
