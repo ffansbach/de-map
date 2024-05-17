@@ -5,6 +5,7 @@ use http\Exception\InvalidArgumentException;
 use InfluxDB\Database;
 use InfluxDB\Client;
 use InfluxDB\Point;
+use InfluxDB2;
 
 class InfluxLog
 {
@@ -14,22 +15,50 @@ class InfluxLog
     protected $dataBase;
 
     /**
+     * @var InfluxDB2\Client
+     */
+    protected $client;
+
+    /**
+     * @var InfluxDB2\WriteApi
+     */
+    protected $writeApi;
+
+    /**
+     * @var string
+     */
+    protected $bucket;
+
+    /**
+     * @var string
+     */
+    protected $org;
+
+    /**
      * InfluxLog constructor.
      * @param string $host
      * @param string $port
-     * @param string $user
-     * @param string $password
-     * @param string $dbName
+     * @param string $token
+     * @param string $bucket
      */
     public function __construct(
         string $host,
         string $port,
-        string $user,
-        string $password,
-        string $dbName
+        string $token,
+        string $bucket,
+        string $org
     ) {
-        $connectString = sprintf('influxdb://%s:%s@%s:%s/%s', $user, $password, $host, $port, $dbName);
-        $this->dataBase = $database = Client::fromDSN($connectString);
+        $this->client = new InfluxDB2\Client([
+            "url" => $host.":".$port, // url and port of your instance
+            "token" => $token,
+            "bucket" => $bucket,
+            "org" => $org,
+            "precision" => InfluxDB2\Model\WritePrecision::NS,
+        ]);
+
+        $this->writeApi = $this->client->createWriteApi();
+        $this->bucket = $bucket;
+        $this->org = $org;
     }
 
     /**
@@ -49,15 +78,14 @@ class InfluxLog
         $tags = isset($data['tags']) && is_array($data['tags']) ? $data['tags'] : [];
         $fields = isset($data['fields']) && is_array($data['fields']) ? $data['fields'] : [];
 
-        $points = [
-            new Point(
-                $measurementName,
-                $data['value'],
-                $tags,
-                $fields,
-            ),
-        ];
+        $dataArray = [
+            'name' => $measurementName,
+            'tags' => $tags,
+            'fields' => $fields,
+            'time' => microtime(true)];
 
-        return $this->dataBase->writePoints($points, Database::PRECISION_SECONDS);
+        $this->writeApi->write($dataArray, InfluxDB2\Model\WritePrecision::S, $this->bucket, $this->org);
+
+        return true;
     }
 }

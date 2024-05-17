@@ -116,12 +116,13 @@ if (isset($_REQUEST['upload'])
         $influxLog = new InfluxLog(
             $influxDB['host'],
             $influxDB['port'],
-            $influxDB['user'],
-            $influxDB['password'],
-            $influxDB['dbName'],
+            $influxDB['token'],
+            $influxDB['bucket'],
+            $influxDB['org'],
         );
 
         $fields = [
+            'routers' => (int)$response['allTheRouters'],
             'communities' => (int)$response['communities'],
             'parse_time' => (int)$parseTime,
             'upload_time' => (int)round($uploadTime),
@@ -136,7 +137,7 @@ if (isset($_REQUEST['upload'])
                 'value' => (int)$response['allTheRouters'],
                 'fields' => $fields,
             ]);
-        } catch (\InfluxDB\Exception $e) {
+        } catch (\InfluxDB2\Exception $e) {
             echo 'Logging to InfluxDB failed: ' . $e->getMessage;
         }
     }
