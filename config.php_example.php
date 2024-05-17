@@ -6,7 +6,7 @@
 $forceReparseKey = 'a_key_to_prevent_everyone_from_calling_data.php?reparse';
 $setDataLogPointToken = 'key/token for log_to_db,php';
 
-$environment = 'dev';
+$environment = 'dev'; //for logging purpose . ie InfluxDB
 
 $tileServerUrl = 'http://{s}.tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png';
 $tileServerAttribution = '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>';
@@ -41,6 +41,16 @@ $influxDB = [
     'dbName' => 'freifunk_karte',
     'user' => 'influx user',
     'password' => 'influx pass',
+
+    'add_tag_env' => $environment,
+];
+
+$influxDB = [
+    'host' => 'your influxdb host',
+    'port' => '8086',
+    'org' => 'your org',
+    'token' => '...',
+    'bucket' => 'freifunk_karte',
 
     'add_tag_env' => $environment,
 ];
