@@ -115,6 +115,9 @@ Working rules: one step at a time, report after each, separate focused commits.
 | 2026-10-29 | The admin UI is read-only, server-rendered HTML with inline CSS and inline SVG charts, no JavaScript and no build step; it answers GET and HEAD only, and the database connection is `query_only` | Nothing on it can change the history or the map; nothing to maintain beyond PHP. |
 | 2026-10-29 | The admin UI fails closed: with a password hash configured it needs HTTP Basic login, without one it only answers requests from the machine itself; `admin:serve` refuses a non-local address without a password | An internal tool must not become public by forgetting a setting. |
 | 2026-10-29 | No "run now" button | Starting a long job from a web request needs queueing, locking and a stronger login than Basic auth; cron does the job. Can be added later if wanted. |
+| 2026-10-29 | Discovery reads the `dataPath` a map page carries inline (no config.json) and tries `meshviewer.json` as well as `nodes.json` in every data directory; relative paths are resolved against the page | Found with the real maps that delivered no data: the Rhein-Sieg server (16 data files named in its page) and Berlin (`config.json` -> `meshviewer.json`, 576 nodes that were invisible). Lists that live in the page stay current by themselves. |
+| 2026-10-29 | A map server that carries the data of many communities is handled by assignment rules (`config/source-assignments.json`: URL prefix -> community, optional backfill), not by fixed communities | Fixed communities would add 15 entries to the community list; assignment attributes the nodes to the communities that already exist. Only the label in the tooltip is affected, positions are not. |
+| 2026-10-29 | Broad all-in-one data files are marked `backfill` and added after every specific source | A node that a specific source has must not be attributed by the broad file just because it was listed first. |
 | 2026-10-29 | Legacy behaviour is pinned with golden files and edge-case tests (`tests/Legacy`) before anything is rewritten; bugs are tested as they are, marked `LEGACY BUG`, and flipped when fixed | A rewrite is only verifiable against recorded behaviour; deleting a bug test would hide the intended change. |
 | 2026-10-29 | `StandardWorld` (reference scenario) is reused to compare the new pipeline with the legacy one in steps 4/5 | Same input, two implementations, diff the result. |
 | 2026-10-29 | Source audit and fixtures are part of the CLI (`bin/parser sources:audit`, `fixtures:build`), not one-off scripts | Re-runnable; fixtures are reproducible and anonymised by whitelist. |
@@ -277,7 +280,7 @@ bin/parser run --out=DIR
 bin/parser compare OLD_DIR NEW_DIR      diff two result directories by what is on the map
 ```
 
-Config in `config/`: `skipped-communities.json` (empty), `insecure-hosts.json` (hosts with a broken certificate, fetched unverified; empty), `metacommunities.json` (link overrides). State in `--cache-dir` (default `var/cache`): `sources.json`, `last-good/`.
+Config in `config/`: `skipped-communities.json` (empty), `insecure-hosts.json` (hosts with a broken certificate, fetched unverified; empty), `metacommunities.json` (link overrides), `source-assignments.json` (which community the nodes of a shared map server belong to, see "Shared map servers" below). State in `--cache-dir` (default `var/cache`): `sources.json`, `last-good/`.
 
 ### Measured against the live network (2026-10-29, dev machine, same minute-scale window)
 
@@ -320,6 +323,18 @@ bin/parser run --out=/srv/ffkarte-new --cache-dir=/srv/ffkarte-state -v
 bin/parser compare cache /srv/ffkarte-new      # cache/ is where the legacy parser writes
 ```
 The legacy cron keeps running untouched; `--out` is a separate directory, nothing live is replaced. Run it a few times over a day: the second run uses what the first learned. Things to look at in `compare`: communities that lose nodes (should only be the explained kinds above), `result_statistics.json` → `staleSince` and `outcome: no-data`.
+
+### Shared map servers (Rhein-Sieg) and the discovery fixes
+The live "page but no data" list (section 13) led to three fixes in the discovery and one new concept:
+
+- **Inline `dataPath`:** a map page can carry its configuration in a script (`dataPath: ["/data/a/", ...]`) instead of a `config.json`. `Discovery::inlineDataPaths()` reads it (strictly: only path-like strings, at most 100).
+- **`meshviewer.json`:** every data directory is tried as `meshviewer.json` and `nodes.json`; the first that has nodes is used (the two are the same data).
+- **Relative paths** are resolved against the page like a browser would.
+- **Assignment rules** (`config/source-assignments.json`, `[{"prefix": "map.example.org/data/siegburg", "community": "siegburg", "backfill": false}]`): the prefix is matched against the data URL without scheme, first rule wins; a URL without a rule belongs to the community whose map led to it. `backfill: true` sources are added after all others and only fill what is missing. A rule pointing at a community that is not listed is ignored with a note. A community whose map has data that belongs to others is reported `ok` with zero nodes and says where its data went (not "no data").
+
+What the real Rhein-Sieg data looks like (checked 2026-10-29): the page names 16 files, 15 have nodes. `tdf/all` is **not** the union of the others (it shares no nodes with the group files; it is the Troisdorf instance with domains `tdf`, `inn`, `flu`); only `rsk/unifi` overlaps it, by 55 nodes. The group files are gateway groups, not communities: `lohmar1/domain01` holds Porz and Rheinbach nodes (node field `domain` = `lo-prz`, `lo-rhb`), `niederkassel1/domain03` Sankt Augustin, `domain04` Altenkirchen. File-level assignment is therefore approximate; the `domain` of each node would be exact (possible refinement, not done: it only changes the group label in the tooltip). Shipped rules: `siegburg*`, `lohmar*`, `niederkassel*` to those communities, `voreifel*` to `meckenheim` (a guess; the file is empty today), `tdf/` and `rsk/` to `troisdorf` as backfill.
+
+Live result (same day): 26,374 nodes against 24,941 before the fixes. Berlin +576 (`map.berlin.freifunk.net/meshviewer.json`), Troisdorf +292, Lohmar +108, Siegburg +75, Niederkassel +64, Weimarnetz +97 (`hopglass.weimarnetz.de/meshviewer.json`); communities with nodes 269 -> 283, maps without data 67 -> 53. Still without data (no embedded list, other technology): Leipzig, the Siegburg host, Saarland, Rheinbach, and the openwifimap pages.
 
 ### Not done (and why)
 - Upload of the result files: still FTP via the legacy code (step 8 replaces it).
