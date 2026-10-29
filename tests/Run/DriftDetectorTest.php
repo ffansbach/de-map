@@ -95,6 +95,19 @@ final class DriftDetectorTest extends TestCase
         $this->assertStringContainsString('has not been seen before', $events[0]->message);
     }
 
+    public function testTheMessageAboutANewTypeStaysShortButTheDetailsAreComplete(): void
+    {
+        $keys = array_map(static fn (int $i): string => 'c' . $i, range(1, 12));
+        $events = $this->detect(
+            array_map(static fn (string $key): CommunityReport => self::now($key, types: ['yanic-v3']), $keys),
+            array_map(static fn (string $key): StoredCommunity => self::before($key), $keys),
+            ['nodelist'],
+        );
+
+        $this->assertSame('Technical type "yanic-v3" has not been seen before (used by c1, c2, c3, c4, c5 and 7 more)', $events[0]->message);
+        $this->assertSame($keys, $events[0]->details['communities']);
+    }
+
     public function testTheFormatOfAWorkingSourceChanging(): void
     {
         $events = $this->detect([self::now('a', format: 'meshviewer_flat')], [self::before('a', format: 'nodeinfo')]);

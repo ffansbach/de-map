@@ -113,7 +113,7 @@ final class DriftDetector
                 DriftEvent::NEW_TYPE,
                 DriftEvent::WARNING,
                 (string) $type,
-                sprintf('Technical type "%s" has not been seen before (used by %s)', $type, implode(', ', $communities)),
+                sprintf('Technical type "%s" has not been seen before (used by %s)', $type, $this->shortList($communities)),
                 ['communities' => $communities],
             );
         }
@@ -217,6 +217,16 @@ final class DriftDetector
         }
 
         return false;
+    }
+
+    /**
+     * @param list<string> $items
+     */
+    private function shortList(array $items, int $shown = 5): string
+    {
+        return count($items) <= $shown
+            ? implode(', ', $items)
+            : implode(', ', array_slice($items, 0, $shown)) . sprintf(' and %d more', count($items) - $shown);
     }
 
     /**
