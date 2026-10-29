@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace FreifunkKarte\Tests\Audit;
+namespace FreifunkKarte\Tests\Http;
 
-use FreifunkKarte\Audit\ParallelFetcher;
+use FreifunkKarte\Http\ParallelFetcher;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
@@ -137,5 +137,16 @@ final class ParallelFetcherTest extends TestCase
         $this->assertNull($results[$url]->status);
         $this->assertStringStartsWith('response larger than ', (string) $results[$url]->error);
         $this->assertCount(1, $this->history);
+    }
+
+    public function testRequestsAreSpreadAcrossHosts(): void
+    {
+        $fetcher = $this->fetcher([new Response(200), new Response(200), new Response(200), new Response(200)]);
+
+        $fetcher->fetch(['https://a.test/1', 'https://a.test/2', 'https://a.test/3', 'https://b.test/1'], static function (): void {
+        });
+
+        $sent = array_map(fn (int $i): string => (string) $this->sent($i)['request']->getUri(), [0, 1, 2, 3]);
+        $this->assertSame(['https://a.test/1', 'https://b.test/1', 'https://a.test/2', 'https://a.test/3'], $sent);
     }
 }

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace FreifunkKarte\Tests\Audit;
 
 use FreifunkKarte\Audit\FormatDetector;
-use FreifunkKarte\Audit\ParallelFetcher;
 use FreifunkKarte\Audit\SourceAuditor;
+use FreifunkKarte\Http\ParallelFetcher;
 use GuzzleHttp\Client;
 use GuzzleHttp\Promise\Create;
 use GuzzleHttp\Psr7\Response;

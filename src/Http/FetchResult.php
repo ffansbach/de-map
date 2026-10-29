@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FreifunkKarte\Audit;
+namespace FreifunkKarte\Http;
 
 final readonly class FetchResult
 {

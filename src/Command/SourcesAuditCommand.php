@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace FreifunkKarte\Command;
 
 use FreifunkKarte\Audit\FormatDetector;
-use FreifunkKarte\Audit\ParallelFetcher;
 use FreifunkKarte\Audit\SourceAuditor;
+use FreifunkKarte\Http\ParallelFetcher;
 use GuzzleHttp\Client;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;

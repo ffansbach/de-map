@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace FreifunkKarte\Audit;
 
+use FreifunkKarte\Http\FetchResult;
+use FreifunkKarte\Http\ParallelFetcher;
 use RuntimeException;
 
 /**

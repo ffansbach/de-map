@@ -5,6 +5,7 @@ parameters:
         - src
         - bin
         - tests/Audit
+        - tests/Http
         - tests/Legacy
         - tests/Parser
         - tests/Model

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FreifunkKarte\Audit;
+namespace FreifunkKarte\Http;
 
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\ConnectException;
@@ -39,7 +39,7 @@ final class ParallelFetcher
      */
     public function fetch(array $urls, callable $onBody): array
     {
-        $urls = array_values(array_unique($urls));
+        $urls = $this->spreadAcrossHosts(array_values(array_unique($urls)));
         $results = $this->pass($urls, true, $onBody);
 
         $tlsFailed = array_keys(array_filter(
@@ -74,7 +74,7 @@ final class ParallelFetcher
                     'timeout' => $this->timeout,
                     'connect_timeout' => $this->connectTimeout,
                     'allow_redirects' => ['max' => 3, 'protocols' => ['http', 'https']],
-                    'headers' => ['User-Agent' => 'freifunk-karte source audit (+https://www.freifunk-karte.de/)'],
+                    'headers' => ['User-Agent' => 'freifunk-karte parser (+https://www.freifunk-karte.de/)'],
                     // returning non-zero aborts only this transfer (throwing would abort all running ones)
                     'curl' => [
                         CURLOPT_NOPROGRESS => false,
@@ -119,6 +119,38 @@ final class ParallelFetcher
         $pool->promise()->wait();
 
         return $results;
+    }
+
+    /**
+     * Many maps live on one host (a community with 13 maps). Taking the URLs round-robin by host
+     * keeps the concurrent requests from piling up on a single server.
+     *
+     * @param list<string> $urls
+     * @return list<string>
+     */
+    private function spreadAcrossHosts(array $urls): array
+    {
+        $byHost = [];
+
+        foreach ($urls as $url) {
+            $byHost[(string) parse_url($url, PHP_URL_HOST)][] = $url;
+        }
+
+        $spread = [];
+
+        while ($byHost !== []) {
+            foreach ($byHost as $host => $queue) {
+                $spread[] = array_shift($queue);
+
+                if ($queue === []) {
+                    unset($byHost[$host]);
+                } else {
+                    $byHost[$host] = $queue;
+                }
+            }
+        }
+
+        return $spread;
     }
 
     /**
