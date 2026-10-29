@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace ffmap;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class CommunityDebugTest extends TestCase
@@ -13,11 +16,11 @@ final class CommunityDebugTest extends TestCase
     }
 
     /**
-     * @dataProvider addMessageProvider
      * @param array $messages
      * @param array $communityData
      * @param array $expected
      */
+    #[DataProvider('addMessageProvider')]
     public function testAddMessage(array $messages, array $communityData, array $expected)
     {
         $subject = new CommunityDebug();
@@ -32,7 +35,7 @@ final class CommunityDebugTest extends TestCase
     /**
      * @return array[]
      */
-    public function addMessageProvider() : array
+    public static function addMessageProvider(): array
     {
         $communityData1 = [
             'name' => 'my town',
@@ -46,7 +49,7 @@ final class CommunityDebugTest extends TestCase
 
         return [
             'single message 1' => [
-                'message' => ['test'],
+                'messages' => ['test'],
                 'communityData' => $communityData1,
                 'expected' => ['my town' => [
                     'name' => 'my town',
@@ -55,7 +58,7 @@ final class CommunityDebugTest extends TestCase
                 ]],
             ],
             'single message 2' => [
-                'message' => ['all went well'],
+                'messages' => ['all went well'],
                 'communityData' => $communityData1,
                 'expected' => ['my town' => [
                     'name' => 'my town',
@@ -64,7 +67,7 @@ final class CommunityDebugTest extends TestCase
                 ]],
             ],
             'single message 2 alternative' => [
-                'message' => ['all went well'],
+                'messages' => ['all went well'],
                 'communityData' => $communityData2,
                 'expected' => ['my city' => [
                     'name' => 'my city',
@@ -73,10 +76,10 @@ final class CommunityDebugTest extends TestCase
                 ]],
             ],
             'multiple messages' => [
-                'message' => [
+                'messages' => [
                     'test',
                     'another line of information',
-                    'this went well'
+                    'this went well',
                 ],
                 'communityData' => $communityData1,
                 'expected' => ['my town' => [
@@ -85,7 +88,7 @@ final class CommunityDebugTest extends TestCase
                     'message' => [
                         'test',
                         'another line of information',
-                        'this went well'
+                        'this went well',
                     ],
                 ]],
             ],
@@ -93,11 +96,11 @@ final class CommunityDebugTest extends TestCase
     }
 
     /**
-     * @dataProvider addBasicLogInfoProvider
      * @param array $community
      * @param array $communityData
      * @param array $expected
      */
+    #[DataProvider('addBasicLogInfoProvider')]
     public function testAddBasicLogInfo(object $community, array $communityData, array $expected)
     {
         $subject = new CommunityDebug();
@@ -109,7 +112,7 @@ final class CommunityDebugTest extends TestCase
     /**
      * @return array[]
      */
-    public function addBasicLogInfoProvider() : array
+    public static function addBasicLogInfoProvider(): array
     {
         $communityData1 = [
             'name' => 'my town',
@@ -164,7 +167,7 @@ final class CommunityDebugTest extends TestCase
                 'communityData' => $communityData1,
                 'expected' => ['my town' => [
                     'metacommunity' => 'mittelfranken',
-                    'claimed_nodecount' => false
+                    'claimed_nodecount' => false,
                 ]],
             ],
             'all' => [
@@ -177,7 +180,7 @@ final class CommunityDebugTest extends TestCase
                 'communityData' => $communityData1,
                 'expected' => ['my town' => [
                     'metacommunity' => 'Berlin',
-                    'claimed_nodecount' => 123
+                    'claimed_nodecount' => 123,
                 ]],
             ],
         ];

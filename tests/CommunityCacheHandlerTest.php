@@ -1,78 +1,68 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace ffmap;
 
 use DateTime;
-use Exception;
-use Lukaswhite\Directory\Directory as DirectoryAlias;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class CommunityCacheHandlerTest extends TestCase
 {
-    /**
-     * @var string
-     */
-    protected string $cacheDirPath = '../cache_test';
+    protected string $cacheDirPath;
 
-    protected DirectoryAlias $cacheDirectory;
+    protected string $communitiesDirPath;
 
-    /**
-     * @throws Exception
-     */
-    protected function setUp() : void
+    protected function setUp(): void
     {
-        $parent = new DirectoryAlias($this->cacheDirPath);
-
-        if ($parent->exists()) {
-            throw new Exception('Directory "'.$this->cacheDirPath.'" already exists');
-        }
-
-        $parent->create();
-
-        $this->cacheDirectory = new DirectoryAlias($this->cacheDirPath.'/communities');
-        $this->cacheDirectory->create();
+        $this->cacheDirPath = sys_get_temp_dir() . '/ffmap_cache_test_' . bin2hex(random_bytes(6));
+        $this->communitiesDirPath = $this->cacheDirPath . '/communities';
+        mkdir($this->communitiesDirPath, 0777, true);
     }
 
     /**
      * While we do not have a mocked file-system, remove the test-directory again.
-     *
-     * @return void
      */
-    protected function tearDown() : void
+    protected function tearDown(): void
     {
-        $parent = new DirectoryAlias($this->cacheDirPath);
-        $parent->delete();
+        foreach (glob($this->communitiesDirPath . '/*') ?: [] as $file) {
+            unlink($file);
+        }
+
+        rmdir($this->communitiesDirPath);
+        rmdir($this->cacheDirPath);
     }
 
     /**
      * We should get a false in cases where the cache does not exist.
      */
-    public function testReadCacheNotExisting() : void
+    public function testReadCacheNotExisting(): void
     {
         $subject = new CommunityCacheHandler($this->cacheDirPath);
 
         $this->assertFalse($subject->readCache(
             'berlin',
             'communityFile',
-            '-1 day'
+            '-1 day',
         ));
     }
 
     /**
-     * @dataProvider readCacheExistingProvider
      * @param string $cacheContent
      * @param bool $expectedSuccess
      * @param object $expected
      */
-    public function testReadCacheExisting(string $cacheContent, bool $expectedSuccess, object $expected) : void
+    #[DataProvider('readCacheExistingProvider')]
+    public function testReadCacheExisting(string $cacheContent, bool $expectedSuccess, object $expected): void
     {
-        $this->cacheDirectory->createFile('c_berlin.json', $cacheContent);
+        file_put_contents($this->communitiesDirPath . '/c_berlin.json', $cacheContent);
         $subject = new CommunityCacheHandler($this->cacheDirPath);
 
         $result = $subject->readCache(
             'berlin',
             'communityFile',
-            '-1 day'
+            '-1 day',
         );
 
         if (!$expectedSuccess) {
@@ -86,7 +76,7 @@ final class CommunityCacheHandlerTest extends TestCase
     /**
      * @return array[]
      */
-    public function readCacheExistingProvider(): array
+    public static function readCacheExistingProvider(): array
     {
         $now = new DateTime();
         $nowTS = $now->format(DateTime::ATOM);
@@ -103,7 +93,7 @@ final class CommunityCacheHandlerTest extends TestCase
             'valid and cacheHit 2' => [
                 '{"communityFile": {"updated": "'.$nowTS.'","content": {"name": "Berlin", "metacommunity":"Berlin"}}}',
                 true,
-                (object) ['name' => 'Berlin', "metacommunity" => "Berlin"],
+                (object) ['name' => 'Berlin', 'metacommunity' => 'Berlin'],
             ],
             'json is broken' => [
                 '{"faulty json',
@@ -131,7 +121,6 @@ final class CommunityCacheHandlerTest extends TestCase
     }
 
     /**
-     * @dataProvider storeCacheProvider
      * @param string $communityKey
      * @param string $entryKey
      * @param object $data
@@ -139,15 +128,16 @@ final class CommunityCacheHandlerTest extends TestCase
      * @param string $prefill
      * @throws Exception
      */
+    #[DataProvider('storeCacheProvider')]
     public function testStoreCache(
         string $communityKey,
         string $entryKey,
         object $data,
         object $expected,
-        string $prefill = ''
+        string $prefill = '',
     ) {
         if ($prefill != '') {
-            $this->cacheDirectory->createFile('c_'.$communityKey.'.json', $prefill);
+            file_put_contents($this->communitiesDirPath . '/c_' . $communityKey . '.json', $prefill);
         }
 
         $subject = new CommunityCacheHandler($this->cacheDirPath);
@@ -164,7 +154,7 @@ final class CommunityCacheHandlerTest extends TestCase
         $expectedDateTime =  new \DateTime($expected->$entryKey->updated);
         $expectedTS = $expectedDateTime->getTimestamp();
         // is between -1 and +1 of expected TS
-        $this->assertTrue(($storedTS >= ($expectedTS-1) && $storedTS <= ($expectedTS+1)));
+        $this->assertTrue(($storedTS >= ($expectedTS - 1) && $storedTS <= ($expectedTS + 1)));
 
         $actualContent->$entryKey->updated = 'checked';
         $expected->$entryKey->updated = 'checked';
@@ -174,7 +164,7 @@ final class CommunityCacheHandlerTest extends TestCase
     /**
      * @return array[]
      */
-    public function storeCacheProvider(): array
+    public static function storeCacheProvider(): array
     {
         $now = new DateTime();
         $nowTS = $now->format(DateTime::ATOM);
@@ -188,10 +178,10 @@ final class CommunityCacheHandlerTest extends TestCase
                     'communityFile' => (object) [
                         'updated' => $nowTS,
                         'content' => (object) [
-                            'foo' => 'bar'
-                        ]
-                    ]
-                ]
+                            'foo' => 'bar',
+                        ],
+                    ],
+                ],
             ],
             'trivial case 2' => [
                 'munich',
@@ -202,10 +192,10 @@ final class CommunityCacheHandlerTest extends TestCase
                         'updated' => $nowTS,
                         'content' => (object) [
                             'foo' => 'bar',
-                            'dog' => 'wuf'
-                        ]
-                    ]
-                ]
+                            'dog' => 'wuf',
+                        ],
+                    ],
+                ],
             ],
             'data already exists' => [
                 'munich',
@@ -216,12 +206,12 @@ final class CommunityCacheHandlerTest extends TestCase
                         'updated' => $nowTS,
                         'content' => (object) [
                             'foo' => 'bar',
-                            'dog' => 'wuf'
-                        ]
+                            'dog' => 'wuf',
+                        ],
                     ],
                     'otherData' => (object) [
-                        "cat" => "meow"
-                    ]
+                        'cat' => 'meow',
+                    ],
                 ],
                 '{"otherData": {"cat": "meow"}}',
             ],
@@ -234,8 +224,8 @@ final class CommunityCacheHandlerTest extends TestCase
                         'updated' => $nowTS,
                         'content' => (object) [
                             'foo' => 'bar',
-                            'dog' => 'wuf'
-                        ]
+                            'dog' => 'wuf',
+                        ],
                     ],
                 ],
                 '{"otherData": {"cat": ',
@@ -249,13 +239,13 @@ final class CommunityCacheHandlerTest extends TestCase
                         'updated' => $nowTS,
                         'content' => (object) [
                             'foo' => 'bar',
-                            'dog' => 'wuf'
-                        ]
+                            'dog' => 'wuf',
+                        ],
                     ],
                     'other' => (object) [
-                        "updated" => "2020-12-24T07:15:02+01:00",
-                        "url" => "xyz"
-                    ]
+                        'updated' => '2020-12-24T07:15:02+01:00',
+                        'url' => 'xyz',
+                    ],
                 ],
                 '{"communityFile": '
                     .'{"updated": "2020-12-24T07:15:02+01:00", "content": {"x": "y"}},'
