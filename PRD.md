@@ -1,6 +1,6 @@
 # PRD: freifunk-karte backend modernisation
 
-Living document. It is extended at the end of every step. Last updated: 2026-10-29 (step 1).
+Living document. It is extended at the end of every step. Last updated: 2026-10-29 (step 2).
 
 ## 1. Purpose
 
@@ -65,7 +65,7 @@ This PRD covers the **backend/parser**. The goal is a clean, secure, tested, obs
 | # | Step | Status |
 |---|------|--------|
 | 1 | PRD + tooling baseline (PHP 8.3, PHPUnit 11, PHPStan, CS-Fixer) | done |
-| 2 | Source audit tool + sample fixtures; decide which parsers to delete | open |
+| 2 | Source audit tool + sample fixtures; decide which parsers to delete | done |
 | 3 | Characterisation tests on the old code (golden outputs) | open |
 | 4 | New models + pure parsers, full unit coverage | open |
 | 5 | HTTP fetcher (parallel), source resolver, pipeline; side-by-side run on LXC | open |
@@ -88,6 +88,10 @@ Working rules: one step at a time, report after each, separate focused commits.
 | 2026-10-29 | No CI for now; `composer check` locally | Gitea runner not set up. |
 | 2026-10-29 | PHPStan at level 5 with a baseline for `lib/`; CS-Fixer only on new code | Avoids churning code that will be deleted, while new code starts clean. |
 | 2026-10-29 | Dropped `phpseclib` (unused) and `lukaswhite/directory` (abandoned, deprecations on 8.5) | Fewer dependencies; phpseclib alone had 5 advisories. |
+| 2026-10-29 | Choose the parser by the **content** of a response (`FormatDetector`), not by the declared `technicalType` | The audit shows the declared type is unreliable (section 8). |
+| 2026-10-29 | Parsers to keep: nodelist, nodeinfo (ffmap/meshviewer/hopglass), flat meshviewer.json. To delete: netmon/openwifimap/olsr-dot leftovers and the `geo[]` "old style" ffmap branch | 0 working sources for the former, none of 551 probed sources delivers `geo[]` (section 8). |
+| 2026-10-29 | TLS verification stays on in the new fetcher, with a per-host exception list | Only 1 of ~1150 probed URLs has an invalid certificate (section 8). |
+| 2026-10-29 | Source audit and fixtures are part of the CLI (`bin/parser sources:audit`, `fixtures:build`), not one-off scripts | Re-runnable; fixtures are reproducible and anonymised by whitelist. |
 
 ## 7. Findings
 
@@ -111,17 +115,52 @@ Working rules: one step at a time, report after each, separate focused commits.
 
 PHPStan baseline: `phpstan-baseline.neon` (22 entries). It must shrink to zero as `lib/` is replaced.
 
-## 8. Tooling
+## 8. Source audit (step 2)
+
+`bin/parser sources:audit --json=report.json` (read-only, about 45 s at 8 parallel requests). Snapshot of 2026-10-29: 337 communities in the directory, 551 node sources (512 from the directory + 39 from `fixedCommunities.php`), about 1150 URLs probed including discovery.
+
+| Declared type | Entries | Working | Real formats of the working ones |
+|---------------|--------:|--------:|----------------------------------|
+| nodelist | 246 | 230 | nodelist 228, nodeinfo 1, meshviewer_flat 1 |
+| meshviewer | 170 | 72 | nodeinfo 64, meshviewer_flat 8 |
+| ffmap | 56 | 27 | meshviewer_flat 15, nodeinfo 12 |
+| hopglass | 33 | 21 | nodeinfo 21 |
+| *(no technicalType)* | 41 | 0 | only HTML or 404 |
+| openwifimap | 4 | 0 | HTML, 404, unreachable |
+| olsr-dot | 1 | 0 | invalid JSON |
+| netmon | 0 | – | not declared anywhere any more |
+
+Working sources by real format: nodelist 228, nodeinfo 98, meshviewer_flat 24, **legacy `geo[]`: 0**. 268 of 337 communities have at least one working source (16 API files not loadable, 24 API files without nodeMaps).
+
+### Conclusions
+1. **Parsers to keep:** nodelist, nodeinfo (this is what ffmap, meshviewer and hopglass maps deliver), flat `meshviewer.json`. Three parsers, selected by content.
+2. **Parsers to delete:** the netmon/openwifimap/olsr-dot leftovers (message branches and cache handling in `NodeListParser`) and the "old style" `geo[]` branch of `getFromFfmap`: not one source delivers it.
+3. **`technicalType` is unreliable:** `meshviewer` maps mostly deliver nodeinfo (64 of 72), `nodelist` maps sometimes deliver something else (2), `ffmap` maps mostly deliver the flat format (15 of 27). The old `"getFrom" . $parser` dispatch on the declared type must go.
+4. **Discovery is still needed:** 75 working sources (66 of them `meshviewer`) are only found via `config.json`/`dataPath` or the usual `nodes.json` locations, not at the declared URL.
+5. **Priority matters:** 60 communities have a working nodelist *and* another working source, so the current rule "nodelist wins" decides which nodes appear.
+6. **TLS:** only `map.freifunk-rheinbach.de` has an invalid certificate. Disabling verification globally in `CurlHelper` is not necessary.
+7. **Skip list (`data.php`) is partly stale:** `lueneburg` works again. `ansbach`, `heilsbronn` and `neuendettelsau` have unreachable directory entries but working fixed entries. `emskirchen`, `neustadt-aisch` and `recklinghausen` are not in the directory any more. The list should become data (per-community, with reason and date) and be reviewed in step 5.
+8. **Gaps for step 5 (discovery):** 16 `meshviewer` communities point at a viewer page but no data is found at any of the known locations (berlin, leipzig, siegburg, troisdorf, rheinbach, …). About 57 requests ran into the connect timeout; it should be a per-run budget, not a per-request wait.
+
+### Fixtures
+`tests/fixtures/sources/{nodeinfo,meshviewer_flat,nodelist}.json`: 7-8 nodes each (online/offline, with/without location), anonymised by key whitelist, hostnames and ids replaced, coordinates rounded to 2 decimals. A test guards against contact data, MACs and URLs. Rebuild with `bin/parser sources:audit --raw-dir=DIR` and `bin/parser fixtures:build --from=DIR` (never commit the raw directory).
+
+Still to create in step 3 (characterisation): a trimmed `directory.json`, a few community API files and hand-written edge cases (client count shapes, keyed ffmap v1 `nodes`, stale offline nodes).
+
+## 9. Tooling
 
 ```bash
 composer install
 composer check      # php-cs-fixer (dry run) + phpstan + phpunit
 composer test | stan | cs | cs-fix
+bin/parser sources:audit --json=report.json   # read-only, needs network
+bin/parser fixtures:build --from=RAWDIR       # see section 8
 ```
 
 Dev machine: PHP 8.5, Composer 2.10. PHPUnit 11.5, PHPStan 2.1, PHP-CS-Fixer 3.x.
 
-## 9. Open questions
+## 10. Open questions
 - PHP version on www.freifunk-karte.de (constrains the upload endpoint, step 8).
-- Which `technicalType`s are really in use today (answered by the audit in step 2).
+- Runtime of one full legacy run on the LXC (baseline for the speed-up; the audit of ~1150 URLs takes about 45 s in parallel).
+- Nodelist schema: sources deliver versions 1.0.0 and 1.0.1, the legacy validator only knows 1.0.0. Do 1.0.1 files pass? (check in step 3/4)
 - Is `result_statistics.json` still needed once the admin UI exists (step 7)?
