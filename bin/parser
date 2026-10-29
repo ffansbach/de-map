@@ -6,6 +6,7 @@ declare(strict_types=1);
 use FreifunkKarte\Command\CompareCommand;
 use FreifunkKarte\Command\FixturesBuildCommand;
 use FreifunkKarte\Command\RunCommand;
+use FreifunkKarte\Command\RunsCommand;
 use FreifunkKarte\Command\SourcesAuditCommand;
 use Symfony\Component\Console\Application;
 
@@ -16,4 +17,5 @@ $application->addCommand(new SourcesAuditCommand());
 $application->addCommand(new FixturesBuildCommand());
 $application->addCommand(new RunCommand());
 $application->addCommand(new CompareCommand());
+$application->addCommand(new RunsCommand());
 $application->run();
