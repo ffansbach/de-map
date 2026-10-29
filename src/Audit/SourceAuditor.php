@@ -6,6 +6,7 @@ namespace FreifunkKarte\Audit;
 
 use FreifunkKarte\Http\FetchResult;
 use FreifunkKarte\Http\ParallelFetcher;
+use FreifunkKarte\Source\Discovery;
 use RuntimeException;
 
 /**
@@ -18,9 +19,6 @@ use RuntimeException;
 final class SourceAuditor
 {
     public const DIRECTORY_URL = 'https://raw.githubusercontent.com/freifunk/directory.api.freifunk.net/master/directory.json';
-
-    /** technicalTypes for which the legacy parser tries more than the declared URL */
-    private const DISCOVERY_TYPES = ['ffmap', 'meshviewer', 'hopglass'];
 
     private const RAW_SAMPLES_PER_FORMAT = 3;
 
@@ -77,7 +75,7 @@ final class SourceAuditor
         $candidates = [];
 
         foreach ($entries as $entry) {
-            if (in_array($entry['declaredType'], self::DISCOVERY_TYPES, true) && !$this->works($entry['url'])) {
+            if (in_array($entry['declaredType'], Discovery::DISCOVERY_TYPES, true) && !$this->works($entry['url'])) {
                 array_push($candidates, ...$this->candidates($entry['url'], $entry['declaredType']));
             }
         }
@@ -171,22 +169,12 @@ final class SourceAuditor
                     'community' => $community,
                     'origin' => 'directory',
                     'declaredType' => strtolower(is_string($map['technicalType'] ?? null) ? $map['technicalType'] : '(none)'),
-                    'url' => $this->withScheme($map['url']),
+                    'url' => Discovery::withScheme($map['url']),
                 ];
             }
         }
 
         return [$entries, $apiFailures, $withoutNodeMaps];
-    }
-
-    /**
-     * Communities sometimes declare "map.example.org/foo"; like the legacy parser, assume http.
-     */
-    private function withScheme(string $url): string
-    {
-        $url = trim($url);
-
-        return preg_match('~^[a-z][a-z0-9+.-]*://~i', $url) === 1 ? $url : 'http://' . ltrim($url, '/');
     }
 
     /**
@@ -232,32 +220,11 @@ final class SourceAuditor
     }
 
     /**
-     * The places the legacy parser looks for a nodes file below a map URL (only for discovery types).
-     *
      * @return list<string>
      */
     private function candidates(string $url, string $declaredType): array
     {
-        if (!in_array($declaredType, self::DISCOVERY_TYPES, true) || preg_match('/\.json$/', $url) === 1) {
-            return [];
-        }
-
-        $base = rtrim($url, '/') . '/';
-        $candidates = [
-            $base . 'config.json',
-            $base . 'nodes.json',
-            $base . 'data/nodes.json',
-            $base . 'json/nodes.json',
-            $base . 'meshviewer/data/meshviewer.json',
-            $base . 'data/meshviewer.json',
-        ];
-
-        if (str_contains($base, '/meshviewer/')) {
-            $root = str_replace('/meshviewer', '', $base);
-            array_push($candidates, $root . 'nodes.json', $root . 'data/nodes.json', $root . 'json/nodes.json');
-        }
-
-        return array_values(array_unique($candidates));
+        return Discovery::candidates($url, $declaredType);
     }
 
     /**
@@ -272,24 +239,8 @@ final class SourceAuditor
         foreach ([$mapUrl, ...$this->candidates($mapUrl, $declaredType)] as $url) {
             $detection = $this->detections[$url] ?? null;
 
-            if ($detection === null || $detection->format !== Format::FfmapConfig) {
-                continue;
-            }
-
-            $parts = parse_url($mapUrl);
-
-            foreach ($detection->dataPaths as $path) {
-                $path .= 'nodes.json';
-
-                if (preg_match('/https?:/', $path) !== 1) {
-                    if (!isset($parts['scheme'], $parts['host'])) {
-                        continue;
-                    }
-
-                    $path = $parts['scheme'] . '://' . $parts['host'] . '/' . ltrim($path, '/');
-                }
-
-                $urls[] = $path;
+            if ($detection !== null && $detection->format === Format::FfmapConfig) {
+                array_push($urls, ...Discovery::dataPathUrls($mapUrl, $detection->dataPaths));
             }
         }
 

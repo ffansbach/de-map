@@ -8,6 +8,7 @@ parameters:
         - lib/jsv4
         - tests/Audit
         - tests/Http
+        - tests/Source
         - tests/Legacy
         - tests/Parser
         - tests/Model
