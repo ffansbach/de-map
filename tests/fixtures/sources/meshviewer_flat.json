@@ -1,0 +1,101 @@
+{
+    "timestamp": "2026-10-29T10:38:45+0000",
+    "nodes": [
+        {
+            "node_id": "add285de8048",
+            "hostname": "node-1",
+            "location": {
+                "latitude": 51.11,
+                "longitude": 7.64
+            },
+            "firstseen": "2024-06-04T22:38:34+0000",
+            "lastseen": "2026-10-29T10:38:31+0000",
+            "is_online": true,
+            "is_gateway": false,
+            "clients": 3
+        },
+        {
+            "node_id": "94c9ce1f5004",
+            "hostname": "node-2",
+            "location": {
+                "latitude": 51.37,
+                "longitude": 7.64
+            },
+            "firstseen": "2023-04-25T11:28:35+0000",
+            "lastseen": "2026-10-29T10:38:36+0000",
+            "is_online": true,
+            "is_gateway": false,
+            "clients": 0
+        },
+        {
+            "node_id": "5b235689e5b8",
+            "hostname": "node-3",
+            "location": {
+                "latitude": 51.11,
+                "longitude": 7.64
+            },
+            "firstseen": "2023-06-11T17:47:35+0000",
+            "lastseen": "2026-10-29T10:38:41+0000",
+            "is_online": true,
+            "is_gateway": false,
+            "clients": 0
+        },
+        {
+            "node_id": "fffc52843503",
+            "hostname": "node-4",
+            "location": {
+                "latitude": 51.3,
+                "longitude": 7.68
+            },
+            "firstseen": "2024-04-15T00:04:36+0000",
+            "lastseen": "2026-10-29T10:38:33+0000",
+            "is_online": true,
+            "is_gateway": false,
+            "clients": 1
+        },
+        {
+            "node_id": "6299fb03d301",
+            "hostname": "node-5",
+            "firstseen": "2026-10-21T15:01:32+0000",
+            "lastseen": "2026-10-22T17:02:31+0000",
+            "is_online": false,
+            "is_gateway": false,
+            "clients": 0
+        },
+        {
+            "node_id": "102dd633e358",
+            "hostname": "node-6",
+            "location": {
+                "latitude": 51.38,
+                "longitude": 7.74
+            },
+            "firstseen": "2026-10-27T09:58:38+0000",
+            "lastseen": "2026-10-28T09:25:36+0000",
+            "is_online": false,
+            "is_gateway": false,
+            "clients": 0
+        },
+        {
+            "node_id": "d2ffd68c45b2",
+            "hostname": "node-7",
+            "location": {
+                "latitude": 51.38,
+                "longitude": 7.7
+            },
+            "firstseen": "2022-12-19T22:34:33+0000",
+            "lastseen": "2026-10-29T10:25:04+0000",
+            "is_online": false,
+            "is_gateway": false,
+            "clients": 0
+        },
+        {
+            "node_id": "b8b982d621be",
+            "hostname": "node-8",
+            "firstseen": "2024-03-10T20:59:30+0000",
+            "lastseen": "2026-10-29T10:38:39+0000",
+            "is_online": true,
+            "is_gateway": false,
+            "clients": 0
+        }
+    ]
+}

@@ -1,0 +1,143 @@
+{
+    "version": 2,
+    "timestamp": "2026-10-29T10:38:32.949Z",
+    "nodes": [
+        {
+            "nodeinfo": {
+                "node_id": "1a500b44a888",
+                "hostname": "node-1",
+                "location": {
+                    "latitude": 52.04,
+                    "longitude": 8.52
+                }
+            },
+            "flags": {
+                "online": true
+            },
+            "statistics": {
+                "clients": {
+                    "total": 5,
+                    "wifi": 5,
+                    "wifi24": 3,
+                    "wifi5": 2
+                }
+            },
+            "lastseen": "2026-10-29T10:38:26.548Z",
+            "firstseen": "2023-01-31T15:40:13.058Z"
+        },
+        {
+            "nodeinfo": {
+                "node_id": "6aa1d92dbef5",
+                "hostname": "node-2"
+            },
+            "flags": {
+                "online": true
+            },
+            "statistics": {
+                "clients": {
+                    "total": 0,
+                    "wifi": 0,
+                    "wifi24": 0,
+                    "wifi5": 0
+                }
+            },
+            "lastseen": "2026-10-29T10:38:29.125Z",
+            "firstseen": "2023-02-28T23:21:31.626Z"
+        },
+        {
+            "nodeinfo": {
+                "node_id": "5a7c5d6952c8",
+                "hostname": "node-3",
+                "location": {
+                    "latitude": 52.04,
+                    "longitude": 8.53
+                }
+            },
+            "flags": {
+                "online": true
+            },
+            "statistics": {
+                "clients": {
+                    "total": 0,
+                    "wifi": 1,
+                    "wifi24": 1,
+                    "wifi5": 0
+                }
+            },
+            "lastseen": "2026-10-29T10:38:00.089Z",
+            "firstseen": "2023-03-01T00:13:30.744Z"
+        },
+        {
+            "nodeinfo": {
+                "node_id": "bce9fb38aea6",
+                "hostname": "node-4",
+                "location": {
+                    "latitude": 52.43,
+                    "longitude": 8.61
+                }
+            },
+            "flags": {
+                "online": true
+            },
+            "statistics": {
+                "clients": {
+                    "total": 3,
+                    "wifi": 4,
+                    "wifi24": 4,
+                    "wifi5": 0
+                }
+            },
+            "lastseen": "2026-10-29T10:38:32.149Z",
+            "firstseen": "2023-03-01T00:13:56.370Z"
+        },
+        {
+            "nodeinfo": {
+                "node_id": "4dc4ab68b94d",
+                "hostname": "node-5",
+                "location": {
+                    "latitude": 52.01,
+                    "longitude": 8.61
+                }
+            },
+            "flags": {
+                "online": true
+            },
+            "statistics": {
+                "clients": {
+                    "total": 8,
+                    "wifi": 10,
+                    "wifi24": 10,
+                    "wifi5": 0
+                }
+            },
+            "lastseen": "2026-10-29T10:38:28.530Z",
+            "firstseen": "2023-03-01T00:14:31.078Z"
+        },
+        {
+            "nodeinfo": {
+                "node_id": "c004cb9d0aff",
+                "hostname": "node-6"
+            },
+            "flags": {
+                "online": false
+            },
+            "lastseen": "2026-10-29T07:35:26.266Z",
+            "firstseen": "2023-03-01T00:15:53.751Z"
+        },
+        {
+            "nodeinfo": {
+                "node_id": "ac3e2496c586",
+                "hostname": "node-7",
+                "location": {
+                    "latitude": 52.21,
+                    "longitude": 8.69
+                }
+            },
+            "flags": {
+                "online": false
+            },
+            "lastseen": "2026-10-23T15:44:34.747Z",
+            "firstseen": "2026-10-02T18:02:02.821Z"
+        }
+    ]
+}

@@ -1,0 +1,102 @@
+{
+    "version": "1.0.1",
+    "updated_at": "2026-10-29T11:38:39+0100",
+    "nodes": [
+        {
+            "id": "130b895bab43",
+            "name": "node-1",
+            "position": {
+                "lat": 48.52,
+                "long": 12
+            },
+            "status": {
+                "online": true,
+                "lastcontact": "2026-10-29T11:38:31+0100",
+                "clients": 0
+            }
+        },
+        {
+            "id": "1b3241e295c2",
+            "name": "node-2",
+            "position": {
+                "lat": 48.61,
+                "long": 12.21
+            },
+            "status": {
+                "online": true,
+                "lastcontact": "2026-10-29T11:38:31+0100",
+                "clients": 4
+            }
+        },
+        {
+            "id": "2fadaec813c5",
+            "name": "node-3",
+            "position": {
+                "lat": 48.45,
+                "long": 12.35
+            },
+            "status": {
+                "online": true,
+                "lastcontact": "2026-10-29T11:38:31+0100",
+                "clients": 14
+            }
+        },
+        {
+            "id": "fded0a4fb787",
+            "name": "node-4",
+            "position": {
+                "lat": 48.25,
+                "long": 10.8
+            },
+            "status": {
+                "online": true,
+                "lastcontact": "2026-10-29T11:38:34+0100",
+                "clients": 0
+            }
+        },
+        {
+            "id": "469f5261c513",
+            "name": "node-5",
+            "status": {
+                "online": true,
+                "lastcontact": "2026-10-29T11:38:34+0100",
+                "clients": 0
+            }
+        },
+        {
+            "id": "9ee7ab73addd",
+            "name": "node-6",
+            "status": {
+                "online": false,
+                "lastcontact": "2025-12-21T22:23:32+0100",
+                "clients": 0
+            }
+        },
+        {
+            "id": "41a0196e2670",
+            "name": "node-7",
+            "position": {
+                "lat": 48.55,
+                "long": 12.16
+            },
+            "status": {
+                "online": false,
+                "lastcontact": "2026-10-16T23:04:38+0200",
+                "clients": 0
+            }
+        },
+        {
+            "id": "b23af045216e",
+            "name": "node-8",
+            "position": {
+                "lat": 48.52,
+                "long": 12
+            },
+            "status": {
+                "online": false,
+                "lastcontact": "2026-05-17T17:38:36+0200",
+                "clients": 0
+            }
+        }
+    ]
+}
