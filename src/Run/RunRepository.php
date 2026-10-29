@@ -310,6 +310,24 @@ final class RunRepository
         return $counts;
     }
 
+    /**
+     * How many nodes each community delivered in the last runs that produced a result.
+     *
+     * @return array<string, list<int>> by community key, oldest run first
+     */
+    public function nodeSeries(int $lastRuns): array
+    {
+        $statement = $this->pdo->prepare("SELECT key, added + duplicates AS nodes FROM community_results WHERE run_id IN (SELECT id FROM runs WHERE status = 'ok' ORDER BY id DESC LIMIT ?) ORDER BY run_id");
+        $statement->execute([$lastRuns]);
+        $series = [];
+
+        foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $series[(string) $row['key']][] = (int) $row['nodes'];
+        }
+
+        return $series;
+    }
+
     public function runCount(): int
     {
         return (int) $this->select('SELECT COUNT(*) FROM runs')->fetchColumn();

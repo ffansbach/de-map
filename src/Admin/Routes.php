@@ -27,6 +27,9 @@ final class Routes
             ['#^/$#', new Page\DashboardPage()],
             ['#^/runs$#', new Page\RunsPage()],
             ['#^/runs/(?<id>\d+)$#', new Page\RunPage()],
+            ['#^/communities$#', new Page\CommunitiesPage()],
+            ['#^/communities/(?<key>[A-Za-z0-9_.\-]+)$#', new Page\CommunityPage()],
+            ['#^/events$#', new Page\EventsPage()],
         ];
     }
 }

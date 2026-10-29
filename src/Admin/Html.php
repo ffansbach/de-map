@@ -45,6 +45,21 @@ final class Html
         return new Safe(sprintf('<a href="%s">%s</a>', self::e($path . ($query !== [] ? '?' . http_build_query($query) : '')), $label instanceof Safe ? $label->html : self::e($label)));
     }
 
+    /**
+     * A URL from the outside world: a link only if it is http or https (never javascript: and the like),
+     * otherwise just text.
+     */
+    public static function externalLink(string $url, ?string $label = null): Safe
+    {
+        $scheme = parse_url($url, PHP_URL_SCHEME);
+
+        if (!is_string($scheme) || !in_array(strtolower($scheme), ['http', 'https'], true)) {
+            return new Safe(self::e($label ?? $url));
+        }
+
+        return new Safe(sprintf('<a href="%s" rel="noopener noreferrer nofollow" target="_blank">%s</a>', self::e($url), self::e($label ?? $url)));
+    }
+
     public static function badge(string $text, string $kind = ''): Safe
     {
         return new Safe(sprintf('<span class="badge %s">%s</span>', self::e($kind !== '' ? $kind : $text), self::e($text)));
