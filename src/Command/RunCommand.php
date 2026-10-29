@@ -6,12 +6,19 @@ namespace FreifunkKarte\Command;
 
 use Closure;
 use FreifunkKarte\Community\MetaCommunityResolver;
+use FreifunkKarte\Config\IntegrationConfig;
 use FreifunkKarte\Config\RunConfig;
 use FreifunkKarte\Http\ParallelFetcher;
+use FreifunkKarte\Log\LoggerFactory;
 use FreifunkKarte\Output\LegacyResultWriter;
 use FreifunkKarte\Parser\SourceParser;
 use FreifunkKarte\Pipeline\CommunityReport;
 use FreifunkKarte\Pipeline\ParseRun;
+use FreifunkKarte\Run\DriftDetector;
+use FreifunkKarte\Run\DriftEvent;
+use FreifunkKarte\Run\RecordedRun;
+use FreifunkKarte\Run\RunRecorder;
+use FreifunkKarte\Run\RunRepository;
 use FreifunkKarte\Source\Directory;
 use FreifunkKarte\Source\FixedCommunities;
 use FreifunkKarte\Source\LastGoodStore;
@@ -54,7 +61,13 @@ final class RunCommand extends Command
             ->addOption('concurrency', null, InputOption::VALUE_REQUIRED, 'parallel requests', '12')
             ->addOption('min-communities', null, InputOption::VALUE_REQUIRED, 'refuse to write fewer listed communities than this', '10')
             ->addOption('min-nodes', null, InputOption::VALUE_REQUIRED, 'refuse to write fewer nodes than this', '1000')
-            ->addOption('force', null, InputOption::VALUE_NONE, 'write even if the result looks implausibly small');
+            ->addOption('force', null, InputOption::VALUE_NONE, 'write even if the result looks implausibly small')
+            ->addOption('db', null, InputOption::VALUE_REQUIRED, 'SQLite file with the history of runs', 'var/parser.sqlite')
+            ->addOption('log-file', null, InputOption::VALUE_REQUIRED, 'JSON log (a file per day is kept for two weeks)', 'var/log/parser.log')
+            ->addOption('keep-days', null, InputOption::VALUE_REQUIRED, 'forget runs older than this', '90')
+            ->addOption('no-history', null, InputOption::VALUE_NONE, 'do not record the run, compare it, log it or report it anywhere')
+            ->addOption('integrations', null, InputOption::VALUE_REQUIRED, 'JSON file with the healthchecks.io / InfluxDB settings (default: config/integrations.local.json if it exists)')
+            ->addOption('legacy-config', null, InputOption::VALUE_REQUIRED, 'take the healthchecks.io / InfluxDB settings from the config.php of the legacy parser');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -69,8 +82,9 @@ final class RunCommand extends Command
         }
 
         $projectDir = $this->projectDir ?? dirname(__DIR__, 2);
-        $configDir = $input->getOption('config-dir');
-        $config = RunConfig::load(is_string($configDir) ? $configDir : $projectDir . '/config');
+        $configOption = $input->getOption('config-dir');
+        $configDir = is_string($configOption) ? $configOption : $projectDir . '/config';
+        $config = RunConfig::load($configDir);
         $skip = array_keys($config->skippedCommunities);
 
         if (is_string($input->getOption('skip'))) {
@@ -96,21 +110,47 @@ final class RunCommand extends Command
             lastGood: new LastGoodStore($cacheDir . '/last-good'),
         );
 
-        $only = $input->getOption('only');
-        $result = $run->run(
-            $input->getOption('no-fixed') ? [] : FixedCommunities::load($projectDir . '/fixedCommunities.php'),
-            $skip,
-            is_string($only) ? $only : null,
-            static function (string $message) use ($io): void {
-                if ($io->isVerbose()) {
-                    $io->writeln('<comment>' . $message . '</comment>');
-                }
-            },
-        );
+        $recorded = null;
+
+        if (!$input->getOption('no-history')) {
+            $repository = RunRepository::open((string) $input->getOption('db'));
+            $recorder = new RunRecorder(
+                $repository,
+                new DriftDetector(),
+                LoggerFactory::create((string) $input->getOption('log-file')),
+                $this->integrations($input, $configDir, $projectDir)->listeners($client),
+            );
+            $recorded = new RecordedRun($recorder, $repository, $recorder->begin($out));
+        }
+
+        try {
+            $only = $input->getOption('only');
+            $result = $run->run(
+                $input->getOption('no-fixed') ? [] : FixedCommunities::load($projectDir . '/fixedCommunities.php'),
+                $skip,
+                is_string($only) ? $only : null,
+                static function (string $message) use ($io): void {
+                    if ($io->isVerbose()) {
+                        $io->writeln('<comment>' . $message . '</comment>');
+                    }
+                },
+            );
+
+            $listed = count($result->listedCommunities());
+            $refused = !$input->getOption('force') && ($listed < (int) $input->getOption('min-communities') || $result->nodes->count() < (int) $input->getOption('min-nodes'));
+            $paths = $refused ? [] : (new LegacyResultWriter())->write($result, $out);
+        } catch (\Throwable $e) {
+            if ($recorded !== null) {
+                $recorded->recorder->fail($recorded->id, $e);
+            }
+
+            $io->error($e->getMessage());
+
+            return Command::FAILURE;
+        }
 
         $outcomes = array_count_values(array_map(static fn (CommunityReport $c): string => $c->outcome, $result->communities));
         $warnings = array_sum(array_map(static fn (CommunityReport $c): int => count($c->warnings), $result->communities));
-        $listed = count($result->listedCommunities());
 
         $io->definitionList(
             ['nodes' => $result->nodes->count()],
@@ -134,16 +174,58 @@ final class RunCommand extends Command
             }
         }
 
-        if (!$input->getOption('force') && ($listed < (int) $input->getOption('min-communities') || $result->nodes->count() < (int) $input->getOption('min-nodes'))) {
+        if ($recorded !== null) {
+            $summary = $recorded->recorder->complete($recorded->id, $result, $refused);
+            $this->printEvents($io, $summary->events);
+            $recorded->repository->prune(max(1, (int) $input->getOption('keep-days')), $summary->finishedAt);
+        }
+
+        if ($refused) {
             $io->error(sprintf('Result looks implausible (%d communities, %d nodes): nothing written. Use --force to write anyway.', $listed, $result->nodes->count()));
 
             return Command::FAILURE;
         }
 
-        foreach ((new LegacyResultWriter())->write($result, $out) as $path) {
+        foreach ($paths as $path) {
             $io->writeln($path);
         }
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * @param list<DriftEvent> $events
+     */
+    private function printEvents(SymfonyStyle $io, array $events): void
+    {
+        $important = array_values(array_filter($events, static fn (DriftEvent $e): bool => $e->severity !== DriftEvent::INFO));
+
+        if ($important === []) {
+            return;
+        }
+
+        $io->section('To look at');
+
+        foreach ($important as $event) {
+            $io->writeln(sprintf('<%1$s>%2$s</%1$s> %3$s', $event->severity === DriftEvent::ALERT ? 'error' : 'comment', strtoupper($event->severity), $event->message));
+        }
+    }
+
+    private function integrations(InputInterface $input, string $configDir, string $projectDir): IntegrationConfig
+    {
+        $legacy = $input->getOption('legacy-config');
+        $json = $input->getOption('integrations');
+
+        if (is_string($legacy)) {
+            return IntegrationConfig::fromLegacyConfig($legacy);
+        }
+
+        if (is_string($json)) {
+            return IntegrationConfig::fromJsonFile($json);
+        }
+
+        $default = ($configDir !== '' ? $configDir : $projectDir . '/config') . '/integrations.local.json';
+
+        return is_file($default) ? IntegrationConfig::fromJsonFile($default) : new IntegrationConfig();
     }
 }

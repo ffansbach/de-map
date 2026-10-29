@@ -6,10 +6,12 @@ namespace FreifunkKarte\Tests\Command;
 
 use FreifunkKarte\Command\CompareCommand;
 use FreifunkKarte\Command\RunCommand;
+use FreifunkKarte\Run\RunRepository;
 use FreifunkKarte\Tests\Legacy\LegacyRunner;
 use FreifunkKarte\Tests\Legacy\StandardWorld;
 use FreifunkKarte\Tests\Legacy\World;
 use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\RequestInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 
@@ -46,16 +48,18 @@ final class RunCommandTest extends TestCase
     /**
      * @param array<string, mixed> $options
      */
-    private function execute(array $options, ?World $world = null): CommandTester
+    private function execute(array $options, ?World $world = null, ?\Closure $handler = null): CommandTester
     {
         $world ??= StandardWorld::build();
-        $command = new RunCommand($world->httpHandler(), $this->directory);
+        $command = new RunCommand($handler ?? $world->httpHandler(), $this->directory);
         // the reference world has a directory URL of its own
         $tester = new CommandTester($command);
         $tester->execute($options + [
             '--directory-url' => LegacyRunner::DIRECTORY_URL,
             '--out' => $this->directory . '/out',
             '--cache-dir' => $this->directory . '/cache',
+            '--db' => $this->directory . '/state/parser.sqlite',
+            '--log-file' => $this->directory . '/state/log/parser.log',
             '--config-dir' => $this->directory . '/config',
             '--no-fixed' => true,
             '--min-nodes' => '1',
@@ -183,5 +187,136 @@ final class RunCommandTest extends TestCase
 
         $this->assertSame(Command::FAILURE, $tester->getStatusCode());
         $this->assertStringContainsString('No readable result_routers.json', $tester->getDisplay());
+    }
+
+    private function history(): RunRepository
+    {
+        return RunRepository::open($this->directory . '/state/parser.sqlite');
+    }
+
+    public function testEveryRunIsRecordedAndComparedWithTheOneBefore(): void
+    {
+        $this->execute([]);
+        $second = $this->execute([], StandardWorld::build()
+            ->route('https://hop.test/a/nodes.json', 'not json')
+            ->route('https://hop.test/b/nodes.json', 'not json')
+            ->community('newcomer', ['nodeMaps' => [['technicalType' => 'yanic', 'url' => 'https://newcomer.test/map/']]]));
+
+        $history = $this->history();
+        $this->assertCount(2, $history->runs());
+        $this->assertSame(['ok', 'ok'], array_column($history->runs(), 'status'));
+
+        $display = $second->getDisplay();
+        $this->assertStringContainsString('To look at', $display);
+        $this->assertStringContainsString('Technical type "yanic" has not been seen before', $display);
+        $this->assertStringContainsString('"Freifunk hop-town" delivered', $display);
+        $this->assertStringNotContainsString('New community', $display, 'notes of low importance stay in the log');
+
+        $events = $history->events(2);
+        $this->assertContains('new-technical-type', array_column($events, 'kind'));
+    }
+
+    public function testTheLogIsWrittenAsJsonLines(): void
+    {
+        $this->execute([]);
+
+        $files = glob($this->directory . '/state/log/parser-*.log') ?: [];
+        $this->assertCount(1, $files);
+        $messages = array_map(static fn (string $line): string => (string) (json_decode($line, true)['message'] ?? ''), array_values(array_filter(explode("\n", (string) file_get_contents($files[0])))));
+        $this->assertSame(['run started', 'run finished'], $messages);
+    }
+
+    public function testARefusedResultIsInTheHistoryAndTheCommandFails(): void
+    {
+        $tester = $this->execute(['--min-nodes' => '1000', '--min-communities' => '10']);
+
+        $this->assertSame(Command::FAILURE, $tester->getStatusCode());
+        $this->assertStringContainsString('ALERT', $tester->getDisplay());
+        $this->assertSame(['refused'], array_column($this->history()->runs(), 'status'));
+        $this->assertDirectoryDoesNotExist($this->directory . '/out');
+    }
+
+    public function testAFailedRunIsInTheHistoryToo(): void
+    {
+        $broken = $this->execute([], null, static fn () => \GuzzleHttp\Promise\Create::promiseFor(new \GuzzleHttp\Psr7\Response(500)));
+
+        $this->assertSame(Command::FAILURE, $broken->getStatusCode());
+        $this->assertStringContainsString('Community directory not available', $broken->getDisplay());
+        $runs = $this->history()->runs();
+        $this->assertSame('failed', $runs[0]['status']);
+        $this->assertStringContainsString('Community directory not available', (string) $runs[0]['error']);
+    }
+
+    public function testNoHistoryLeavesNoTraces(): void
+    {
+        $this->execute(['--no-history' => true]);
+
+        $this->assertFileDoesNotExist($this->directory . '/state/parser.sqlite');
+        $this->assertDirectoryDoesNotExist($this->directory . '/state/log');
+        $this->assertFileExists($this->directory . '/out/result_routers.json');
+    }
+
+    /**
+     * @param list<string> $requests
+     */
+    private function recordingHandler(array &$requests): \Closure
+    {
+        $inner = StandardWorld::build()->httpHandler();
+
+        return static function (RequestInterface $request, array $options) use ($inner, &$requests) {
+            if ($request->getUri()->getHost() === 'hc.test') {
+                $requests[] = $request->getMethod() . ' ' . $request->getUri() . ' ' . $request->getBody();
+            }
+
+            return $inner($request, $options);
+        };
+    }
+
+    public function testHealthchecksIsToldWhenTheRunStartsAndHowItEnded(): void
+    {
+        file_put_contents($this->directory . '/integrations.json', (string) json_encode(['healthchecks' => ['url' => 'https://hc.test/ping/abc']]));
+        $requests = [];
+
+        $this->execute(['--integrations' => $this->directory . '/integrations.json'], null, $this->recordingHandler($requests));
+
+        $this->assertCount(2, $requests);
+        $this->assertSame('POST https://hc.test/ping/abc/start ', $requests[0]);
+        $this->assertStringStartsWith('POST https://hc.test/ping/abc run 1: ok, 34 nodes, 11 communities', $requests[1]);
+    }
+
+    public function testHealthchecksFromTheLegacyConfigPhp(): void
+    {
+        file_put_contents($this->directory . '/config.php', "<?php\n\$healtcheckIdentifier = 'legacy-id';\n");
+        $requests = [];
+        $inner = StandardWorld::build()->httpHandler();
+        $handler = static function (RequestInterface $request, array $options) use ($inner, &$requests) {
+            if ($request->getUri()->getHost() === 'hc-ping.com') {
+                $requests[] = $request->getMethod() . ' ' . $request->getUri();
+            }
+
+            return $inner($request, $options);
+        };
+
+        $this->execute(['--legacy-config' => $this->directory . '/config.php'], null, $handler);
+
+        $this->assertSame(['POST https://hc-ping.com/legacy-id/start', 'POST https://hc-ping.com/legacy-id'], $requests);
+    }
+
+    public function testFailingHealthchecksDoesNotFailTheRun(): void
+    {
+        file_put_contents($this->directory . '/integrations.json', (string) json_encode(['healthchecks' => ['url' => 'https://hc.test/ping/abc']]));
+        $inner = StandardWorld::build()->httpHandler();
+        $handler = static function (RequestInterface $request, array $options) use ($inner) {
+            if ($request->getUri()->getHost() === 'hc.test') {
+                return \GuzzleHttp\Promise\Create::rejectionFor(new \GuzzleHttp\Exception\ConnectException('no route to host', $request));
+            }
+
+            return $inner($request, $options);
+        };
+
+        $tester = $this->execute(['--integrations' => $this->directory . '/integrations.json'], null, $handler);
+
+        $this->assertSame(Command::SUCCESS, $tester->getStatusCode());
+        $this->assertFileExists($this->directory . '/out/result_routers.json');
     }
 }
