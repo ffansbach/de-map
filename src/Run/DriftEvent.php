@@ -20,6 +20,9 @@ final readonly class DriftEvent
     public const COMMUNITY_RECOVERED = 'community-recovered';
     public const STALE_DATA = 'stale-data';
     public const NEW_WARNING = 'new-source-warning';
+    public const COMMUNITY_ADDED = 'community-added';
+    public const COMMUNITY_REMOVED = 'community-removed';
+    public const MANY_COMMUNITIES_LOST = 'many-communities-lost';
     public const RUN_NODES_DROPPED = 'run-nodes-dropped';
     public const RUN_FAILED = 'run-failed';
     public const RUN_REFUSED = 'run-refused';
