@@ -92,8 +92,9 @@ final class IntegrationConfigTest extends TestCase
         $config = IntegrationConfig::fromLegacyConfig($this->file);
 
         $this->assertSame('https://hc-ping.com/legacy-uuid', $config->healthchecksUrl);
-        $this->assertSame('dev', $config->influx['env'] ?? null);
-        $this->assertSame('b', $config->influx['bucket'] ?? null);
+        $this->assertNotNull($config->influx);
+        $this->assertSame('dev', $config->influx['env']);
+        $this->assertSame('b', $config->influx['bucket']);
     }
 
     public function testLegacyConfigWithoutTheServicesConfiguresNothing(): void

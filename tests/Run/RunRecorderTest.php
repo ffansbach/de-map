@@ -22,14 +22,14 @@ final class RunRecorderTest extends TestCase
     private RunRepository $repository;
     private TestHandler $logs;
 
-    /** @var list<string> */
-    private array $calls = [];
+    /** @var \ArrayObject<int, string> */
+    private \ArrayObject $calls;
 
     protected function setUp(): void
     {
         $this->repository = RunRepository::inMemory();
         $this->logs = new TestHandler();
-        $this->calls = [];
+        $this->calls = new \ArrayObject();
     }
 
     private function recorder(?RunListener ...$listeners): RunRecorder
@@ -40,14 +40,14 @@ final class RunRecorderTest extends TestCase
     private function listener(bool $throws = false): RunListener
     {
         return new class ($this->calls, $throws) implements RunListener {
-            /** @param list<string> $calls */
-            public function __construct(private array &$calls, private readonly bool $throws)
+            /** @param \ArrayObject<int, string> $calls */
+            public function __construct(private readonly \ArrayObject $calls, private readonly bool $throws)
             {
             }
 
             public function started(int $runId, DateTimeImmutable $at): void
             {
-                $this->calls[] = 'started:' . $runId;
+                $this->calls->append('started:' . $runId);
 
                 if ($this->throws) {
                     throw new \RuntimeException('listener broke on start');
@@ -56,7 +56,7 @@ final class RunRecorderTest extends TestCase
 
             public function finished(RunSummary $summary): void
             {
-                $this->calls[] = 'finished:' . $summary->status . ':' . count($summary->events);
+                $this->calls->append('finished:' . $summary->status . ':' . count($summary->events));
 
                 if ($this->throws) {
                     throw new \RuntimeException('listener broke on finish');
@@ -87,7 +87,7 @@ final class RunRecorderTest extends TestCase
         $this->assertSame([], $summary->events);
         $this->assertNull($summary->worstSeverity());
         $this->assertSame(40, $this->repository->run($runId)['nodes'] ?? null);
-        $this->assertSame(['started:1', 'finished:ok:0'], $this->calls);
+        $this->assertSame(['started:1', 'finished:ok:0'], $this->calls->getArrayCopy());
         $this->assertTrue($this->logs->hasInfoThatContains('run started'));
         $this->assertTrue($this->logs->hasInfoThatContains('run finished'));
     }
@@ -110,7 +110,7 @@ final class RunRecorderTest extends TestCase
         $this->assertCount(count($summary->events), $this->repository->events($second));
         $this->assertTrue($this->logs->hasWarningThatContains('Technical type "yanic" has not been seen before'));
         $this->assertTrue($this->logs->hasInfoThatContains('New community'));
-        $this->assertContains('finished:ok:' . count($summary->events), $this->calls);
+        $this->assertContains('finished:ok:' . count($summary->events), $this->calls->getArrayCopy());
     }
 
     public function testARefusedResultIsKeptInTheHistoryAndRaisesAnAlert(): void
@@ -140,7 +140,7 @@ final class RunRecorderTest extends TestCase
         $this->assertStringContainsString('Community directory not available', (string) ($this->repository->run($runId)['error'] ?? ''));
         $this->assertSame(['run-failed'], array_column($this->repository->events($runId), 'kind'));
         $this->assertTrue($this->logs->hasCriticalThatContains('run failed'));
-        $this->assertContains('finished:failed:1', $this->calls);
+        $this->assertContains('finished:failed:1', $this->calls->getArrayCopy());
     }
 
     public function testListenersThatFailDoNotBreakTheRun(): void
@@ -152,7 +152,7 @@ final class RunRecorderTest extends TestCase
 
         $this->assertSame(RunRepository::OK, $summary->status);
         $this->assertTrue($this->logs->hasErrorThatContains('run listener failed'));
-        $this->assertContains('finished:ok:0', $this->calls, 'the next listener still hears about it');
+        $this->assertContains('finished:ok:0', $this->calls->getArrayCopy(), 'the next listener still hears about it');
     }
 
     public function testSummaryHelpers(): void
