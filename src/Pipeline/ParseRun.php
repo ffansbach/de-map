@@ -51,6 +51,7 @@ final class ParseRun
         private readonly MetaCommunityResolver $metaResolver,
         private readonly ?Closure $clock = null,
         private readonly string $directoryUrl = Directory::URL,
+        private readonly int $retryDelayMs = 1000,
     ) {
     }
 
@@ -296,12 +297,53 @@ final class ParseRun
      */
     private function probe(array $urls, DateTimeImmutable $now): void
     {
+        $this->fetchInto($urls, $now);
+
+        // Servers under load answer with errors or empty bodies; once more after a short pause
+        // is cheap. Timeouts are not retried: a host that timed out usually does it again.
+        $transient = array_values(array_filter($urls, $this->isTransient(...)));
+
+        if ($transient === []) {
+            return;
+        }
+
+        if ($this->retryDelayMs > 0) {
+            usleep($this->retryDelayMs * 1000);
+        }
+
+        foreach ($transient as $url) {
+            unset($this->parsed[$url]);
+        }
+
+        $this->fetchInto($transient, $now);
+    }
+
+    /**
+     * @param list<string> $urls
+     */
+    private function fetchInto(array $urls, DateTimeImmutable $now): void
+    {
         $results = $this->fetcher->fetch($urls, function (string $url, string $body) use ($now): void {
             $this->parsed[$url] = $this->parser->parse($body, $now);
         });
 
         $this->requests += count($results);
         $this->fetches = [...$this->fetches, ...$results];
+    }
+
+    private function isTransient(string $url): bool
+    {
+        $fetch = $this->fetches[$url] ?? null;
+
+        if ($fetch === null || $fetch->status === null) {
+            return false;
+        }
+
+        if ($fetch->status === 429 || $fetch->status >= 500) {
+            return true;
+        }
+
+        return $fetch->status === 200 && ($this->parsed[$url] ?? null)?->format === Format::Empty;
     }
 
     /**

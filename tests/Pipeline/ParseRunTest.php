@@ -20,6 +20,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Promise\Create;
 use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
 
@@ -31,13 +32,18 @@ final class ParseRunTest extends TestCase
     /**
      * @param list<string> $skip
      * @param list<string> $unreachableHosts
+     * @param array<string, list<Response>> $flaky answers served first for a URL, before the world answers
      */
-    private function runWorld(World $world, ?SourceCache $cache = null, array $skip = [], ?string $only = null, array $unreachableHosts = [], bool $withFixed = true): RunResult
+    private function runWorld(World $world, ?SourceCache $cache = null, array $skip = [], ?string $only = null, array $unreachableHosts = [], bool $withFixed = true, array $flaky = []): RunResult
     {
         $this->requests = [];
         $inner = $world->httpHandler();
-        $handler = function (RequestInterface $request, array $options) use ($inner, $unreachableHosts) {
+        $handler = function (RequestInterface $request, array $options) use ($inner, $unreachableHosts, &$flaky) {
             $this->requests[] = (string) $request->getUri();
+
+            if (!empty($flaky[(string) $request->getUri()])) {
+                return Create::promiseFor(array_shift($flaky[(string) $request->getUri()]));
+            }
 
             if (in_array($request->getUri()->getHost(), $unreachableHosts, true)) {
                 return Create::rejectionFor(new ConnectException('Could not resolve host', new Request('GET', $request->getUri()), null, ['errno' => 6]));
@@ -53,6 +59,7 @@ final class ParseRunTest extends TestCase
             new MetaCommunityResolver(),
             null,
             LegacyRunner::DIRECTORY_URL,
+            retryDelayMs: 0,
         );
 
         return $run->run($withFixed ? $world->fixedCommunities() : [], $skip, $only);
@@ -184,6 +191,55 @@ final class ParseRunTest extends TestCase
 
         $this->assertSame(['1 entries are not usable nodes (no id)'], $this->report($result, 'first')->warnings);
         $this->assertSame([], $this->report($result, 'second')->warnings);
+    }
+
+    private function oneNodeWorld(): World
+    {
+        $nodelist = (string) json_encode(['version' => '1.0.1', 'nodes' => [
+            ['id' => 'x', 'name' => 'x', 'position' => ['lat' => 50.1, 'long' => 8.1], 'status' => ['online' => true]],
+        ]]);
+
+        return (new World())
+            ->community('flaky', ['nodeMaps' => [['technicalType' => 'nodelist', 'url' => 'https://flaky.test/nodelist.json']]])
+            ->route('https://flaky.test/nodelist.json', $nodelist);
+    }
+
+    public function testEmptyAnswerIsRetriedOnce(): void
+    {
+        $result = $this->runWorld($this->oneNodeWorld(), flaky: ['https://flaky.test/nodelist.json' => [new Response(200, [], '')]]);
+
+        $this->assertSame(CommunityReport::OK, $this->report($result, 'flaky')->outcome);
+        $this->assertCount(2, $this->requestsTo('https://flaky.test/'));
+    }
+
+    public function testServerErrorAndTooManyRequestsAreRetriedOnce(): void
+    {
+        foreach ([503, 429] as $status) {
+            $result = $this->runWorld($this->oneNodeWorld(), flaky: ['https://flaky.test/nodelist.json' => [new Response($status)]]);
+
+            $this->assertSame(CommunityReport::OK, $this->report($result, 'flaky')->outcome, (string) $status);
+            $this->assertCount(2, $this->requestsTo('https://flaky.test/'), (string) $status);
+        }
+    }
+
+    public function testAnswerThatStaysEmptyIsGivenUpAfterOneRetry(): void
+    {
+        $empty = new Response(200, [], '');
+        $result = $this->runWorld($this->oneNodeWorld(), flaky: ['https://flaky.test/nodelist.json' => [$empty, $empty, $empty]]);
+        $report = $this->report($result, 'flaky');
+
+        $this->assertSame(CommunityReport::NO_DATA, $report->outcome);
+        $this->assertCount(2, $this->requestsTo('https://flaky.test/'));
+        $this->assertSame('empty', $report->attempts[0]->format);
+    }
+
+    public function testNotFoundIsNotRetried(): void
+    {
+        $world = (new World())->community('gone', ['nodeMaps' => [['technicalType' => 'nodelist', 'url' => 'https://gone.test/nodelist.json']]]);
+
+        $this->runWorld($world);
+
+        $this->assertCount(1, $this->requestsTo('https://gone.test/'));
     }
 
     public function testMapWithoutDataIsListedAndReportsWhatWasTried(): void

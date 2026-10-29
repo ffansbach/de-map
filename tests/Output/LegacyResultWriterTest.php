@@ -46,6 +46,7 @@ final class LegacyResultWriterTest extends TestCase
             new MetaCommunityResolver(),
             null,
             LegacyRunner::DIRECTORY_URL,
+            retryDelayMs: 0,
         );
 
         return $run->run($world->fixedCommunities(), StandardWorld::SKIP);
