@@ -46,7 +46,9 @@ final class StandardWorld
             ->community('hop-town', ['nodeMaps' => [
                 ['technicalType' => 'hopglass', 'url' => 'https://hop.test/'],
             ]])
+            // the legacy parser asks for "//config.json", the new one for "/config.json"
             ->route('https://hop.test//config.json', (string) json_encode(['dataPath' => ['https://hop.test/a/', 'https://hop.test/b/']]))
+            ->route('https://hop.test/config.json', (string) json_encode(['dataPath' => ['https://hop.test/a/', 'https://hop.test/b/']]))
             ->route('https://hop.test/a/nodes.json', World::fixture('nodeinfo', 'hopa'))
             ->route('https://hop.test/b/nodes.json', World::fixture('nodeinfo', 'hopb'))
             ->community('dead-town', ['nodeMaps' => [

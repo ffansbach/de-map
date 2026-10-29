@@ -10,6 +10,7 @@ parameters:
         - tests/Http
         - tests/Source
         - tests/Community
+        - tests/Pipeline
         - tests/Legacy
         - tests/Parser
         - tests/Model

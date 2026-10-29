@@ -1,0 +1,576 @@
+<?php
+
+declare(strict_types=1);
+
+namespace FreifunkKarte\Pipeline;
+
+use Closure;
+use DateTimeImmutable;
+use FreifunkKarte\Audit\Format;
+use FreifunkKarte\Community\CommunityInfo;
+use FreifunkKarte\Community\MetaCommunityResolver;
+use FreifunkKarte\Http\FetchResult;
+use FreifunkKarte\Http\ParallelFetcher;
+use FreifunkKarte\Model\NodeCollection;
+use FreifunkKarte\Parser\ParseResult;
+use FreifunkKarte\Parser\SourceParser;
+use FreifunkKarte\Source\Directory;
+use FreifunkKarte\Source\Discovery;
+use FreifunkKarte\Source\SourceCache;
+use RuntimeException;
+
+/**
+ * One complete run: directory, API files, node sources, parsing, deduplication.
+ *
+ * Everything that waits for the network is done for all communities at once, in rounds:
+ *   1. the directory, 2. all API files, 3. the maps - for each map one stage per round:
+ *   cached data URLs, the declared URL, its config.json, the dataPath URLs from that, the
+ *   other usual locations. A map stops at the first stage that yields nodes, like the legacy
+ *   parser did, but all maps advance together.
+ *
+ * Priorities (as before): a community with a nodelist uses only that; otherwise the first map
+ * that yields nodes; nodelist communities come first, fixed communities last; the first
+ * community to deliver a node keeps it.
+ */
+final class ParseRun
+{
+    private const MAX_ROUNDS = 8;
+
+    /** @var array<string, FetchResult> */
+    private array $fetches = [];
+
+    /** @var array<string, ParseResult> */
+    private array $parsed = [];
+
+    private int $requests = 0;
+
+    public function __construct(
+        private readonly ParallelFetcher $fetcher,
+        private readonly SourceParser $parser,
+        private readonly SourceCache $cache,
+        private readonly MetaCommunityResolver $metaResolver,
+        private readonly ?Closure $clock = null,
+        private readonly string $directoryUrl = Directory::URL,
+    ) {
+    }
+
+    /**
+     * @param array<string, array{url: string, parser: string, name: string, homePage: string}> $fixed
+     * @param list<string> $skip directory communities that are not looked at
+     * @param callable(string): void|null $log progress messages
+     */
+    public function run(array $fixed = [], array $skip = [], ?string $only = null, ?callable $log = null): RunResult
+    {
+        $log ??= static function (string $message): void {
+        };
+        $this->fetches = [];
+        $this->parsed = [];
+        $this->requests = 0;
+        $started = microtime(true);
+        $now = $this->now();
+
+        $log('fetching community directory');
+        $directory = $this->fetchDirectory($only);
+
+        $log(sprintf('fetching %d community API files', count($directory)));
+        $builds = $this->buildCommunities($directory, $skip);
+
+        foreach ($fixed as $key => $source) {
+            if ($only === null || $only === $key) {
+                $builds[] = $this->buildFixed($key, $source);
+            }
+        }
+
+        $entries = [];
+
+        foreach ($builds as $build) {
+            array_push($entries, ...$build->entries);
+        }
+
+        $this->resolveSources($entries, $now, $log);
+
+        $reports = $this->assemble($builds, $nodes = new NodeCollection(), $now);
+        $this->cache->save($now);
+
+        $listed = array_values(array_filter($reports, static fn (CommunityReport $r): bool => $r->listed));
+        $metaLinks = $this->metaResolver->resolve(array_map(
+            static fn (CommunityReport $r): CommunityInfo => new CommunityInfo($r->key, $r->name, $r->url, $r->meta),
+            $listed,
+        ));
+
+        return new RunResult($nodes, $reports, $metaLinks, $now, microtime(true) - $started, $this->requests);
+    }
+
+    private function now(): DateTimeImmutable
+    {
+        return $this->clock !== null ? ($this->clock)() : new DateTimeImmutable();
+    }
+
+    /**
+     * @return array<string, string> community key => API file URL
+     */
+    private function fetchDirectory(?string $only): array
+    {
+        $body = null;
+        $results = $this->fetcher->fetch([$this->directoryUrl], static function (string $url, string $content) use (&$body): void {
+            $body = $content;
+        });
+        $this->requests += count($results);
+
+        $directory = Directory::fromJson((string) $body);
+
+        if ($directory === []) {
+            throw new RuntimeException('Community directory not available: ' . $this->directoryUrl);
+        }
+
+        return $only === null ? $directory : array_intersect_key($directory, [$only => true]);
+    }
+
+    /**
+     * @param array<string, string> $directory
+     * @param list<string> $skip
+     * @return list<CommunityBuild>
+     */
+    private function buildCommunities(array $directory, array $skip): array
+    {
+        /** @var array<string, array<array-key, mixed>> $documents */
+        $documents = [];
+        $apiFetches = $this->fetcher->fetch(array_values($directory), static function (string $url, string $body) use (&$documents): void {
+            $document = json_decode($body, true);
+
+            if (is_array($document)) {
+                $documents[$url] = $document;
+            }
+        });
+        $this->requests += count($apiFetches);
+
+        $builds = [];
+
+        foreach ($directory as $key => $apiUrl) {
+            $document = $documents[$apiUrl] ?? null;
+            $placeholder = new CommunityInfo($key, $key, '');
+
+            if (in_array($key, $skip, true)) {
+                $builds[] = new CommunityBuild($placeholder, 'directory', $apiUrl, false, CommunityReport::SKIPPED, messages: ['skipped by configuration']);
+                continue;
+            }
+
+            if ($document === null) {
+                $builds[] = new CommunityBuild($placeholder, 'directory', $apiUrl, false, CommunityReport::API_UNAVAILABLE, messages: [
+                    'API file not available: ' . self::describe($apiFetches[$apiUrl] ?? null),
+                ]);
+                continue;
+            }
+
+            $builds[] = $this->buildFromDocument($key, $apiUrl, $document);
+        }
+
+        return $builds;
+    }
+
+    /**
+     * @param array<array-key, mixed> $document
+     */
+    private function buildFromDocument(string $key, string $apiUrl, array $document): CommunityBuild
+    {
+        $name = is_string($document['name'] ?? null) && $document['name'] !== '' ? $document['name'] : $key;
+        $homePage = $document['homePage'] ?? null;
+        $url = is_string($homePage) && $homePage !== '' ? $homePage : (is_string($document['url'] ?? null) ? $document['url'] : '');
+        $meta = is_string($document['metacommunity'] ?? null) && $document['metacommunity'] !== '' ? $document['metacommunity'] : null;
+        $info = new CommunityInfo($key, $name, $url, $meta);
+        $state = is_array($document['state'] ?? null) ? $document['state'] : [];
+        $claimed = !empty($state['nodes']) && is_numeric($state['nodes']) ? (int) $state['nodes'] : null;
+
+        $maps = $document['nodeMaps'] ?? null;
+
+        if (!is_array($maps)) {
+            return new CommunityBuild($info, 'directory', $apiUrl, false, CommunityReport::NO_NODEMAPS, messages: ['API file has no nodeMaps'], claimedNodes: $claimed);
+        }
+
+        if (json_encode(['name' => $name, 'url' => $url]) === false) {
+            return new CommunityBuild($info, 'directory', $apiUrl, false, CommunityReport::NO_DATA, messages: ['name or url are corrupt (not valid UTF-8) - ignored'], claimedNodes: $claimed);
+        }
+
+        $entries = [];
+        $types = [];
+        $messages = $meta !== null ? ['meta-community: ' . $meta] : [];
+
+        foreach ($maps as $map) {
+            if (!is_array($map) || !is_string($map['url'] ?? null) || trim($map['url']) === '') {
+                $messages[] = 'ignored a map without url';
+                continue;
+            }
+
+            $type = is_string($map['technicalType'] ?? null) ? strtolower($map['technicalType']) : '';
+            $types[] = $type !== '' ? $type : '(none)';
+
+            if ($type === '') {
+                $messages[] = 'ignored map without technicalType: ' . $map['url'];
+                continue;
+            }
+
+            $entries[] = new SourceEntry($key, $type, Discovery::withScheme($map['url']));
+        }
+
+        return new CommunityBuild($info, 'directory', $apiUrl, true, CommunityReport::NO_DATA, $entries, $messages, $types, $claimed);
+    }
+
+    /**
+     * @param array{url: string, parser: string, name: string, homePage: string} $source
+     */
+    private function buildFixed(string $key, array $source): CommunityBuild
+    {
+        $info = new CommunityInfo($key, $source['name'], $source['homePage']);
+        $type = strtolower($source['parser']);
+
+        return new CommunityBuild($info, 'fixed', null, true, CommunityReport::NO_DATA, [new SourceEntry($key, $type, Discovery::withScheme($source['url']))], ['fixed community'], [$type]);
+    }
+
+    /**
+     * @param list<SourceEntry> $entries
+     * @param callable(string): void $log
+     */
+    private function resolveSources(array $entries, DateTimeImmutable $now, callable $log): void
+    {
+        $byCommunity = [];
+
+        foreach ($entries as $entry) {
+            $byCommunity[$entry->community][] = $entry;
+        }
+
+        for ($round = 1; $round <= self::MAX_ROUNDS; $round++) {
+            $urls = [];
+
+            foreach ($entries as $entry) {
+                if ($this->waitsForNodelist($entry, $byCommunity[$entry->community], $now)) {
+                    continue;
+                }
+
+                $step = $this->walk($entry, $now);
+
+                if ($step['status'] === 'fetch') {
+                    array_push($urls, ...$step['urls']);
+                }
+            }
+
+            $urls = array_values(array_unique($urls));
+
+            if ($urls === []) {
+                return;
+            }
+
+            $log(sprintf('round %d: %d URLs', $round, count($urls)));
+            $this->probe($urls, $now);
+        }
+    }
+
+    /**
+     * A community that declares a nodelist uses nothing else if the nodelist delivers. So its other
+     * maps are not touched while the nodelist is still being looked at, and never if it delivers.
+     *
+     * @param list<SourceEntry> $siblings all maps of the entry's community
+     */
+    private function waitsForNodelist(SourceEntry $entry, array $siblings, DateTimeImmutable $now): bool
+    {
+        if ($entry->declaredType === 'nodelist') {
+            return false;
+        }
+
+        foreach ($siblings as $sibling) {
+            if ($sibling->declaredType !== 'nodelist') {
+                continue;
+            }
+
+            $step = $this->walk($sibling, $now);
+
+            if ($step['status'] === 'fetch' || ($step['status'] === 'resolved' && $this->isNodelist($step['urls']))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param list<string> $urls
+     */
+    private function probe(array $urls, DateTimeImmutable $now): void
+    {
+        $results = $this->fetcher->fetch($urls, function (string $url, string $body) use ($now): void {
+            $this->parsed[$url] = $this->parser->parse($body, $now);
+        });
+
+        $this->requests += count($results);
+        $this->fetches = [...$this->fetches, ...$results];
+    }
+
+    /**
+     * Where a map stands: still has URLs to fetch, resolved to data URLs, or out of options.
+     *
+     * @return array{status: 'fetch'|'resolved'|'exhausted', urls: list<string>, via: string}
+     */
+    private function walk(SourceEntry $entry, DateTimeImmutable $now): array
+    {
+        foreach ($this->stages($entry, $now) as $stage) {
+            $unfetched = array_values(array_filter($stage['urls'], fn (string $url): bool => !isset($this->fetches[$url])));
+
+            if ($unfetched !== []) {
+                return ['status' => 'fetch', 'urls' => $unfetched, 'via' => $stage['kind']];
+            }
+
+            $withNodes = array_values(array_filter($stage['urls'], $this->hasNodes(...)));
+            $hits = $stage['kind'] === 'candidates' ? array_slice($withNodes, 0, 1) : $withNodes;
+
+            if ($hits !== []) {
+                return ['status' => 'resolved', 'urls' => $hits, 'via' => $stage['kind']];
+            }
+
+            if ($stage['kind'] === 'cache') {
+                // what we remembered does not deliver any more: look again from the start
+                $this->cache->forget($entry->mapUrl);
+            }
+
+            if ($stage['kind'] === 'declared' && ($this->fetches[$entry->mapUrl] ?? null)?->status === null) {
+                // the host does not answer at all: its other paths will not either
+                break;
+            }
+        }
+
+        return ['status' => 'exhausted', 'urls' => [], 'via' => ''];
+    }
+
+    /**
+     * The URLs to look at for a map, stage by stage, in order of preference.
+     *
+     * @return list<array{kind: string, urls: list<string>}>
+     */
+    private function stages(SourceEntry $entry, DateTimeImmutable $now): array
+    {
+        $stages = [];
+        $cached = $this->cache->get($entry->mapUrl, $now);
+
+        if ($cached !== null) {
+            $stages[] = ['kind' => 'cache', 'urls' => $cached];
+        }
+
+        $stages[] = ['kind' => 'declared', 'urls' => [$entry->mapUrl]];
+        $candidates = Discovery::candidates($entry->mapUrl, $entry->declaredType);
+
+        if ($candidates !== []) {
+            $config = Discovery::baseUrl($entry->mapUrl) . 'config.json';
+            $stages[] = ['kind' => 'config', 'urls' => [$config]];
+            $stages[] = ['kind' => 'datapath', 'urls' => Discovery::dataPathUrls($entry->mapUrl, isset($this->parsed[$config]) ? $this->parsed[$config]->dataPaths : [])];
+            $stages[] = ['kind' => 'candidates', 'urls' => array_values(array_diff($candidates, [$config]))];
+        }
+
+        return $stages;
+    }
+
+    private function hasNodes(string $url): bool
+    {
+        $result = $this->parsed[$url] ?? null;
+
+        return $result !== null && $result->isUsable() && $result->found > 0;
+    }
+
+    /**
+     * @param list<CommunityBuild> $builds
+     * @return list<CommunityReport>
+     */
+    private function assemble(array $builds, NodeCollection $nodes, DateTimeImmutable $now): array
+    {
+        $chosen = [];
+
+        foreach ($builds as $index => $build) {
+            $chosen[$index] = $this->choose($build, $now);
+        }
+
+        $order = [];
+
+        foreach (['nodelist', 'others', 'fixed'] as $group) {
+            foreach ($builds as $index => $build) {
+                $isFixed = $build->origin === 'fixed';
+                $isNodelist = $chosen[$index]['nodelist'];
+
+                if (($group === 'fixed' && $isFixed) || ($group === 'nodelist' && !$isFixed && $isNodelist) || ($group === 'others' && !$isFixed && !$isNodelist)) {
+                    $order[] = $index;
+                }
+            }
+        }
+
+        $reports = [];
+        $usedBy = [];
+
+        foreach ($order as $index) {
+            $reports[] = $this->report($builds[$index], $chosen[$index], $nodes, $now, $usedBy);
+        }
+
+        return $reports;
+    }
+
+    /**
+     * Which of a community's maps are used.
+     *
+     * @return array{nodelist: bool, resolutions: list<array{entry: SourceEntry, urls: list<string>, via: string}>, unused: list<array{entry: SourceEntry, urls: list<string>, via: string}>}
+     */
+    private function choose(CommunityBuild $build, DateTimeImmutable $now): array
+    {
+        $resolutions = [];
+
+        foreach ($build->entries as $entry) {
+            $step = $this->walk($entry, $now);
+
+            if ($step['status'] === 'resolved') {
+                $resolutions[] = ['entry' => $entry, 'urls' => $step['urls'], 'via' => $step['via']];
+
+                if (in_array($step['via'], ['datapath', 'candidates'], true)) {
+                    $this->cache->remember($entry->mapUrl, $step['urls'], $now);
+                }
+            }
+        }
+
+        $nodelists = array_values(array_filter($resolutions, fn (array $r): bool => $this->isNodelist($r['urls'])));
+
+        if ($nodelists !== []) {
+            return ['nodelist' => true, 'resolutions' => $nodelists, 'unused' => array_values(array_udiff($resolutions, $nodelists, static fn (array $a, array $b): int => $a['entry']->mapUrl <=> $b['entry']->mapUrl))];
+        }
+
+        return ['nodelist' => false, 'resolutions' => array_slice($resolutions, 0, 1), 'unused' => array_slice($resolutions, 1)];
+    }
+
+    /**
+     * @param list<string> $urls
+     */
+    private function isNodelist(array $urls): bool
+    {
+        foreach ($urls as $url) {
+            if (($this->parsed[$url] ?? null)?->format === Format::Nodelist) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array{nodelist: bool, resolutions: list<array{entry: SourceEntry, urls: list<string>, via: string}>, unused: list<array{entry: SourceEntry, urls: list<string>, via: string}>} $chosen
+     * @param array<string, string> $usedBy data URL => community that used it first
+     */
+    private function report(CommunityBuild $build, array $chosen, NodeCollection $nodes, DateTimeImmutable $now, array &$usedBy): CommunityReport
+    {
+        $messages = $build->messages;
+        $key = $build->info->key;
+        $sourceUrls = [];
+        $warnings = [];
+        $counts = ['found' => 0, 'added' => 0, 'duplicates' => 0, 'withoutLocation' => 0, 'dropped' => 0, 'invalid' => 0];
+        $format = null;
+        $viaCache = false;
+
+        foreach ($chosen['resolutions'] as $resolution) {
+            foreach ($resolution['urls'] as $url) {
+                $result = $this->parsed[$url] ?? null;
+
+                if ($result === null) {
+                    continue;
+                }
+
+                $added = $nodes->addResult($key, $result);
+                $sourceUrls[] = $url;
+                $format ??= $result->format->value;
+                $viaCache = $viaCache || $resolution['via'] === 'cache';
+                $counts['found'] += $result->found;
+                $counts['added'] += $added['added'];
+                $counts['duplicates'] += $added['duplicates'];
+                $counts['withoutLocation'] += $result->withoutLocation;
+                $counts['dropped'] += $result->dropped;
+                $counts['invalid'] += $result->invalid;
+                array_push($warnings, ...$result->warnings);
+
+                $messages[] = sprintf('%s (%s%s): %s', $url, $resolution['entry']->declaredType, $resolution['via'] === 'cache' ? ', cached' : '', $result->summary());
+
+                if (isset($usedBy[$url])) {
+                    $messages[] = sprintf('%s was already used by "%s", its nodes belong there', $url, $usedBy[$url]);
+                } else {
+                    $usedBy[$url] = $key;
+                }
+            }
+        }
+
+        foreach ($chosen['unused'] as $unused) {
+            $messages[] = sprintf('not used: %s (%s) - %s', implode(', ', $unused['urls']), $unused['entry']->declaredType, $chosen['nodelist'] ? 'the community has a nodelist, which takes priority' : 'another map of this community was used');
+        }
+
+        $attempts = $this->attempts($build, $now);
+        $outcome = $sourceUrls !== [] ? CommunityReport::OK : $build->outcome;
+
+        if ($sourceUrls === [] && $build->entries !== []) {
+            foreach ($build->entries as $entry) {
+                $messages[] = sprintf('no data found for %s (%s)', $entry->mapUrl, $entry->declaredType);
+            }
+        }
+
+        foreach ($warnings as $warning) {
+            $messages[] = 'warning: ' . $warning;
+        }
+
+        return new CommunityReport(
+            $key,
+            $build->info->name,
+            $build->info->url,
+            $build->info->meta,
+            $build->origin,
+            $build->apiUrl,
+            $build->listed,
+            $outcome,
+            $build->declaredTypes,
+            $sourceUrls,
+            $format,
+            $viaCache,
+            $counts['found'],
+            $counts['added'],
+            $counts['duplicates'],
+            $counts['withoutLocation'],
+            $counts['dropped'],
+            $counts['invalid'],
+            $attempts,
+            $warnings,
+            $messages,
+            $build->claimedNodes,
+        );
+    }
+
+    /**
+     * @return list<SourceAttempt>
+     */
+    private function attempts(CommunityBuild $build, DateTimeImmutable $now): array
+    {
+        $attempts = [];
+
+        foreach ($build->entries as $entry) {
+            foreach ($this->stages($entry, $now) as $stage) {
+                foreach ($stage['urls'] as $url) {
+                    $fetch = $this->fetches[$url] ?? null;
+
+                    if ($fetch === null || isset($attempts[$url])) {
+                        continue;
+                    }
+
+                    $parsed = $this->parsed[$url] ?? null;
+                    $attempts[$url] = new SourceAttempt($url, $fetch->status, $fetch->error, $parsed?->format->value, $parsed !== null ? $parsed->found : 0, $fetch->tlsInvalid);
+                }
+            }
+        }
+
+        return array_values($attempts);
+    }
+
+    private static function describe(?FetchResult $fetch): string
+    {
+        return match (true) {
+            $fetch === null => 'not fetched',
+            $fetch->status === null => $fetch->error ?? 'unreachable',
+            $fetch->status !== 200 => 'HTTP ' . $fetch->status,
+            default => 'not a JSON object',
+        };
+    }
+}

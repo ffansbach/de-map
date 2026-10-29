@@ -6,6 +6,9 @@ namespace FreifunkKarte\Tests\Legacy;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use GuzzleHttp\Promise\Create;
+use GuzzleHttp\Psr7\Response;
+use Psr\Http\Message\RequestInterface;
 use RuntimeException;
 
 /**
@@ -27,7 +30,7 @@ final class World
     /** @var array<string, string> */
     private array $routes = [];
 
-    /** @var array<string, array{url: string, parser: string}> */
+    /** @var array<string, array{url: string, parser: string, name: string, homePage: string}> */
     private array $fixed = [];
 
     /**
@@ -61,7 +64,7 @@ final class World
 
     public function fixed(string $key, string $url, string $parser): self
     {
-        $this->fixed[$key] = ['url' => $url, 'parser' => $parser];
+        $this->fixed[$key] = ['url' => $url, 'parser' => $parser, 'name' => $key, 'homePage' => $url];
 
         return $this;
     }
@@ -75,7 +78,21 @@ final class World
     }
 
     /**
-     * @return array<string, array{url: string, parser: string}>
+     * A Guzzle handler that serves this world: known URLs answer 200, everything else 404.
+     */
+    public function httpHandler(): callable
+    {
+        $routes = $this->routes();
+
+        return static fn (RequestInterface $request) => Create::promiseFor(
+            isset($routes[(string) $request->getUri()])
+                ? new Response(200, [], $routes[(string) $request->getUri()])
+                : new Response(404),
+        );
+    }
+
+    /**
+     * @return array<string, array{url: string, parser: string, name: string, homePage: string}>
      */
     public function fixedCommunities(): array
     {

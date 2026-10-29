@@ -1,0 +1,350 @@
+<?php
+
+declare(strict_types=1);
+
+namespace FreifunkKarte\Tests\Pipeline;
+
+use DateTimeImmutable;
+use FreifunkKarte\Community\MetaCommunityResolver;
+use FreifunkKarte\Community\MetaLink;
+use FreifunkKarte\Http\ParallelFetcher;
+use FreifunkKarte\Parser\SourceParser;
+use FreifunkKarte\Pipeline\CommunityReport;
+use FreifunkKarte\Pipeline\ParseRun;
+use FreifunkKarte\Pipeline\RunResult;
+use FreifunkKarte\Source\SourceCache;
+use FreifunkKarte\Tests\Legacy\LegacyRunner;
+use FreifunkKarte\Tests\Legacy\StandardWorld;
+use FreifunkKarte\Tests\Legacy\World;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Promise\Create;
+use GuzzleHttp\Psr7\Request;
+use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\RequestInterface;
+
+final class ParseRunTest extends TestCase
+{
+    /** @var list<string> every URL requested, in order */
+    private array $requests = [];
+
+    /**
+     * @param list<string> $skip
+     * @param list<string> $unreachableHosts
+     */
+    private function runWorld(World $world, ?SourceCache $cache = null, array $skip = [], ?string $only = null, array $unreachableHosts = [], bool $withFixed = true): RunResult
+    {
+        $this->requests = [];
+        $inner = $world->httpHandler();
+        $handler = function (RequestInterface $request, array $options) use ($inner, $unreachableHosts) {
+            $this->requests[] = (string) $request->getUri();
+
+            if (in_array($request->getUri()->getHost(), $unreachableHosts, true)) {
+                return Create::rejectionFor(new ConnectException('Could not resolve host', new Request('GET', $request->getUri()), null, ['errno' => 6]));
+            }
+
+            return $inner($request, $options);
+        };
+
+        $run = new ParseRun(
+            new ParallelFetcher(new Client(['handler' => $handler]), 8, retryWithoutVerification: false),
+            new SourceParser(),
+            $cache ?? new SourceCache(),
+            new MetaCommunityResolver(),
+            null,
+            LegacyRunner::DIRECTORY_URL,
+        );
+
+        return $run->run($withFixed ? $world->fixedCommunities() : [], $skip, $only);
+    }
+
+    private function report(RunResult $result, string $key): CommunityReport
+    {
+        foreach ($result->communities as $report) {
+            if ($report->key === $key) {
+                return $report;
+            }
+        }
+
+        $this->fail('No report for ' . $key);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function requestsTo(string $prefix): array
+    {
+        return array_values(array_filter($this->requests, static fn (string $url): bool => str_starts_with($url, $prefix)));
+    }
+
+    public function testReferenceWorldGivesTheLegacyResultPlusTheDeliberateDifferences(): void
+    {
+        $result = $this->runWorld(StandardWorld::build(), skip: StandardWorld::SKIP);
+
+        /** @var list<array<string, mixed>> $legacy */
+        $legacy = json_decode((string) file_get_contents(__DIR__ . '/../fixtures/golden/legacy/routers.json'), true);
+        $new = $result->nodes->toRouterEntries();
+
+        // everything the legacy parser found is still there, unchanged
+        foreach ($legacy as $router) {
+            $this->assertContains($router, $new, 'legacy node missing: ' . json_encode($router));
+        }
+
+        // and exactly these are new: hop-town's second dataPath, recently seen offline flat nodes
+        $extra = array_filter($new, static fn (array $router): bool => !in_array($router, $legacy, true));
+        $perCommunity = array_count_values(array_column($extra, 'community'));
+        ksort($perCommunity);
+
+        $this->assertSame(['ff_fixed_flat' => 2, 'flat-town' => 2, 'hop-town' => 4], $perCommunity);
+
+        foreach ($extra as $router) {
+            $this->assertSame($router['community'] === 'hop-town' ? 'online' : 'offline', $router['status']);
+        }
+    }
+
+    public function testListedCommunitiesAreTheLegacyOnesInTheLegacyOrder(): void
+    {
+        $result = $this->runWorld(StandardWorld::build(), skip: StandardWorld::SKIP);
+
+        /** @var array<string, array{name: string, url: string, meta: string|false}> $legacy */
+        $legacy = json_decode((string) file_get_contents(__DIR__ . '/../fixtures/golden/legacy/communities.json'), true);
+
+        $listed = [];
+
+        foreach ($result->listedCommunities() as $community) {
+            $listed[$community->key] = ['name' => $community->name, 'url' => $community->url, 'meta' => $community->meta ?? false];
+        }
+
+        $this->assertSame($legacy, $listed);
+    }
+
+    public function testNoUrlIsRequestedTwice(): void
+    {
+        $this->runWorld(StandardWorld::build(), skip: StandardWorld::SKIP);
+
+        $this->assertSame([], array_keys(array_filter(array_count_values($this->requests), static fn (int $n): bool => $n > 1)));
+    }
+
+    public function testNodelistCommunityNeverFetchesItsOtherMaps(): void
+    {
+        $result = $this->runWorld(StandardWorld::build(), skip: StandardWorld::SKIP);
+
+        $this->assertSame([], $this->requestsTo('https://nl.test/map'));
+        $this->assertSame(CommunityReport::OK, $this->report($result, 'nl-city')->outcome);
+        $this->assertSame('nodelist', $this->report($result, 'nl-city')->format);
+    }
+
+    public function testNodelistThatFailsLetsTheOtherMapsOfTheCommunityRun(): void
+    {
+        $world = (new World())
+            ->community('twomaps', ['nodeMaps' => [
+                ['technicalType' => 'nodelist', 'url' => 'https://twomaps.test/nodelist.json'],
+                ['technicalType' => 'meshviewer', 'url' => 'https://twomaps.test/map/'],
+            ]])
+            ->route('https://twomaps.test/map/data/nodes.json', World::fixture('nodeinfo', 'tm'));
+
+        $result = $this->runWorld($world);
+        $report = $this->report($result, 'twomaps');
+
+        $this->assertSame(CommunityReport::OK, $report->outcome);
+        $this->assertSame(['https://twomaps.test/map/data/nodes.json'], $report->sourceUrls);
+        $this->assertContains('https://twomaps.test/nodelist.json', $this->requests, 'the nodelist was tried first');
+    }
+
+    public function testHopglassUsesAllDataPaths(): void
+    {
+        $result = $this->runWorld(StandardWorld::build(), skip: StandardWorld::SKIP);
+        $hop = $this->report($result, 'hop-town');
+
+        $this->assertSame(['https://hop.test/a/nodes.json', 'https://hop.test/b/nodes.json'], $hop->sourceUrls);
+        $this->assertSame(8, $hop->added);
+    }
+
+    public function testMapSharedByTwoCommunitiesIsFetchedOnce(): void
+    {
+        $result = $this->runWorld(StandardWorld::build(), skip: StandardWorld::SKIP);
+
+        $this->assertCount(1, $this->requestsTo('https://dup.test/'));
+        $this->assertSame(4, $this->report($result, 'dup-a')->added);
+        $second = $this->report($result, 'dup-b');
+        $this->assertSame([0, 4], [$second->added, $second->duplicates]);
+        $this->assertContains('https://dup.test/data/nodes.json was already used by "dup-a", its nodes belong there', $second->messages);
+    }
+
+    public function testMapWithoutDataIsListedAndReportsWhatWasTried(): void
+    {
+        $result = $this->runWorld(StandardWorld::build(), skip: StandardWorld::SKIP);
+        $dead = $this->report($result, 'dead-town');
+
+        $this->assertTrue($dead->listed);
+        $this->assertSame(CommunityReport::NO_DATA, $dead->outcome);
+        $this->assertSame([], $dead->sourceUrls);
+        $this->assertSame([
+            'https://dead.test/map/',
+            'https://dead.test/map/config.json',
+            'https://dead.test/map/nodes.json',
+            'https://dead.test/map/data/nodes.json',
+            'https://dead.test/map/json/nodes.json',
+            'https://dead.test/map/meshviewer/data/meshviewer.json',
+            'https://dead.test/map/data/meshviewer.json',
+        ], array_map(static fn ($a): string => $a->url, $dead->attempts));
+        $this->assertSame([404], array_values(array_unique(array_map(static fn ($a): ?int => $a->status, $dead->attempts))));
+    }
+
+    public function testCommunitiesThatCannotBeUsedAreReportedButNotListed(): void
+    {
+        $result = $this->runWorld(StandardWorld::build(), skip: StandardWorld::SKIP);
+
+        foreach (['skipped-town' => CommunityReport::SKIPPED, 'broken-api' => CommunityReport::API_UNAVAILABLE, 'no-maps' => CommunityReport::NO_NODEMAPS] as $key => $outcome) {
+            $report = $this->report($result, $key);
+            $this->assertFalse($report->listed, $key);
+            $this->assertSame($outcome, $report->outcome, $key);
+        }
+
+        $this->assertSame([], $this->requestsTo('https://skipped.test/'));
+        $this->assertSame(['API file not available: HTTP 404'], $this->report($result, 'broken-api')->messages);
+    }
+
+    public function testRemovedMapTypeIsOnlyProbedAtItsDeclaredUrl(): void
+    {
+        $result = $this->runWorld(StandardWorld::build(), skip: StandardWorld::SKIP);
+
+        $this->assertSame(['https://netmon.test/'], $this->requestsTo('https://netmon.test/'));
+        $this->assertTrue($this->report($result, 'netmon-old')->listed);
+        $this->assertSame(['netmon'], $this->report($result, 'netmon-old')->declaredTypes);
+    }
+
+    public function testFixedCommunitiesComeLastAndUseTheirHomePage(): void
+    {
+        $result = $this->runWorld(StandardWorld::build(), skip: StandardWorld::SKIP);
+        $keys = array_map(static fn (CommunityReport $r): string => $r->key, $result->listedCommunities());
+
+        $this->assertSame(['ff_fixed_flat', 'ff_fixed_nl', 'ff_fixed_dead'], array_slice($keys, -3));
+        $this->assertSame('https://fixed.test/data/meshviewer.json', $this->report($result, 'ff_fixed_flat')->url);
+        $this->assertSame('fixed', $this->report($result, 'ff_fixed_flat')->origin);
+    }
+
+    public function testNodelistCommunitiesAreProcessedBeforeTheOthers(): void
+    {
+        // the nodelist community is declared last but its nodes are added first
+        $nodes = fn (string $prefix): string => World::fixture('nodeinfo', $prefix);
+        $world = (new World())
+            ->community('early', ['nodeMaps' => [['technicalType' => 'ffmap', 'url' => 'https://early.test/data/nodes.json']]])
+            ->route('https://early.test/data/nodes.json', $nodes('same'))
+            ->community('late', ['nodeMaps' => [['technicalType' => 'nodelist', 'url' => 'https://late.test/nodelist.json']]])
+            ->route('https://late.test/nodelist.json', (string) json_encode(['version' => '1.0.1', 'nodes' => [
+                ['id' => 'x', 'name' => 'x', 'position' => ['lat' => 50.1, 'long' => 8.1], 'status' => ['online' => true]],
+            ]]));
+
+        $result = $this->runWorld($world);
+        $keys = array_map(static fn (CommunityReport $r): string => $r->key, $result->listedCommunities());
+
+        $this->assertSame(['late', 'early'], $keys);
+        $this->assertSame('late', $result->nodes->toRouterEntries()[0]['community']);
+    }
+
+    public function testWarmRunWithTheCacheNeedsFewerRequestsAndGivesTheSameNodes(): void
+    {
+        $cache = new SourceCache();
+        $cold = $this->runWorld(StandardWorld::build(), $cache, StandardWorld::SKIP);
+        $coldRequests = count($this->requests);
+        $warm = $this->runWorld(StandardWorld::build(), $cache, StandardWorld::SKIP);
+
+        // the legacy parser needed more requests warm (40) than cold (37)
+        $this->assertLessThan($coldRequests, count($this->requests));
+        $this->assertSame($cold->nodes->toRouterEntries(), $warm->nodes->toRouterEntries());
+
+        $mv = $this->report($warm, 'mv-city');
+        $this->assertTrue($mv->viaCache);
+        $this->assertSame(['https://mv.test/map/data/nodes.json'], $mv->sourceUrls);
+        $this->assertSame([], $this->requestsTo('https://mv.test/map/nodes.json'));
+        $this->assertSame([], $this->requestsTo('https://mv.test/map/config.json'));
+    }
+
+    public function testCachedUrlThatStopsWorkingFallsBackToDiscovery(): void
+    {
+        $cache = new SourceCache();
+        $this->runWorld(StandardWorld::build(), $cache, StandardWorld::SKIP);
+
+        // the map moves its data from data/nodes.json to json/nodes.json
+        $moved = StandardWorld::build()
+            ->route('https://mv.test/map/data/nodes.json', 'gone')
+            ->route('https://mv.test/map/json/nodes.json', World::fixture('nodeinfo', 'mv'));
+        $result = $this->runWorld($moved, $cache, StandardWorld::SKIP);
+        $mv = $this->report($result, 'mv-city');
+
+        $this->assertSame(CommunityReport::OK, $mv->outcome);
+        $this->assertFalse($mv->viaCache);
+        $this->assertSame(['https://mv.test/map/json/nodes.json'], $mv->sourceUrls);
+
+        // and the next run goes straight there
+        $this->runWorld($moved, $cache, StandardWorld::SKIP);
+        $this->assertSame([], $this->requestsTo('https://mv.test/map/config.json'));
+        $this->assertContains('https://mv.test/map/json/nodes.json', $this->requests);
+    }
+
+    public function testHostThatDoesNotAnswerIsNotProbedFurther(): void
+    {
+        $world = (new World())->community('down', ['nodeMaps' => [['technicalType' => 'meshviewer', 'url' => 'https://down.test/map/']]]);
+
+        $result = $this->runWorld($world, unreachableHosts: ['down.test']);
+
+        $this->assertSame(['https://down.test/map/'], $this->requestsTo('https://down.test/'));
+        $this->assertSame(CommunityReport::NO_DATA, $this->report($result, 'down')->outcome);
+        $this->assertNull($this->report($result, 'down')->attempts[0]->status);
+        $this->assertStringContainsString('Could not resolve host', (string) $this->report($result, 'down')->attempts[0]->error);
+    }
+
+    public function testMapWithoutTechnicalTypeIsRecordedButNotFetched(): void
+    {
+        $world = (new World())->community('typeless', ['nodeMaps' => [['url' => 'https://typeless.test/data/nodes.json'], ['technicalType' => 'MeshViewer', 'url' => 'https://typeless.test/map/']]]);
+
+        $result = $this->runWorld($world);
+        $report = $this->report($result, 'typeless');
+
+        $this->assertSame(['(none)', 'meshviewer'], $report->declaredTypes);
+        $this->assertSame([], $this->requestsTo('https://typeless.test/data/'));
+        $this->assertContains('ignored map without technicalType: https://typeless.test/data/nodes.json', $report->messages);
+    }
+
+    public function testOnlyRestrictsTheRunToOneCommunity(): void
+    {
+        $result = $this->runWorld(StandardWorld::build(), skip: StandardWorld::SKIP, only: 'flat-town', withFixed: false);
+
+        $this->assertCount(1, $result->communities);
+        $this->assertSame(6, $result->nodes->count());
+        $this->assertSame([], $this->requestsTo('https://nl.test/'));
+    }
+
+    public function testMetaCommunityLinksAreDerivedFromListedCommunities(): void
+    {
+        $maps = static fn (string $key): array => ['metacommunity' => 'Funk Nord', 'url' => "https://funknord.test/$key/", 'nodeMaps' => []];
+        $world = (new World())->community('a', $maps('a'))->community('b', $maps('b'))->community('c', $maps('c'));
+
+        $result = $this->runWorld($world);
+
+        $this->assertArrayHasKey('Funk Nord', $result->metaLinks);
+        $this->assertSame(['https://funknord.test/', MetaLink::SHARED_HOST, 3], [
+            $result->metaLinks['Funk Nord']->url,
+            $result->metaLinks['Funk Nord']->source,
+            $result->metaLinks['Funk Nord']->members,
+        ]);
+    }
+
+    public function testRunWithoutDirectoryFailsInsteadOfProducingAnEmptyResult(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Community directory not available');
+
+        $this->runWorld(new World(), withFixed: false);
+    }
+
+    public function testRequestsAndTimeAreReported(): void
+    {
+        $result = $this->runWorld(StandardWorld::build(), skip: StandardWorld::SKIP);
+
+        $this->assertSame(count($this->requests), $result->requests);
+        $this->assertGreaterThan(0.0, $result->seconds);
+        $this->assertInstanceOf(DateTimeImmutable::class, $result->startedAt);
+    }
+}
