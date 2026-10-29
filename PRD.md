@@ -1,6 +1,6 @@
 # PRD: freifunk-karte backend modernisation
 
-Living document. It is extended at the end of every step. Last updated: 2026-10-29 (step 4).
+Living document. It is extended at the end of every step. Last updated: 2026-10-29 (step 5).
 
 ## 1. Purpose
 
@@ -71,7 +71,7 @@ This PRD covers the **backend/parser**. The goal is a clean, secure, tested, obs
 | 2 | Source audit tool + sample fixtures; decide which parsers to delete | done |
 | 3 | Characterisation tests on the old code (golden outputs) | done |
 | 4 | New models + pure parsers, full unit coverage | done |
-| 5 | HTTP fetcher (parallel), source resolver, pipeline; side-by-side run on LXC | open |
+| 5 | HTTP fetcher (parallel), source resolver, pipeline; side-by-side run on LXC | done here (live network from the dev machine); the run on the LXC is yours, see the runbook in section 11 |
 | 6 | Run tracking (SQLite) + structured logging; **baseline for drift detection (R11)** | open |
 | 7 | Internal admin UI on the LXC; **"page but no data" list (R12), drift alerts (R11)** | open |
 | 8 | Secure upload API (HMAC) | open |
@@ -100,6 +100,11 @@ Working rules: one step at a time, report after each, separate focused commits.
 | 2026-10-29 | Legacy `geo[]` format is not supported by the new parsers | No source delivers it (section 8). |
 | 2026-10-29 | `justinrainbow/json-schema` (not `opis/json-schema`) validates nodelists; `lib/jsv4` stays until cut-over | The published nodelist schemas are draft-03, which opis does not support. |
 | 2026-10-29 | The parser is chosen from the response content; a ParseResult carries counts and warnings, deduplication happens in `NodeCollection` | Parsers stay pure (string + clock in, nodes out), dedupe is a run-level concern. |
+| 2026-10-29 | At most 2 requests per host in flight; a source that answers 429, 5xx or an empty body is retried once; timeouts and 404 are not | First live run lost 169 nodes: one server (70 sub-communities) answered some of many simultaneous requests with 200 and an empty body. |
+| 2026-10-29 | Last-good fallback: for sources that had trouble (empty body, 429, 5xx after the retry) the nodes of the last good answer are used for up to 24 h, and the report says so | The same server's files flicker between full and empty for minutes: a tenth of the map vanished at random. Valid data with an empty list, 404 and network errors are believed. |
+| 2026-10-29 | The hard-coded skip list is gone (`config/skipped-communities.json` is empty); unreachable hosts are not probed further | The list existed because slow hosts blocked a sequential run. In a parallel run with a 5 s connect timeout a dead host costs one slot for a moment. `lueneburg` works again, and the others deliver no data anyway. |
+| 2026-10-29 | Maps without `technicalType` are recorded but not fetched; unknown types are fetched at the declared URL only | The audit found 0 working sources among them; the record keeps R11 possible. |
+| 2026-10-29 | `bin/parser run` requires `--out`; it refuses to write fewer than 10 communities or 1000 nodes unless `--force` | A test run must not overwrite live files; same plausibility guard as `data.php`. |
 | 2026-10-29 | Legacy behaviour is pinned with golden files and edge-case tests (`tests/Legacy`) before anything is rewritten; bugs are tested as they are, marked `LEGACY BUG`, and flipped when fixed | A rewrite is only verifiable against recorded behaviour; deleting a bug test would hide the intended change. |
 | 2026-10-29 | `StandardWorld` (reference scenario) is reused to compare the new pipeline with the legacy one in steps 4/5 | Same input, two implementations, diff the result. |
 | 2026-10-29 | Source audit and fixtures are part of the CLI (`bin/parser sources:audit`, `fixtures:build`), not one-off scripts | Re-runnable; fixtures are reproducible and anonymised by whitelist. |
@@ -243,7 +248,74 @@ Meta-communities with a single member (20 of the 46) are the community itself; a
 ### Not done yet
 Fetching, discovery of the data URL behind a map page, the cache, run orchestration and the output files are step 5. Meta-community links (R: operator wants them back) need the name → URL mapping decided in step 5.
 
-## 11. Tooling
+## 11. The new pipeline (step 5)
+
+```
+bin/parser run --out=DIR
+  ParseRun
+   1 directory.json                      (1 request)
+   2 all API files, in parallel
+   3 maps, in rounds - per map one stage per round, stop at the first that yields nodes:
+        cached data URLs → declared URL → config.json → its dataPath URLs → other usual locations
+        (a community with a declared nodelist: its other maps wait, and are never fetched if the nodelist delivers)
+   4 assemble: nodelist communities first, then the others, fixed communities last; first community keeps a node
+  ParallelFetcher   workers + FetchQueue: 12 in flight, 2 per host, TLS verified, 25 MB cap, 3 redirects
+  SourceParser      by content: NodeInfo / MeshviewerFlat / Nodelist (soft schema check)
+  SourceCache       which data URLs a map page led to; entry expires 7 days after it was found
+  LastGoodStore     last nodes of every source, 24 h; used only when the server has trouble
+  MetaCommunityResolver, LegacyResultWriter (result_routers / communities / statistics / metacommunities)
+bin/parser compare OLD_DIR NEW_DIR      diff two result directories by what is on the map
+```
+
+Config in `config/`: `skipped-communities.json` (empty), `insecure-hosts.json` (hosts with a broken certificate, fetched unverified; empty), `metacommunities.json` (link overrides). State in `--cache-dir` (default `var/cache`): `sources.json`, `last-good/`.
+
+### Measured against the live network (2026-10-29, dev machine, same minute-scale window)
+
+| | legacy parser | new, cold | new, warm |
+|---|---:|---:|---:|
+| time | **176.8 s** | **21.6 s** | 20.3 s |
+| requests | 1222 | 786 | 687 |
+| nodes | 24,394 | 25,160 | 25,160 |
+| listed communities | 329 | 336 | 336 |
+| peak memory | 54 MB | 47 MB | 49 MB |
+
+(The legacy parser's PHP memory limit is 1 GB, it needs 54 MB. The 3-4 minutes the operator sees on the LXC match the 177 s measured here.)
+
+Where the ~20 s go: 5.8 s for the 337 API files, then rounds of 8.5 s, 5.2 s and 0.4 s. Each round waits for its slowest request, which is usually a dead host running into the 5 s connect timeout. An event-driven scheduler (each map advances on its own) could bring this towards 10 s; not done, the goal (speed-up) is reached.
+
+### Why the two results differ (every difference explained)
+Of 24,394 legacy nodes 24,374 are in the new result. The 20 that are not are 16 GPS-jitter / renamed nodes (two runs, minutes apart) and 4 nodes whose coordinates the legacy parser published as garbage and the new one refuses (e.g. latitude `521281725`, longitude `843804`). New in the new result (786):
+
+| What | Nodes | Why |
+|------|------:|-----|
+| karlsruhe | 304 | the legacy parser gave up on its nodelist; the content-based pipeline found the working meshviewer map |
+| cuxhaven | 248 | the legacy run hit a host that did not answer at that moment |
+| iserlohn | 164 | declares a `nodelist` but serves the flat meshviewer format; the legacy parser read it with the nodelist parser and **skipped all 174 nodes** |
+| flat meshviewer, recently seen offline | ~70 | deliberate (one offline rule), e.g. darmstadt +12, ff_nordwest +40, winterberg |
+| the 7 communities of the old skip list | 0 | listed now (their maps deliver nothing) |
+
+Also confirmed: `technicalType` is unreliable (iserlohn), and servers do misbehave (3Ländereck: nodelists flicker between full and empty; `map-data/bh/nodelist.json` was empty for a long time). Both are handled (content-based parsing; per-host limit, retry, last-good).
+
+### Status of the legacy bugs (section 9) in the new code
+Fixed: warm run slower than cold (now fewer requests), "already parsed" never matching `.json` maps (a shared map is fetched once), second `dataPath` ignored, cached URL thrown away, nodelist validation (soft, reported), `result_metacommunities.json` never written (written, with links derived from members), `//config.json`, JSON without `nodes` raising a warning, failed API files requested twice, skipped communities still downloading their API file, different offline rules per format, entries without id included. The legacy code still runs in production until the cut-over (step 9).
+
+### Warnings the live run produced (input for drift detection, R11)
+69 warnings, all about sources and not alarms: nodes with coordinates outside the valid range (8 communities), nodelists with `version` other than 1.0.0 / 1.0.1 (e.g. `"1"`, 8), nodelists whose `status.online` or `status.clients` are strings (8), numeric ids where the schema wants strings (5). 66 maps deliver no data; their attempts are in `result_statistics.json` (R12), 24 API files have no nodeMaps, 16 API files cannot be loaded.
+
+### Runbook: new next to old on the LXC
+```bash
+git pull && composer install --no-dev          # PHP >= 8.3 with curl, mbstring, xml
+bin/parser run --out=/srv/ffkarte-new --cache-dir=/srv/ffkarte-state -v
+bin/parser compare cache /srv/ffkarte-new      # cache/ is where the legacy parser writes
+```
+The legacy cron keeps running untouched; `--out` is a separate directory, nothing live is replaced. Run it a few times over a day: the second run uses what the first learned. Things to look at in `compare`: communities that lose nodes (should only be the explained kinds above), `result_statistics.json` → `staleSince` and `outcome: no-data`.
+
+### Not done (and why)
+- Upload of the result files: still FTP via the legacy code (step 8 replaces it).
+- Event-driven scheduling (see above), a negative cache for maps that never deliver (they are probed in full each run: 66 maps, about 300 requests).
+- A request budget per run (stop probing after N seconds): not needed at 20 s.
+
+## 12. Tooling
 
 ```bash
 composer install
@@ -251,12 +323,15 @@ composer check      # php-cs-fixer (dry run) + phpstan + phpunit
 composer test | stan | cs | cs-fix
 bin/parser sources:audit --json=report.json   # read-only, needs network
 bin/parser fixtures:build --from=RAWDIR       # see section 8
+bin/parser run --out=DIR                      # new pipeline, see section 11
+bin/parser compare OLD_DIR NEW_DIR
 ```
 
 Dev machine: PHP 8.5, Composer 2.10. PHPUnit 11.5, PHPStan 2.1, PHP-CS-Fixer 3.x.
 
-## 12. Open questions
+## 13. Open questions
 - PHP version on www.freifunk-karte.de (constrains the upload endpoint, step 8).
 - ~~Runtime of one full legacy run~~ answered: **3 to 4 minutes** on the LXC (fluctuates). Baseline for the speed-up goal; the parallel audit of ~1150 URLs takes about 45 s.
-- Meta-communities: confirm the proposal in section 10 (derive links from member communities, optional override file). No stale `result_metacommunities.json` exists on the webhost (confirmed by the operator).
+- Meta-communities: agreed and implemented (section 10, `MetaCommunityResolver`): 19 of 46 names get a link today. Add the 7 without link to `config/metacommunities.json` if you want them.
+- The 3Ländereck network serves empty nodelists at times (and `bh` for hours): worth telling them.
 - Is `result_statistics.json` still needed once the admin UI exists (step 7)?
