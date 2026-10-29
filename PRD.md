@@ -1,6 +1,6 @@
 # PRD: freifunk-karte backend modernisation
 
-Living document. It is extended at the end of every step. Last updated: 2026-10-29 (step 2).
+Living document. It is extended at the end of every step. Last updated: 2026-10-29 (step 3).
 
 ## 1. Purpose
 
@@ -69,7 +69,7 @@ This PRD covers the **backend/parser**. The goal is a clean, secure, tested, obs
 |---|------|--------|
 | 1 | PRD + tooling baseline (PHP 8.3, PHPUnit 11, PHPStan, CS-Fixer) | done |
 | 2 | Source audit tool + sample fixtures; decide which parsers to delete | done |
-| 3 | Characterisation tests on the old code (golden outputs) | open |
+| 3 | Characterisation tests on the old code (golden outputs) | done |
 | 4 | New models + pure parsers, full unit coverage | open |
 | 5 | HTTP fetcher (parallel), source resolver, pipeline; side-by-side run on LXC | open |
 | 6 | Run tracking (SQLite) + structured logging; **baseline for drift detection (R11)** | open |
@@ -94,6 +94,8 @@ Working rules: one step at a time, report after each, separate focused commits.
 | 2026-10-29 | Choose the parser by the **content** of a response (`FormatDetector`), not by the declared `technicalType` | The audit shows the declared type is unreliable (section 8). |
 | 2026-10-29 | Parsers to keep: nodelist, nodeinfo (ffmap/meshviewer/hopglass), flat meshviewer.json. To delete: netmon/openwifimap/olsr-dot leftovers and the `geo[]` "old style" ffmap branch | 0 working sources for the former, none of 551 probed sources delivers `geo[]` (section 8). |
 | 2026-10-29 | TLS verification stays on in the new fetcher, with a per-host exception list | Only 1 of ~1150 probed URLs has an invalid certificate (section 8). |
+| 2026-10-29 | Legacy behaviour is pinned with golden files and edge-case tests (`tests/Legacy`) before anything is rewritten; bugs are tested as they are, marked `LEGACY BUG`, and flipped when fixed | A rewrite is only verifiable against recorded behaviour; deleting a bug test would hide the intended change. |
+| 2026-10-29 | `StandardWorld` (reference scenario) is reused to compare the new pipeline with the legacy one in steps 4/5 | Same input, two implementations, diff the result. |
 | 2026-10-29 | Source audit and fixtures are part of the CLI (`bin/parser sources:audit`, `fixtures:build`), not one-off scripts | Re-runnable; fixtures are reproducible and anonymised by whitelist. |
 
 ## 7. Findings
@@ -150,7 +152,40 @@ Working sources by real format: nodelist 228, nodeinfo 98, meshviewer_flat 24, *
 
 Still to create in step 3 (characterisation): a trimmed `directory.json`, a few community API files and hand-written edge cases (client count shapes, keyed ffmap v1 `nodes`, stale offline nodes).
 
-## 9. Tooling
+## 9. Legacy characterisation (step 3)
+
+The untouched legacy `NodeListParser` runs against a fake network (`tests/Legacy`): `FakeCurlHelper` answers from a route table and records every request, `LegacyRunner` captures result files, debug messages, echo output and PHP warnings, `World`/`StandardWorld` build a reference scenario of 13 communities and 3 fixed ones from the source fixtures (dates are shifted so offline-node ages stay constant). Goldens live in `tests/fixtures/golden/legacy/` (`routers.json`, `communities.json`, `calls_cold.txt`, `calls_warm.txt`); regenerate deliberately with `UPDATE_GOLDEN=1 vendor/bin/phpunit tests/Legacy`.
+
+### Rules the rewrite must keep (pinned by tests)
+- Nodelist beats every other map of the same community; the other maps are not even fetched.
+- Nodes from several communities: identical name+id+coordinates are one node, the first community wins.
+- A community whose map delivers nothing is still listed in `result_communities.json`; communities without a loadable API file or without `nodeMaps` are not.
+- Offline nodes: nodeinfo and nodelist keep nodes offline for up to 3 days (status `offline`), older or without `lastseen`/`lastcontact` are dropped. Latitude/longitude `0` counts as "no location".
+- Client count: number, object with `total`, or list (counted); otherwise 0.
+- Output: coordinates are **strings**, `clients` an int, fields `id, lat, long, name, community, status, clients`.
+- Probe order for a map page: `config.json` (dataPath), `nodes.json`, `data/nodes.json`, `json/nodes.json`, `meshviewer/data/meshviewer.json`, `data/meshviewer.json`, the URL itself.
+
+### Legacy bugs now proven by tests (expected to change)
+| Bug | Evidence | Expected after rewrite |
+|-----|----------|------------------------|
+| A warm run (everything cached) makes **more** requests than a cold one: 40 vs 37 in the reference world; each direct `.json` source is downloaded 4x instead of 1x | `calls_warm.txt` | warm run needs fewer requests than cold |
+| "Already parsed" check never matches direct `.json` maps (normalised dir URL vs stored file URL): a map shared by two communities is fetched twice, only the node hash dedupe saves the result | `dup-a`/`dup-b` | one fetch, message "already parsed" |
+| Second `dataPath` of a HopGlass config is ignored (`array_merge` result discarded) | `hop-town`: 4 nodes instead of 8 | all dataPaths used |
+| Cached working URL is fetched and thrown away (`getNodesFromCachedFfmapUrl` result unused) | warm run request counts | cache is used instead of probing |
+| Nodelist schema validation never rejects (`Jsv4::validate()` returns an object, always truthy; `isValid()` was meant) | `testNodelistSchemaValidationNeverRejects` | real validation (decide in step 4 whether schema 1.0.1 files pass: the sources deliver 1.0.1) |
+| `result_metacommunities.json` is never written, so `metaCommunities` is always `false` in the frontend | only 3 result files + `logfile.txt` exist | decide: drop the key, or write it (needs a data source) |
+| `//config.json`: normalised URL ends in `/` and `/config.json` is appended | probe list | single slash |
+| `ffmapUrlCheck` reads `->nodes` without checking: JSON without `nodes` raises a PHP warning | `testJsonWithoutNodesKeyRaisesAPhpWarning` | no warning, clear message |
+| Failed API file downloads are not cached: requested twice per run (nodelist pass + main pass); skipped communities still download their API file | `broken-api`, `skipped-town` | one request per file, none for skipped communities |
+| `getParsed(true)` does not force a reparse if the result file is younger than one second (TTL 0 compared with `>`) | harness has to age the files | n/a (the new pipeline has no such cache) |
+| Flat `meshviewer.json` nodes that are offline are always dropped, even if seen an hour ago; nodeinfo/nodelist keep them for 3 days | edge cases | one rule for all formats (decide with the operator) |
+
+On healthy input the legacy parser raises no PHP warnings.
+
+### Consequence for the plan
+The warm-run finding matters for the speed-up goal: the existing caches do not save requests, they add them. Parallel fetching (step 5) plus a correct cache should reduce both request count and wall time; the baseline to beat is `calls_cold.txt` (37 requests for 13 communities) and the real LXC run time (still unknown).
+
+## 10. Tooling
 
 ```bash
 composer install
@@ -162,8 +197,10 @@ bin/parser fixtures:build --from=RAWDIR       # see section 8
 
 Dev machine: PHP 8.5, Composer 2.10. PHPUnit 11.5, PHPStan 2.1, PHP-CS-Fixer 3.x.
 
-## 10. Open questions
+## 11. Open questions
 - PHP version on www.freifunk-karte.de (constrains the upload endpoint, step 8).
 - Runtime of one full legacy run on the LXC (baseline for the speed-up; the audit of ~1150 URLs takes about 45 s in parallel).
-- Nodelist schema: sources deliver versions 1.0.0 and 1.0.1, the legacy validator only knows 1.0.0. Do 1.0.1 files pass? (check in step 3/4)
+- Nodelist schema: sources deliver versions 1.0.0 and 1.0.1, the legacy validator never rejects anything (see section 9). Which schema should the new validator enforce, and what happens to sources that fail it (drop, or accept with a warning)? Test in step 4 with the real 1.0.1 fixture.
+- `result_metacommunities.json`: is a stale copy still on the webhost? Should the meta-community links in `meta_map.js` come back?
+- Offline rule for flat meshviewer nodes (always dropped) vs 3 days for the others: which one is intended?
 - Is `result_statistics.json` still needed once the admin UI exists (step 7)?
