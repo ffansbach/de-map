@@ -6,4 +6,6 @@ parameters:
         - bin
         - tests/Audit
         - tests/Legacy
+        - tests/Parser
+        - tests/Model
     phpVersion: 80300

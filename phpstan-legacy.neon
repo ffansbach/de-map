@@ -8,6 +8,8 @@ parameters:
         - lib/jsv4
         - tests/Audit
         - tests/Legacy
+        - tests/Parser
+        - tests/Model
         - tests/fixtures
     phpVersion: 80300
 includes:
