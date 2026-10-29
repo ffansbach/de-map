@@ -13,6 +13,8 @@ use FreifunkKarte\Pipeline\CommunityReport;
 use FreifunkKarte\Pipeline\ParseRun;
 use FreifunkKarte\Pipeline\RunResult;
 use FreifunkKarte\Source\LastGoodStore;
+use FreifunkKarte\Source\SourceAssignment;
+use FreifunkKarte\Source\SourceAssignments;
 use FreifunkKarte\Source\SourceCache;
 use FreifunkKarte\Tests\Legacy\LegacyRunner;
 use FreifunkKarte\Tests\Legacy\StandardWorld;
@@ -35,7 +37,7 @@ final class ParseRunTest extends TestCase
      * @param list<string> $unreachableHosts
      * @param array<string, list<Response>> $flaky answers served first for a URL, before the world answers
      */
-    private function runWorld(World $world, ?SourceCache $cache = null, array $skip = [], ?string $only = null, array $unreachableHosts = [], bool $withFixed = true, array $flaky = [], ?LastGoodStore $lastGood = null, ?\Closure $clock = null): RunResult
+    private function runWorld(World $world, ?SourceCache $cache = null, array $skip = [], ?string $only = null, array $unreachableHosts = [], bool $withFixed = true, array $flaky = [], ?LastGoodStore $lastGood = null, ?\Closure $clock = null, ?SourceAssignments $assignments = null): RunResult
     {
         $this->requests = [];
         $inner = $world->httpHandler();
@@ -62,6 +64,7 @@ final class ParseRunTest extends TestCase
             LegacyRunner::DIRECTORY_URL,
             retryDelayMs: 0,
             lastGood: $lastGood,
+            assignments: $assignments ?? new SourceAssignments(),
         );
 
         return $run->run($withFixed ? $world->fixedCommunities() : [], $skip, $only);
@@ -378,6 +381,122 @@ final class ParseRunTest extends TestCase
 
         $this->assertTrue($this->report($warm, 'rs')->viaCache);
         $this->assertSame(['https://rs.test/data/a/meshviewer.json', 'https://rs.test/data/b/meshviewer.json'], $this->requestsTo('https://rs.test/'), 'only the data files, not the page, not nodes.json');
+    }
+
+    /**
+     * Several communities name one map page; the page names three data files, the broad one first.
+     */
+    private function sharedMapWorld(): World
+    {
+        $merge = static function (string ...$bodies): string {
+            $nodes = [];
+
+            foreach ($bodies as $body) {
+                array_push($nodes, ...json_decode($body, true)['nodes']);
+            }
+
+            return (string) json_encode(['nodes' => $nodes]);
+        };
+        $siegburg = World::fixture('meshviewer_flat', 'sb');
+        $lohmar = World::fixture('meshviewer_flat', 'lo');
+        $extra = World::fixture('meshviewer_flat', 'extra');
+        $map = ['nodeMaps' => [['technicalType' => 'meshviewer', 'url' => 'https://rs.test/']]];
+
+        return (new World())
+            ->community('lohmar', $map)->community('much', $map)->community('siegburg', $map)->community('wachtberg', $map)
+            ->route('https://rs.test/', '<html>dataPath: ["/data/all/", "/data/siegburg1/d1/", "/data/lohmar1/d1/"]</html>')
+            ->route('https://rs.test/data/all/meshviewer.json', $merge($siegburg, $lohmar, $extra))
+            ->route('https://rs.test/data/siegburg1/d1/meshviewer.json', $siegburg)
+            ->route('https://rs.test/data/lohmar1/d1/meshviewer.json', $lohmar);
+    }
+
+    private static function rhein(): SourceAssignments
+    {
+        return new SourceAssignments([
+            new SourceAssignment('rs.test/data/siegburg', 'siegburg'),
+            new SourceAssignment('rs.test/data/lohmar', 'lohmar'),
+            new SourceAssignment('rs.test/data/all/', 'much', true),
+        ]);
+    }
+
+    public function testWithoutRulesTheFirstCommunityOfASharedMapKeepsEverything(): void
+    {
+        $result = $this->runWorld($this->sharedMapWorld());
+
+        $this->assertSame(['lohmar' => 18], array_count_values(array_column($result->nodes->toRouterEntries(), 'community')));
+    }
+
+    public function testSourcesOfASharedMapBelongToTheCommunitiesTheyAreAssignedTo(): void
+    {
+        $result = $this->runWorld($this->sharedMapWorld(), assignments: self::rhein());
+
+        // the broad file is listed first on the page but only backfills what the specific ones did not have
+        $this->assertSame(['siegburg' => 6, 'lohmar' => 6, 'much' => 6], array_count_values(array_column($result->nodes->toRouterEntries(), 'community')));
+
+        $siegburg = $this->report($result, 'siegburg');
+        $this->assertSame(['https://rs.test/data/siegburg1/d1/meshviewer.json'], $siegburg->sourceUrls);
+        $this->assertSame([6, 0], [$siegburg->added, $siegburg->duplicates]);
+
+        $much = $this->report($result, 'much');
+        $this->assertSame(['https://rs.test/data/all/meshviewer.json'], $much->sourceUrls);
+        $this->assertSame([6, 12], [$much->added, $much->duplicates], 'the 12 nodes the specific files already had');
+        $this->assertTrue($this->hasMessage($much, 'https://rs.test/data/all/meshviewer.json (meshviewer, backfill):'), 'the report says which source was a backfill');
+    }
+
+    public function testACommunityWhoseMapHasDataThatBelongsToOthersIsNotReportedAsHavingNone(): void
+    {
+        $result = $this->runWorld($this->sharedMapWorld(), assignments: self::rhein());
+        $wachtberg = $this->report($result, 'wachtberg');
+
+        $this->assertSame(CommunityReport::OK, $wachtberg->outcome);
+        $this->assertTrue($wachtberg->listed);
+        $this->assertSame([], $wachtberg->sourceUrls);
+        $this->assertSame([0, 0], [$wachtberg->added, $wachtberg->duplicates]);
+        $this->assertContains('1 data file of this map is assigned to community "much"', $wachtberg->messages);
+        $this->assertContains('1 data file of this map is assigned to community "siegburg"', $wachtberg->messages);
+    }
+
+    public function testEachDataFileIsFetchedOnce(): void
+    {
+        $this->runWorld($this->sharedMapWorld(), assignments: self::rhein());
+
+        $files = array_filter($this->requests, static fn (string $url): bool => str_contains($url, '/meshviewer.json'));
+        $this->assertSame(array_values(array_unique($files)), array_values($files));
+    }
+
+    public function testAnAssignmentToACommunityThatDoesNotExistKeepsTheNodesWhereTheyWereFound(): void
+    {
+        $assignments = new SourceAssignments([new SourceAssignment('rs.test/data/', 'ghost')]);
+
+        $result = $this->runWorld($this->sharedMapWorld(), assignments: $assignments);
+
+        $this->assertSame(18, $this->report($result, 'lohmar')->added);
+        $this->assertTrue($this->hasMessage($this->report($result, 'lohmar'), 'is assigned to "ghost", which is not a listed community: kept here'));
+    }
+
+    public function testTheHttpAndTheHttpsAddressOfOneMapAreOneSource(): void
+    {
+        $world = $this->sharedMapWorld()
+            ->community('secure', ['nodeMaps' => [['technicalType' => 'meshviewer', 'url' => 'http://rs.test/']]])
+            ->route('http://rs.test/', '<html>dataPath: ["/data/siegburg1/d1/"]</html>')
+            ->route('http://rs.test/data/siegburg1/d1/meshviewer.json', World::fixture('meshviewer_flat', 'sb'));
+
+        $result = $this->runWorld($world, assignments: self::rhein());
+
+        $siegburg = $this->report($result, 'siegburg');
+        $this->assertSame([6, 0], [$siegburg->added, $siegburg->duplicates], 'not added a second time under the other scheme');
+        $this->assertCount(1, $siegburg->sourceUrls);
+    }
+
+    private function hasMessage(CommunityReport $report, string $needle): bool
+    {
+        foreach ($report->messages as $message) {
+            if (str_contains($message, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function testMapWithoutDataIsListedAndReportsWhatWasTried(): void

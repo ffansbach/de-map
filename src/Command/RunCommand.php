@@ -53,7 +53,7 @@ final class RunCommand extends Command
         $this
             ->addOption('out', null, InputOption::VALUE_REQUIRED, 'directory for the result_*.json files (required, so a test run never overwrites live files)')
             ->addOption('cache-dir', null, InputOption::VALUE_REQUIRED, 'where the parser keeps what it learned about maps', 'var/cache')
-            ->addOption('config-dir', null, InputOption::VALUE_REQUIRED, 'directory with skipped-communities.json, insecure-hosts.json, metacommunities.json')
+            ->addOption('config-dir', null, InputOption::VALUE_REQUIRED, 'directory with skipped-communities.json, insecure-hosts.json, metacommunities.json, source-assignments.json')
             ->addOption('directory-url', null, InputOption::VALUE_REQUIRED, 'the community directory to read', Directory::URL)
             ->addOption('only', null, InputOption::VALUE_REQUIRED, 'run a single community (directory key)')
             ->addOption('skip', null, InputOption::VALUE_REQUIRED, 'more communities to skip, comma separated')
@@ -108,6 +108,7 @@ final class RunCommand extends Command
             null,
             (string) $input->getOption('directory-url'),
             lastGood: new LastGoodStore($cacheDir . '/last-good'),
+            assignments: $config->assignments,
         );
 
         $recorded = null;

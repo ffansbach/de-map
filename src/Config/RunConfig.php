@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FreifunkKarte\Config;
 
+use FreifunkKarte\Source\SourceAssignments;
 use RuntimeException;
 
 /**
@@ -12,6 +13,7 @@ use RuntimeException;
  *  skipped-communities.json  {"community-key": "why it is skipped"}
  *  insecure-hosts.json       ["host.example"] hosts with a broken certificate, fetched unverified
  *  metacommunities.json      overrides for meta-community links (see MetaCommunityResolver)
+ *  source-assignments.json   which community the nodes of a data URL belong to (see SourceAssignments)
  */
 final readonly class RunConfig
 {
@@ -23,6 +25,7 @@ final readonly class RunConfig
         public array $skippedCommunities = [],
         public array $insecureHosts = [],
         public string $metaCommunitiesFile = '',
+        public SourceAssignments $assignments = new SourceAssignments(),
     ) {
     }
 
@@ -40,7 +43,7 @@ final readonly class RunConfig
             array_filter(self::read($directory . '/insecure-hosts.json'), is_string(...)),
         ));
 
-        return new self($skipped, $hosts, $directory . '/metacommunities.json');
+        return new self($skipped, $hosts, $directory . '/metacommunities.json', SourceAssignments::fromFile($directory . '/source-assignments.json'));
     }
 
     /**

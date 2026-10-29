@@ -17,6 +17,7 @@ use FreifunkKarte\Parser\SourceParser;
 use FreifunkKarte\Source\Directory;
 use FreifunkKarte\Source\Discovery;
 use FreifunkKarte\Source\LastGoodStore;
+use FreifunkKarte\Source\SourceAssignments;
 use FreifunkKarte\Source\SourceCache;
 use RuntimeException;
 
@@ -57,6 +58,7 @@ final class ParseRun
         private readonly string $directoryUrl = Directory::URL,
         private readonly int $retryDelayMs = 1000,
         private readonly ?LastGoodStore $lastGood = null,
+        private readonly SourceAssignments $assignments = new SourceAssignments(),
     ) {
     }
 
@@ -527,14 +529,115 @@ final class ParseRun
             }
         }
 
+        $plan = $this->plan($builds, $chosen, $order);
+        $executed = $this->execute($plan['steps'], $nodes);
         $reports = [];
-        $usedBy = [];
 
         foreach ($order as $index) {
-            $reports[] = $this->report($builds[$index], $chosen[$index], $nodes, $now, $usedBy);
+            $key = $builds[$index]->info->key;
+            $reports[] = $this->report($builds[$index], $chosen[$index], $executed[$key] ?? [], $plan['notes'][$key] ?? [], isset($plan['led'][$key]), $now);
         }
 
         return $reports;
+    }
+
+    /**
+     * Decides which community every data URL belongs to, and in which order the sources are added.
+     * By default a URL belongs to the community whose map led to it; assignment rules can say
+     * otherwise, which is what a map server carrying the data of many communities needs.
+     *
+     * @param list<CommunityBuild> $builds
+     * @param array<int, array{nodelist: bool, resolutions: list<array{entry: SourceEntry, urls: list<string>, via: string}>, unused: list<array{entry: SourceEntry, urls: list<string>, via: string}>}> $chosen
+     * @param list<int> $order
+     * @return array{steps: list<array{owner: string, url: string, entry: SourceEntry, via: string, backfill: bool, repeatOf: string|null}>, notes: array<string, list<string>>, led: array<string, true>}
+     */
+    private function plan(array $builds, array $chosen, array $order): array
+    {
+        $listed = [];
+
+        foreach ($builds as $build) {
+            if ($build->listed) {
+                $listed[$build->info->key] = true;
+            }
+        }
+
+        $steps = [];
+        $notes = [];
+        $led = [];
+        /** @var array<string, array<string, int>> $away community that led to data => owner => number of URLs */
+        $away = [];
+        /** @var array<string, true> $assigned */
+        $assigned = [];
+        /** @var array<string, string> $firstUser */
+        $firstUser = [];
+
+        foreach ($order as $index) {
+            $key = $builds[$index]->info->key;
+
+            foreach ($chosen[$index]['resolutions'] as $resolution) {
+                foreach ($resolution['urls'] as $url) {
+                    if (!isset($this->parsed[$url])) {
+                        continue;
+                    }
+
+                    $led[$key] = true;
+                    $rule = $this->assignments->forUrl($url);
+
+                    if ($rule !== null && !isset($listed[$rule->community])) {
+                        $notes[$key][] = sprintf('%s is assigned to "%s", which is not a listed community: kept here', $url, $rule->community);
+                        $rule = null;
+                    }
+
+                    if ($rule !== null) {
+                        if ($rule->community !== $key) {
+                            $away[$key][$rule->community] = ($away[$key][$rule->community] ?? 0) + 1;
+                        }
+
+                        $identity = SourceAssignments::identity($url);
+
+                        // http and https of the same address, or the same map named by several communities: added once
+                        if (!isset($assigned[$identity])) {
+                            $assigned[$identity] = true;
+                            $steps[] = ['owner' => $rule->community, 'url' => $url, 'entry' => $resolution['entry'], 'via' => $resolution['via'], 'backfill' => $rule->backfill, 'repeatOf' => null];
+                        }
+
+                        continue;
+                    }
+
+                    $steps[] = ['owner' => $key, 'url' => $url, 'entry' => $resolution['entry'], 'via' => $resolution['via'], 'backfill' => false, 'repeatOf' => $firstUser[$url] ?? null];
+                    $firstUser[$url] ??= $key;
+                }
+            }
+        }
+
+        foreach ($away as $key => $owners) {
+            foreach ($owners as $owner => $count) {
+                $notes[$key][] = sprintf('%d data %s of this map %s assigned to community "%s"', $count, $count === 1 ? 'file' : 'files', $count === 1 ? 'is' : 'are', $owner);
+            }
+        }
+
+        return ['steps' => $steps, 'notes' => $notes, 'led' => $led];
+    }
+
+    /**
+     * Adds the sources to the collection: the specific ones in the order of the plan, then the
+     * backfill sources, which only fill what is still missing.
+     *
+     * @param list<array{owner: string, url: string, entry: SourceEntry, via: string, backfill: bool, repeatOf: string|null}> $steps
+     * @return array<string, list<array{owner: string, url: string, entry: SourceEntry, via: string, backfill: bool, repeatOf: string|null, result: ParseResult, added: int, duplicates: int}>>
+     */
+    private function execute(array $steps, NodeCollection $nodes): array
+    {
+        $ordered = [...array_filter($steps, static fn (array $s): bool => !$s['backfill']), ...array_filter($steps, static fn (array $s): bool => $s['backfill'])];
+        $done = [];
+
+        foreach ($ordered as $step) {
+            $result = $this->parsed[$step['url']];
+            $added = $nodes->addResult($step['owner'], $result);
+            $done[$step['owner']][] = $step + ['result' => $result, 'added' => $added['added'], 'duplicates' => $added['duplicates']];
+        }
+
+        return $done;
     }
 
     /**
@@ -583,11 +686,13 @@ final class ParseRun
 
     /**
      * @param array{nodelist: bool, resolutions: list<array{entry: SourceEntry, urls: list<string>, via: string}>, unused: list<array{entry: SourceEntry, urls: list<string>, via: string}>} $chosen
-     * @param array<string, string> $usedBy data URL => community that used it first
+     * @param list<array{owner: string, url: string, entry: SourceEntry, via: string, backfill: bool, repeatOf: string|null, result: ParseResult, added: int, duplicates: int}> $owned the sources whose nodes belong to this community
+     * @param list<string> $notes what to tell about sources that were assigned elsewhere
+     * @param bool $led whether a map of this community led to data at all (which may belong to others)
      */
-    private function report(CommunityBuild $build, array $chosen, NodeCollection $nodes, DateTimeImmutable $now, array &$usedBy): CommunityReport
+    private function report(CommunityBuild $build, array $chosen, array $owned, array $notes, bool $led, DateTimeImmutable $now): CommunityReport
     {
-        $messages = $build->messages;
+        $messages = [...$build->messages, ...$notes];
         $key = $build->info->key;
         $sourceUrls = [];
         $warnings = [];
@@ -596,38 +701,30 @@ final class ParseRun
         $viaCache = false;
         $staleSince = null;
 
-        foreach ($chosen['resolutions'] as $resolution) {
-            foreach ($resolution['urls'] as $url) {
-                $result = $this->parsed[$url] ?? null;
+        foreach ($owned as $step) {
+            $result = $step['result'];
+            $url = $step['url'];
+            $sourceUrls[] = $url;
+            $format ??= $result->format->value;
+            $viaCache = $viaCache || $step['via'] === 'cache';
+            $counts['found'] += $result->found;
+            $counts['added'] += $step['added'];
+            $counts['duplicates'] += $step['duplicates'];
+            $counts['withoutLocation'] += $result->withoutLocation;
+            $counts['dropped'] += $result->dropped;
+            $counts['invalid'] += $result->invalid;
 
-                if ($result === null) {
-                    continue;
-                }
+            if (isset($this->stale[$url])) {
+                $staleSince = $this->stale[$url]->format('c');
+            }
 
-                $alreadyUsed = isset($usedBy[$url]);
-                $added = $nodes->addResult($key, $result);
-                $sourceUrls[] = $url;
-                $format ??= $result->format->value;
-                $viaCache = $viaCache || $resolution['via'] === 'cache';
-                $counts['found'] += $result->found;
-                $counts['added'] += $added['added'];
-                $counts['duplicates'] += $added['duplicates'];
-                $counts['withoutLocation'] += $result->withoutLocation;
-                $counts['dropped'] += $result->dropped;
-                $counts['invalid'] += $result->invalid;
-                if (isset($this->stale[$url])) {
-                    $staleSince = $this->stale[$url]->format('c');
-                }
+            $messages[] = sprintf('%s (%s%s%s): %s', $url, $step['entry']->declaredType, $step['via'] === 'cache' ? ', cached' : '', $step['backfill'] ? ', backfill' : '', $result->summary());
 
-                $messages[] = sprintf('%s (%s%s): %s', $url, $resolution['entry']->declaredType, $resolution['via'] === 'cache' ? ', cached' : '', $result->summary());
-
-                if ($alreadyUsed) {
-                    // the oddities of a shared source are reported where it was used first
-                    $messages[] = sprintf('%s was already used by "%s", its nodes belong there', $url, $usedBy[$url]);
-                } else {
-                    $usedBy[$url] = $key;
-                    array_push($warnings, ...$result->warnings);
-                }
+            if ($step['repeatOf'] !== null) {
+                // the oddities of a shared source are reported where it was used first
+                $messages[] = sprintf('%s was already used by "%s", its nodes belong there', $url, $step['repeatOf']);
+            } else {
+                array_push($warnings, ...$result->warnings);
             }
         }
 
@@ -636,9 +733,10 @@ final class ParseRun
         }
 
         $attempts = $this->attempts($build, $now);
-        $outcome = $sourceUrls !== [] ? CommunityReport::OK : $build->outcome;
+        $delivered = $sourceUrls !== [] || $led;
+        $outcome = $delivered ? CommunityReport::OK : $build->outcome;
 
-        if ($sourceUrls === [] && $build->entries !== []) {
+        if (!$delivered && $build->entries !== []) {
             foreach ($build->entries as $entry) {
                 $messages[] = sprintf('no data found for %s (%s)', $entry->mapUrl, $entry->declaredType);
             }

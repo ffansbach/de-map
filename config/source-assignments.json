@@ -1,0 +1,8 @@
+[
+    {"prefix": "map.freifunk-rhein-sieg.net/data/siegburg", "community": "siegburg"},
+    {"prefix": "map.freifunk-rhein-sieg.net/data/lohmar", "community": "lohmar"},
+    {"prefix": "map.freifunk-rhein-sieg.net/data/niederkassel", "community": "niederkassel"},
+    {"prefix": "map.freifunk-rhein-sieg.net/data/voreifel", "community": "meckenheim"},
+    {"prefix": "map.freifunk-rhein-sieg.net/data/rsk/", "community": "troisdorf", "backfill": true},
+    {"prefix": "map.freifunk-rhein-sieg.net/data/tdf/", "community": "troisdorf", "backfill": true}
+]

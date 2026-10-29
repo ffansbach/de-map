@@ -67,4 +67,25 @@ final class RunConfigTest extends TestCase
         $this->assertSame([], $config->skippedCommunities, 'the old hard-coded skip list is gone on purpose, see PRD');
         $this->assertSame([], $config->insecureHosts);
     }
+
+    public function testSourceAssignmentsAreLoadedWithTheOtherFiles(): void
+    {
+        file_put_contents($this->directory . '/source-assignments.json', '[{"prefix": "map.test/data/a/", "community": "a"}]');
+
+        $this->assertSame('a', RunConfig::load($this->directory)->assignments->forUrl('https://map.test/data/a/meshviewer.json')?->community);
+        $this->assertSame(0, RunConfig::load(sys_get_temp_dir() . '/ffmap_no_such_config_dir')->assignments->count());
+    }
+
+    public function testTheShippedAssignmentsKnowTheRheinSiegData(): void
+    {
+        $assignments = RunConfig::load(__DIR__ . '/../../config')->assignments;
+        $base = 'https://map.freifunk-rhein-sieg.net/data/';
+
+        $this->assertSame('siegburg', $assignments->forUrl($base . 'siegburg2/domain05/meshviewer.json')?->community);
+        $this->assertSame('lohmar', $assignments->forUrl($base . 'lohmar3/domain11/meshviewer.json')?->community);
+        $this->assertSame('niederkassel', $assignments->forUrl($base . 'niederkassel1/domain04/meshviewer.json')?->community);
+        $this->assertSame('troisdorf', $assignments->forUrl($base . 'tdf/all/meshviewer.json')?->community);
+        $this->assertTrue($assignments->forUrl($base . 'tdf/all/meshviewer.json')->backfill);
+        $this->assertNull($assignments->forUrl('https://elsewhere.test/data/siegburg1/meshviewer.json'));
+    }
 }
