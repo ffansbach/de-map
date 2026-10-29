@@ -474,6 +474,7 @@ final class ParseRun
                     continue;
                 }
 
+                $alreadyUsed = isset($usedBy[$url]);
                 $added = $nodes->addResult($key, $result);
                 $sourceUrls[] = $url;
                 $format ??= $result->format->value;
@@ -484,14 +485,14 @@ final class ParseRun
                 $counts['withoutLocation'] += $result->withoutLocation;
                 $counts['dropped'] += $result->dropped;
                 $counts['invalid'] += $result->invalid;
-                array_push($warnings, ...$result->warnings);
-
                 $messages[] = sprintf('%s (%s%s): %s', $url, $resolution['entry']->declaredType, $resolution['via'] === 'cache' ? ', cached' : '', $result->summary());
 
-                if (isset($usedBy[$url])) {
+                if ($alreadyUsed) {
+                    // the oddities of a shared source are reported where it was used first
                     $messages[] = sprintf('%s was already used by "%s", its nodes belong there', $url, $usedBy[$url]);
                 } else {
                     $usedBy[$url] = $key;
+                    array_push($warnings, ...$result->warnings);
                 }
             }
         }

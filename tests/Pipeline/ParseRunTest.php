@@ -171,6 +171,21 @@ final class ParseRunTest extends TestCase
         $this->assertContains('https://dup.test/data/nodes.json was already used by "dup-a", its nodes belong there', $second->messages);
     }
 
+    public function testWarningsOfASharedSourceAreReportedOnlyForTheFirstCommunity(): void
+    {
+        $source = (string) json_encode(['version' => 2, 'nodes' => [
+            ['nodeinfo' => ['node_id' => 'ok', 'hostname' => 'ok', 'location' => ['latitude' => 50.1, 'longitude' => 8.1]], 'flags' => ['online' => true]],
+            ['nodeinfo' => ['hostname' => 'no id']],
+        ]]);
+        $maps = ['nodeMaps' => [['technicalType' => 'ffmap', 'url' => 'https://shared.test/data/nodes.json']]];
+        $world = (new World())->community('first', $maps)->community('second', $maps)->route('https://shared.test/data/nodes.json', $source);
+
+        $result = $this->runWorld($world);
+
+        $this->assertSame(['1 entries are not usable nodes (no id)'], $this->report($result, 'first')->warnings);
+        $this->assertSame([], $this->report($result, 'second')->warnings);
+    }
+
     public function testMapWithoutDataIsListedAndReportsWhatWasTried(): void
     {
         $result = $this->runWorld(StandardWorld::build(), skip: StandardWorld::SKIP);
