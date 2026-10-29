@@ -64,7 +64,7 @@ final class RunCommand extends Command
             ->addOption('force', null, InputOption::VALUE_NONE, 'write even if the result looks implausibly small')
             ->addOption('db', null, InputOption::VALUE_REQUIRED, 'SQLite file with the history of runs', 'var/parser.sqlite')
             ->addOption('log-file', null, InputOption::VALUE_REQUIRED, 'JSON log (a file per day is kept for two weeks)', 'var/log/parser.log')
-            ->addOption('keep-days', null, InputOption::VALUE_REQUIRED, 'forget runs older than this', '90')
+            ->addOption('keep-days', null, InputOption::VALUE_REQUIRED, 'forget runs older than this many days; 0 keeps the whole history', '0')
             ->addOption('no-history', null, InputOption::VALUE_NONE, 'do not record the run, compare it, log it or report it anywhere')
             ->addOption('integrations', null, InputOption::VALUE_REQUIRED, 'JSON file with the healthchecks.io / InfluxDB settings (default: config/integrations.local.json if it exists)')
             ->addOption('legacy-config', null, InputOption::VALUE_REQUIRED, 'take the healthchecks.io / InfluxDB settings from the config.php of the legacy parser');
@@ -177,7 +177,11 @@ final class RunCommand extends Command
         if ($recorded !== null) {
             $summary = $recorded->recorder->complete($recorded->id, $result, $refused);
             $this->printEvents($io, $summary->events);
-            $recorded->repository->prune(max(1, (int) $input->getOption('keep-days')), $summary->finishedAt);
+            $keepDays = (int) $input->getOption('keep-days');
+
+            if ($keepDays > 0) {
+                $recorded->repository->prune($keepDays, $summary->finishedAt);
+            }
         }
 
         if ($refused) {

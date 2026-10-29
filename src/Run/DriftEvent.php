@@ -24,6 +24,7 @@ final readonly class DriftEvent
     public const COMMUNITY_REMOVED = 'community-removed';
     public const MANY_COMMUNITIES_LOST = 'many-communities-lost';
     public const RUN_NODES_DROPPED = 'run-nodes-dropped';
+    public const DELIVERY_FAILED = 'delivery-failed';
     public const RUN_FAILED = 'run-failed';
     public const RUN_REFUSED = 'run-refused';
 

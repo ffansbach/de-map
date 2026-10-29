@@ -24,7 +24,7 @@ final readonly class IntegrationConfig
      */
     public function __construct(
         public ?string $healthchecksUrl = null,
-        public string $healthchecksFailOn = DriftEvent::WARNING,
+        public string $healthchecksFailOn = DriftEvent::ALERT,
         public ?array $influx = null,
     ) {
     }
@@ -41,7 +41,7 @@ final readonly class IntegrationConfig
         $url = is_string($healthchecks['url'] ?? null) ? $healthchecks['url']
             : (is_string($healthchecks['identifier'] ?? null) && $healthchecks['identifier'] !== '' ? 'https://hc-ping.com/' . $healthchecks['identifier'] : null);
         $failOn = is_string($healthchecks['failOn'] ?? null) && in_array($healthchecks['failOn'], [DriftEvent::INFO, DriftEvent::WARNING, DriftEvent::ALERT], true)
-            ? $healthchecks['failOn'] : DriftEvent::WARNING;
+            ? $healthchecks['failOn'] : DriftEvent::ALERT;
 
         return new self($url, $failOn, self::influx(is_array($data['influxdb'] ?? null) ? $data['influxdb'] : []));
     }
@@ -79,7 +79,7 @@ final readonly class IntegrationConfig
 
         return new self(
             is_string($identifier) && $identifier !== '' ? 'https://hc-ping.com/' . $identifier : null,
-            DriftEvent::WARNING,
+            DriftEvent::ALERT,
             self::influx($influx),
         );
     }

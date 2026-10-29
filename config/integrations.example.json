@@ -1,7 +1,7 @@
 {
     "healthchecks": {
         "identifier": "00000000-0000-0000-0000-000000000000",
-        "failOn": "warning"
+        "failOn": "alert"
     },
     "influxdb": {
         "host": "http://influx.example",

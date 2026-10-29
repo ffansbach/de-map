@@ -127,6 +127,20 @@ final class RunRecorderTest extends TestCase
         $this->assertTrue($this->logs->hasCriticalThatContains('implausible'));
     }
 
+    public function testNotBeingAbleToDeliverTheResultIsAnAlertButTheRunIsStillOk(): void
+    {
+        $recorder = $this->recorder($this->listener());
+        $runId = $recorder->begin('/out');
+
+        $summary = $recorder->complete($runId, RunFixtures::standard(), deliveryError: 'FTP login failed');
+
+        $this->assertSame(RunRepository::OK, $summary->status, 'the data was collected');
+        $this->assertSame(['delivery-failed'], array_map(static fn (DriftEvent $e): string => $e->kind, $summary->events));
+        $this->assertSame(DriftEvent::ALERT, $summary->worstSeverity());
+        $this->assertSame(['delivery-failed'], array_column($this->repository->events($runId), 'kind'));
+        $this->assertTrue($this->logs->hasCriticalThatContains('could not be delivered to the web server: FTP login failed'));
+    }
+
     public function testAFailedRunIsRecordedWithTheError(): void
     {
         $recorder = $this->recorder($this->listener());

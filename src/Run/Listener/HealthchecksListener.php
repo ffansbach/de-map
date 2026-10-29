@@ -13,11 +13,13 @@ use GuzzleHttp\ClientInterface;
 
 /**
  * Pings healthchecks.io: /start when a run begins, then a success ping - or /fail if the run
- * failed, was refused, or has events of at least the severity set in $failOn. The body carries
- * the account of the run, so that the reason is in the notification you get.
+ * failed, was refused, or has events of at least the severity set in $failOn. The default is
+ * "alert": the check only fails when something is wrong widely (a fifth of the nodes gone, many
+ * communities lost, no directory) or the result could not be delivered to the web server. Warnings
+ * (one community lost, a new technical type, a changed format) do not fail the check; they are in
+ * the body of the ping, which healthchecks.io keeps as the log of the check.
  *
- * healthchecks.io notifies when the check goes down and when it recovers, not on every ping,
- * so $failOn = warning does not mean a message per run.
+ * The body carries the account of the run, so that the reason is in the notification you get.
  */
 final class HealthchecksListener implements RunListener
 {
@@ -30,7 +32,7 @@ final class HealthchecksListener implements RunListener
     public function __construct(
         private readonly ClientInterface $client,
         private readonly string $url,
-        private readonly string $failOn = DriftEvent::WARNING,
+        private readonly string $failOn = DriftEvent::ALERT,
     ) {
     }
 

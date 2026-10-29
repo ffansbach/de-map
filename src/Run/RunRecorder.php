@@ -41,8 +41,9 @@ final class RunRecorder
 
     /**
      * @param bool $refused the result was too small to be written; it is kept in the history anyway
+     * @param string|null $deliveryError why the result files could not be delivered to the web server, if they could not
      */
-    public function complete(int $runId, RunResult $result, bool $refused = false): RunSummary
+    public function complete(int $runId, RunResult $result, bool $refused = false, ?string $deliveryError = null): RunSummary
     {
         $finishedAt = $this->now();
         $this->repository->finish($runId, $result, $refused ? RunRepository::REFUSED : RunRepository::OK, $finishedAt);
@@ -65,6 +66,15 @@ final class RunRecorder
                 'run',
                 sprintf('The result looks implausible (%d communities, %d nodes): the result files were not written', count($result->listedCommunities()), $result->nodes->count()),
             ));
+        }
+
+        if ($deliveryError !== null) {
+            $events[] = new DriftEvent(
+                DriftEvent::DELIVERY_FAILED,
+                DriftEvent::ALERT,
+                'run',
+                'The result could not be delivered to the web server: ' . $deliveryError,
+            );
         }
 
         $this->repository->addEvents($runId, $events, $finishedAt);

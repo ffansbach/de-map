@@ -47,7 +47,7 @@ final class IntegrationConfigTest extends TestCase
         $config = IntegrationConfig::fromJsonFile($this->file);
 
         $this->assertSame('https://hc.example/ping/xyz', $config->healthchecksUrl);
-        $this->assertSame('warning', $config->healthchecksFailOn, 'default: warnings count');
+        $this->assertSame('alert', $config->healthchecksFailOn, 'default: only alerts fail the check');
         $this->assertNull($config->influx);
     }
 
@@ -60,7 +60,7 @@ final class IntegrationConfigTest extends TestCase
 
         $config = IntegrationConfig::fromJsonFile($this->file);
 
-        $this->assertSame('warning', $config->healthchecksFailOn);
+        $this->assertSame('alert', $config->healthchecksFailOn);
         $this->assertNull($config->influx);
         $this->assertCount(1, $config->listeners(new Client()));
     }
@@ -92,6 +92,7 @@ final class IntegrationConfigTest extends TestCase
         $config = IntegrationConfig::fromLegacyConfig($this->file);
 
         $this->assertSame('https://hc-ping.com/legacy-uuid', $config->healthchecksUrl);
+        $this->assertSame('alert', $config->healthchecksFailOn);
         $this->assertNotNull($config->influx);
         $this->assertSame('dev', $config->influx['env']);
         $this->assertSame('b', $config->influx['bucket']);

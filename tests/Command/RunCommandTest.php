@@ -247,6 +247,23 @@ final class RunCommandTest extends TestCase
         $this->assertStringContainsString('Community directory not available', (string) $runs[0]['error']);
     }
 
+    public function testTheWholeHistoryIsKeptUnlessAskedOtherwise(): void
+    {
+        $repository = $this->history();
+        $old = new \DateTimeImmutable('2020-01-01T12:00:00Z');
+        $oldRun = $repository->start($old, '/old');
+        $repository->finish($oldRun, \FreifunkKarte\Tests\Run\RunFixtures::standard(), RunRepository::OK, $old);
+        unset($repository);
+
+        $this->execute([]);
+        $this->assertCount(2, $this->history()->runs(), 'a six year old run is still there');
+
+        $this->execute(['--keep-days' => '30']);
+        $runs = $this->history()->runs();
+        $this->assertCount(2, $runs, 'the old run is gone, the two recent ones are there');
+        $this->assertNotContains(1, array_column($runs, 'id'));
+    }
+
     public function testNoHistoryLeavesNoTraces(): void
     {
         $this->execute(['--no-history' => true]);

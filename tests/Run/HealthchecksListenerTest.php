@@ -23,7 +23,7 @@ final class HealthchecksListenerTest extends TestCase
     /** @var \ArrayObject<int, array<string, mixed>> */
     private \ArrayObject $history;
 
-    private function listener(string $failOn = DriftEvent::WARNING, int $responses = 3, int $status = 200): HealthchecksListener
+    private function listener(string $failOn = DriftEvent::ALERT, int $responses = 3, int $status = 200): HealthchecksListener
     {
         $history = new \ArrayObject();
         $stack = HandlerStack::create(new MockHandler(array_fill(0, $responses, new Response($status))));
@@ -70,7 +70,7 @@ final class HealthchecksListenerTest extends TestCase
         $this->assertStringStartsWith('run 7: ok, 40 nodes, 13 communities,', $body);
     }
 
-    public function testWarningsMakeTheCheckFailByDefaultAndAreInTheBody(): void
+    public function testWarningsDoNotFailTheCheckByDefaultButAreInTheBody(): void
     {
         $events = [
             new DriftEvent(DriftEvent::NEW_TYPE, DriftEvent::WARNING, 'yanic', 'Technical type "yanic" has not been seen before (used by newcomer)'),
@@ -80,19 +80,38 @@ final class HealthchecksListenerTest extends TestCase
         $this->listener()->finished($this->summary(events: $events));
 
         [, $url, $body] = $this->sent(0);
-        $this->assertSame(self::URL . '/fail', $url);
+        $this->assertSame(self::URL, $url, 'a success ping: this is not a widespread failure');
         $this->assertStringContainsString('warning: Technical type "yanic" has not been seen before', $body);
         $this->assertStringContainsString('(and 1 notes of lower importance, see the log)', $body);
         $this->assertStringNotContainsString('something small', $body);
     }
 
-    public function testWithFailOnAlertAWarningStillSucceedsButStaysInTheBody(): void
+    public function testWithFailOnWarningAWarningFailsTheCheck(): void
     {
-        $this->listener(failOn: DriftEvent::ALERT)->finished($this->summary(events: [new DriftEvent(DriftEvent::NODES_DROPPED, DriftEvent::WARNING, 'a', 'a lost nodes')]));
+        $this->listener(failOn: DriftEvent::WARNING)->finished($this->summary(events: [new DriftEvent(DriftEvent::NODES_DROPPED, DriftEvent::WARNING, 'a', 'a lost nodes')]));
 
         [, $url, $body] = $this->sent(0);
-        $this->assertSame(self::URL, $url);
+        $this->assertSame(self::URL . '/fail', $url);
         $this->assertStringContainsString('warning: a lost nodes', $body);
+    }
+
+    public function testWidespreadFailuresFailTheCheck(): void
+    {
+        foreach ([DriftEvent::RUN_NODES_DROPPED, DriftEvent::MANY_COMMUNITIES_LOST] as $kind) {
+            $listener = $this->listener();
+            $listener->finished($this->summary(events: [new DriftEvent($kind, DriftEvent::ALERT, 'run', 'a fifth of the map is gone')]));
+
+            $this->assertSame(self::URL . '/fail', $this->sent(0)[1], $kind);
+        }
+    }
+
+    public function testNotBeingAbleToDeliverTheResultFailsTheCheck(): void
+    {
+        $this->listener()->finished($this->summary(events: [new DriftEvent(DriftEvent::DELIVERY_FAILED, DriftEvent::ALERT, 'run', 'The result could not be delivered to the web server: FTP login failed')]));
+
+        [, $url, $body] = $this->sent(0);
+        $this->assertSame(self::URL . '/fail', $url);
+        $this->assertStringContainsString('alert: The result could not be delivered to the web server: FTP login failed', $body);
     }
 
     public function testAlertsComeFirstInTheBody(): void
