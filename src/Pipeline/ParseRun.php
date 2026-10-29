@@ -143,7 +143,9 @@ final class ParseRun
     {
         /** @var array<string, array<array-key, mixed>> $documents */
         $documents = [];
-        $apiFetches = $this->fetcher->fetch(array_values($directory), static function (string $url, string $body) use (&$documents): void {
+        // communities that are skipped are not looked at, not even their API file
+        $wanted = array_values(array_diff_key($directory, array_flip($skip)));
+        $apiFetches = $this->fetcher->fetch($wanted, static function (string $url, string $body) use (&$documents): void {
             $document = json_decode($body, true);
 
             if (is_array($document)) {

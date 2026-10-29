@@ -341,6 +341,7 @@ final class ParseRunTest extends TestCase
         }
 
         $this->assertSame([], $this->requestsTo('https://skipped.test/'));
+        $this->assertNotContains('https://api.test/skipped-town.json', $this->requests, 'not even its API file is downloaded');
         $this->assertSame(['API file not available: HTTP 404'], $this->report($result, 'broken-api')->messages);
     }
 
