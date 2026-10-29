@@ -1,0 +1,67 @@
+{
+    "nl-city": {
+        "name": "Freifunk nl-city",
+        "url": "https://nl-city.example/",
+        "meta": false
+    },
+    "mv-city": {
+        "name": "Freifunk mv-city",
+        "url": "https://mv-city.example/",
+        "meta": "Meta Nord"
+    },
+    "flat-town": {
+        "name": "Freifunk flat-town",
+        "url": "https://flat.example/home",
+        "meta": false
+    },
+    "hop-town": {
+        "name": "Freifunk hop-town",
+        "url": "https://hop-town.example/",
+        "meta": false
+    },
+    "dead-town": {
+        "name": "Freifunk dead-town",
+        "url": "https://dead-town.example/",
+        "meta": false
+    },
+    "dup-a": {
+        "name": "Freifunk dup-a",
+        "url": "https://dup-a.example/",
+        "meta": false
+    },
+    "dup-b": {
+        "name": "Freifunk dup-b",
+        "url": "https://dup-b.example/",
+        "meta": false
+    },
+    "overlap-a": {
+        "name": "Freifunk overlap-a",
+        "url": "https://overlap-a.example/",
+        "meta": false
+    },
+    "overlap-b": {
+        "name": "Freifunk overlap-b",
+        "url": "https://overlap-b.example/",
+        "meta": false
+    },
+    "netmon-old": {
+        "name": "Freifunk netmon-old",
+        "url": "https://netmon-old.example/",
+        "meta": false
+    },
+    "ff_fixed_flat": {
+        "name": "ff_fixed_flat",
+        "url": "https://fixed.test/data/meshviewer.json",
+        "meta": false
+    },
+    "ff_fixed_nl": {
+        "name": "ff_fixed_nl",
+        "url": "https://fixed.test/nodelist.json",
+        "meta": false
+    },
+    "ff_fixed_dead": {
+        "name": "ff_fixed_dead",
+        "url": "https://fixed-dead.test/data/nodes.json",
+        "meta": false
+    }
+}

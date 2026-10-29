@@ -1,0 +1,290 @@
+[
+    {
+        "id": "nl-130b895bab43",
+        "lat": "48.52",
+        "long": "12",
+        "name": "nl-node-1",
+        "community": "nl-city",
+        "status": "online",
+        "clients": 0
+    },
+    {
+        "id": "nl-1b3241e295c2",
+        "lat": "48.61",
+        "long": "12.21",
+        "name": "nl-node-2",
+        "community": "nl-city",
+        "status": "online",
+        "clients": 4
+    },
+    {
+        "id": "nl-2fadaec813c5",
+        "lat": "48.45",
+        "long": "12.35",
+        "name": "nl-node-3",
+        "community": "nl-city",
+        "status": "online",
+        "clients": 14
+    },
+    {
+        "id": "nl-fded0a4fb787",
+        "lat": "48.25",
+        "long": "10.8",
+        "name": "nl-node-4",
+        "community": "nl-city",
+        "status": "online",
+        "clients": 0
+    },
+    {
+        "id": "mv-1a500b44a888",
+        "lat": "52.04",
+        "long": "8.52",
+        "name": "mv-node-1",
+        "community": "mv-city",
+        "status": "online",
+        "clients": 5
+    },
+    {
+        "id": "mv-5a7c5d6952c8",
+        "lat": "52.04",
+        "long": "8.53",
+        "name": "mv-node-3",
+        "community": "mv-city",
+        "status": "online",
+        "clients": 0
+    },
+    {
+        "id": "mv-bce9fb38aea6",
+        "lat": "52.43",
+        "long": "8.61",
+        "name": "mv-node-4",
+        "community": "mv-city",
+        "status": "online",
+        "clients": 3
+    },
+    {
+        "id": "mv-4dc4ab68b94d",
+        "lat": "52.01",
+        "long": "8.61",
+        "name": "mv-node-5",
+        "community": "mv-city",
+        "status": "online",
+        "clients": 8
+    },
+    {
+        "id": "flat-add285de8048",
+        "lat": "51.11",
+        "long": "7.64",
+        "name": "flat-node-1",
+        "community": "flat-town",
+        "status": "online",
+        "clients": 3
+    },
+    {
+        "id": "flat-94c9ce1f5004",
+        "lat": "51.37",
+        "long": "7.64",
+        "name": "flat-node-2",
+        "community": "flat-town",
+        "status": "online",
+        "clients": 0
+    },
+    {
+        "id": "flat-5b235689e5b8",
+        "lat": "51.11",
+        "long": "7.64",
+        "name": "flat-node-3",
+        "community": "flat-town",
+        "status": "online",
+        "clients": 0
+    },
+    {
+        "id": "flat-fffc52843503",
+        "lat": "51.3",
+        "long": "7.68",
+        "name": "flat-node-4",
+        "community": "flat-town",
+        "status": "online",
+        "clients": 1
+    },
+    {
+        "id": "hopa-1a500b44a888",
+        "lat": "52.04",
+        "long": "8.52",
+        "name": "hopa-node-1",
+        "community": "hop-town",
+        "status": "online",
+        "clients": 5
+    },
+    {
+        "id": "hopa-5a7c5d6952c8",
+        "lat": "52.04",
+        "long": "8.53",
+        "name": "hopa-node-3",
+        "community": "hop-town",
+        "status": "online",
+        "clients": 0
+    },
+    {
+        "id": "hopa-bce9fb38aea6",
+        "lat": "52.43",
+        "long": "8.61",
+        "name": "hopa-node-4",
+        "community": "hop-town",
+        "status": "online",
+        "clients": 3
+    },
+    {
+        "id": "hopa-4dc4ab68b94d",
+        "lat": "52.01",
+        "long": "8.61",
+        "name": "hopa-node-5",
+        "community": "hop-town",
+        "status": "online",
+        "clients": 8
+    },
+    {
+        "id": "dup-1a500b44a888",
+        "lat": "52.04",
+        "long": "8.52",
+        "name": "dup-node-1",
+        "community": "dup-a",
+        "status": "online",
+        "clients": 5
+    },
+    {
+        "id": "dup-5a7c5d6952c8",
+        "lat": "52.04",
+        "long": "8.53",
+        "name": "dup-node-3",
+        "community": "dup-a",
+        "status": "online",
+        "clients": 0
+    },
+    {
+        "id": "dup-bce9fb38aea6",
+        "lat": "52.43",
+        "long": "8.61",
+        "name": "dup-node-4",
+        "community": "dup-a",
+        "status": "online",
+        "clients": 3
+    },
+    {
+        "id": "dup-4dc4ab68b94d",
+        "lat": "52.01",
+        "long": "8.61",
+        "name": "dup-node-5",
+        "community": "dup-a",
+        "status": "online",
+        "clients": 8
+    },
+    {
+        "id": "ov-1a500b44a888",
+        "lat": "52.04",
+        "long": "8.52",
+        "name": "ov-node-1",
+        "community": "overlap-a",
+        "status": "online",
+        "clients": 5
+    },
+    {
+        "id": "ov-5a7c5d6952c8",
+        "lat": "52.04",
+        "long": "8.53",
+        "name": "ov-node-3",
+        "community": "overlap-a",
+        "status": "online",
+        "clients": 0
+    },
+    {
+        "id": "ov-bce9fb38aea6",
+        "lat": "52.43",
+        "long": "8.61",
+        "name": "ov-node-4",
+        "community": "overlap-a",
+        "status": "online",
+        "clients": 3
+    },
+    {
+        "id": "ov-4dc4ab68b94d",
+        "lat": "52.01",
+        "long": "8.61",
+        "name": "ov-node-5",
+        "community": "overlap-a",
+        "status": "online",
+        "clients": 8
+    },
+    {
+        "id": "fixedflat-add285de8048",
+        "lat": "51.11",
+        "long": "7.64",
+        "name": "fixedflat-node-1",
+        "community": "ff_fixed_flat",
+        "status": "online",
+        "clients": 3
+    },
+    {
+        "id": "fixedflat-94c9ce1f5004",
+        "lat": "51.37",
+        "long": "7.64",
+        "name": "fixedflat-node-2",
+        "community": "ff_fixed_flat",
+        "status": "online",
+        "clients": 0
+    },
+    {
+        "id": "fixedflat-5b235689e5b8",
+        "lat": "51.11",
+        "long": "7.64",
+        "name": "fixedflat-node-3",
+        "community": "ff_fixed_flat",
+        "status": "online",
+        "clients": 0
+    },
+    {
+        "id": "fixedflat-fffc52843503",
+        "lat": "51.3",
+        "long": "7.68",
+        "name": "fixedflat-node-4",
+        "community": "ff_fixed_flat",
+        "status": "online",
+        "clients": 1
+    },
+    {
+        "id": "fixednl-130b895bab43",
+        "lat": "48.52",
+        "long": "12",
+        "name": "fixednl-node-1",
+        "community": "ff_fixed_nl",
+        "status": "online",
+        "clients": 0
+    },
+    {
+        "id": "fixednl-1b3241e295c2",
+        "lat": "48.61",
+        "long": "12.21",
+        "name": "fixednl-node-2",
+        "community": "ff_fixed_nl",
+        "status": "online",
+        "clients": 4
+    },
+    {
+        "id": "fixednl-2fadaec813c5",
+        "lat": "48.45",
+        "long": "12.35",
+        "name": "fixednl-node-3",
+        "community": "ff_fixed_nl",
+        "status": "online",
+        "clients": 14
+    },
+    {
+        "id": "fixednl-fded0a4fb787",
+        "lat": "48.25",
+        "long": "10.8",
+        "name": "fixednl-node-4",
+        "community": "ff_fixed_nl",
+        "status": "online",
+        "clients": 0
+    }
+]
