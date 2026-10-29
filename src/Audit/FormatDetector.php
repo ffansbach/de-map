@@ -31,6 +31,14 @@ final class FormatDetector
             return new DetectionResult(Format::InvalidJson);
         }
 
+        return $this->detectData($data);
+    }
+
+    /**
+     * For callers that decoded the JSON themselves (saves decoding megabytes twice).
+     */
+    public function detectData(mixed $data): DetectionResult
+    {
         if (!is_array($data)) {
             return new DetectionResult(Format::JsonOther);
         }
