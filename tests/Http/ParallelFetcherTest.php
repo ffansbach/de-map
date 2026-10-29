@@ -11,9 +11,11 @@ use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
+use GuzzleHttp\Promise\Promise;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\RequestInterface;
 
 final class ParallelFetcherTest extends TestCase
 {
@@ -185,5 +187,48 @@ final class ParallelFetcherTest extends TestCase
         $this->assertNull($results[$url]->status);
         $this->assertTrue($results[$url]->tlsInvalid, 'flags that the certificate was the reason');
         $this->assertCount(1, $this->history);
+    }
+
+    public function testNoHostGetsMoreRequestsInFlightThanTheLimit(): void
+    {
+        $inFlight = [];
+        $peak = [];
+        $peakTotal = 0;
+
+        // every request stays "in flight" until the fetcher waits for it
+        $handler = function (RequestInterface $request) use (&$inFlight, &$peak, &$peakTotal) {
+            $host = $request->getUri()->getHost();
+            $inFlight[$host] = ($inFlight[$host] ?? 0) + 1;
+            $peak[$host] = max($peak[$host] ?? 0, $inFlight[$host]);
+            $peakTotal = max($peakTotal, array_sum($inFlight));
+
+            $promise = null;
+            $promise = new Promise(function () use (&$promise, $host, &$inFlight): void {
+                $inFlight[$host]--;
+                $promise?->resolve(new Response(200, [], 'x'));
+            });
+
+            return $promise;
+        };
+
+        $urls = [];
+
+        foreach (range(1, 12) as $i) {
+            $urls[] = 'https://busy.test/' . $i;
+        }
+
+        foreach (range(1, 4) as $i) {
+            $urls[] = 'https://other.test/' . $i;
+            $urls[] = 'https://third' . $i . '.test/x';
+        }
+
+        $fetcher = new ParallelFetcher(new Client(['handler' => $handler]), concurrency: 8, perHost: 2);
+        $results = $fetcher->fetch($urls, static function (): void {
+        });
+
+        $this->assertCount(count($urls), $results);
+        $this->assertSame(2, $peak['busy.test']);
+        $this->assertSame(2, $peak['other.test']);
+        $this->assertGreaterThan(4, $peakTotal, 'other hosts are fetched in parallel meanwhile');
     }
 }

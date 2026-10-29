@@ -7,8 +7,9 @@ namespace FreifunkKarte\Http;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
-use GuzzleHttp\Pool;
+use GuzzleHttp\Promise\Create;
 use GuzzleHttp\Promise\PromiseInterface;
+use GuzzleHttp\Promise\Utils;
 use GuzzleHttp\TransferStats;
 use Psr\Http\Message\ResponseInterface;
 use Throwable;
@@ -27,6 +28,7 @@ final class ParallelFetcher
      * @param list<string> $insecureHosts hosts whose certificate is known to be broken: fetched without verification
      * @param bool $retryWithoutVerification fetch a URL again without verification if only its certificate failed
      *                                       (for measuring - a run should list the broken host in $insecureHosts instead)
+     * @param int $perHost most requests in flight to one host: a network of 70 sub-communities is one server
      */
     public function __construct(
         private readonly ClientInterface $client,
@@ -36,6 +38,7 @@ final class ParallelFetcher
         private readonly float $connectTimeout = 5.0,
         private readonly array $insecureHosts = [],
         private readonly bool $retryWithoutVerification = true,
+        private readonly int $perHost = 2,
     ) {
     }
 
@@ -78,59 +81,85 @@ final class ParallelFetcher
         /** @var array<string, float> $seconds */
         $seconds = [];
 
-        $requests = function () use ($urls, $verify, &$seconds): \Generator {
-            foreach ($urls as $url) {
-                yield $url => fn (): PromiseInterface => $this->client->requestAsync('GET', $url, [
-                    'verify' => $verify,
-                    'http_errors' => false,
-                    'timeout' => $this->timeout,
-                    'connect_timeout' => $this->connectTimeout,
-                    'allow_redirects' => ['max' => 3, 'protocols' => ['http', 'https']],
-                    'headers' => ['User-Agent' => 'freifunk-karte parser (+https://www.freifunk-karte.de/)'],
-                    // returning non-zero aborts only this transfer (throwing would abort all running ones)
-                    'curl' => [
-                        CURLOPT_NOPROGRESS => false,
-                        CURLOPT_PROGRESSFUNCTION => fn ($handle, $downloadTotal, $downloaded): int => $downloaded > $this->maxBytes ? 1 : 0,
-                    ],
-                    'on_stats' => static function (TransferStats $stats) use ($url, &$seconds): void {
-                        $seconds[$url] = (float) $stats->getTransferTime();
-                    },
-                ]);
+        $queue = new FetchQueue($urls, $this->perHost);
+
+        // A worker takes the next URL whose host has room, fetches it and then takes the next one.
+        // It stops when nothing is eligible; the workers still busy on the saturated hosts go on.
+        $work = function () use (&$work, $queue, $verify, $onBody, &$results, &$seconds): PromiseInterface {
+            $url = $queue->next();
+
+            if ($url === null) {
+                return Create::promiseFor(null);
             }
+
+            return $this->client->requestAsync('GET', $url, $this->options($url, $verify, $seconds))
+                ->then(
+                    function (ResponseInterface $response) use ($url, &$results, &$seconds, $verify, $onBody): void {
+                        $body = (string) $response->getBody();
+                        $status = $response->getStatusCode();
+
+                        if ($status === 200) {
+                            $onBody($url, $body);
+                        }
+
+                        $results[$url] = new FetchResult($url, $status, null, strlen($body), $seconds[$url] ?? 0.0, !$verify);
+                    },
+                    function (Throwable $reason) use ($url, &$results, &$seconds, $verify): void {
+                        $errno = $this->curlErrno($reason);
+                        // in the retry pass (no verification) every result stays flagged
+                        $tls = !$verify || in_array($errno, self::TLS_ERRNOS, true);
+                        $aborted = $errno === CURLE_ABORTED_BY_CALLBACK;
+
+                        $results[$url] = new FetchResult(
+                            $url,
+                            null,
+                            $aborted ? 'response larger than ' . $this->maxBytes . ' bytes' : $this->shorten($reason->getMessage()),
+                            0,
+                            $seconds[$url] ?? 0.0,
+                            $tls,
+                        );
+                    },
+                )
+                ->then(static function () use ($queue, $url, &$work): PromiseInterface {
+                    $queue->done($url);
+
+                    return $work();
+                });
         };
 
-        $pool = new Pool($this->client, $requests(), [
-            'concurrency' => $this->concurrency,
-            'fulfilled' => function (ResponseInterface $response, string $url) use (&$results, &$seconds, $verify, $onBody): void {
-                $body = (string) $response->getBody();
-                $status = $response->getStatusCode();
+        $workers = [];
 
-                if ($status === 200) {
-                    $onBody($url, $body);
-                }
+        for ($i = 0; $i < min($this->concurrency, count($urls)); $i++) {
+            $workers[] = $work();
+        }
 
-                $results[$url] = new FetchResult($url, $status, null, strlen($body), $seconds[$url] ?? 0.0, !$verify);
-            },
-            'rejected' => function (Throwable $reason, string $url) use (&$results, &$seconds, $verify): void {
-                $errno = $this->curlErrno($reason);
-                // in the retry pass (no verification) every result stays flagged
-                $tls = !$verify || in_array($errno, self::TLS_ERRNOS, true);
-                $aborted = $errno === CURLE_ABORTED_BY_CALLBACK;
-
-                $results[$url] = new FetchResult(
-                    $url,
-                    null,
-                    $aborted ? 'response larger than ' . $this->maxBytes . ' bytes' : $this->shorten($reason->getMessage()),
-                    0,
-                    $seconds[$url] ?? 0.0,
-                    $tls,
-                );
-            },
-        ]);
-
-        $pool->promise()->wait();
+        Utils::all($workers)->wait();
 
         return $results;
+    }
+
+    /**
+     * @param array<string, float> $seconds filled with the transfer time per URL
+     * @return array<string, mixed>
+     */
+    private function options(string $url, bool $verify, array &$seconds): array
+    {
+        return [
+            'verify' => $verify,
+            'http_errors' => false,
+            'timeout' => $this->timeout,
+            'connect_timeout' => $this->connectTimeout,
+            'allow_redirects' => ['max' => 3, 'protocols' => ['http', 'https']],
+            'headers' => ['User-Agent' => 'freifunk-karte parser (+https://www.freifunk-karte.de/)'],
+            // returning non-zero aborts only this transfer (throwing would abort all running ones)
+            'curl' => [
+                CURLOPT_NOPROGRESS => false,
+                CURLOPT_PROGRESSFUNCTION => fn ($handle, $downloadTotal, $downloaded): int => $downloaded > $this->maxBytes ? 1 : 0,
+            ],
+            'on_stats' => static function (TransferStats $stats) use ($url, &$seconds): void {
+                $seconds[$url] = (float) $stats->getTransferTime();
+            },
+        ];
     }
 
     private function isInsecureHost(string $url): bool
