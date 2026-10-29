@@ -106,7 +106,22 @@ final class ParseRun
             $listed,
         ));
 
-        return new RunResult($nodes, $reports, $metaLinks, $now, microtime(true) - $started, $this->requests);
+        return new RunResult($nodes, $reports, $metaLinks, $now, microtime(true) - $started, $this->requests, $this->fetchRecords());
+    }
+
+    /**
+     * @return list<FetchRecord>
+     */
+    private function fetchRecords(): array
+    {
+        $records = [];
+
+        foreach ($this->fetches as $url => $fetch) {
+            $parsed = $this->parsed[$url] ?? null;
+            $records[] = new FetchRecord($url, $fetch->status, $fetch->error, $fetch->bytes, $fetch->seconds, $fetch->tlsInvalid, $parsed?->format->value, $parsed !== null ? $parsed->found : 0);
+        }
+
+        return $records;
     }
 
     private function now(): DateTimeImmutable
@@ -124,6 +139,7 @@ final class ParseRun
             $body = $content;
         });
         $this->requests += count($results);
+        $this->fetches = [...$this->fetches, ...$results];
 
         $directory = Directory::fromJson((string) $body);
 
@@ -153,6 +169,7 @@ final class ParseRun
             }
         });
         $this->requests += count($apiFetches);
+        $this->fetches = [...$this->fetches, ...$apiFetches];
 
         $builds = [];
 

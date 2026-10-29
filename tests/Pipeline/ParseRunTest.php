@@ -479,6 +479,24 @@ final class ParseRunTest extends TestCase
         $this->runWorld(new World(), withFixed: false);
     }
 
+    public function testEveryFetchedUrlIsRecordedWithWhatCameBack(): void
+    {
+        $result = $this->runWorld(StandardWorld::build(), skip: StandardWorld::SKIP);
+        $byUrl = [];
+
+        foreach ($result->fetches as $fetch) {
+            $byUrl[$fetch->url] = $fetch;
+        }
+
+        $this->assertCount(count($this->requests), $result->fetches);
+        $this->assertSame(['nodelist', 7 + 1, 200], [$byUrl['https://nl.test/nodelist.json']->format, $byUrl['https://nl.test/nodelist.json']->nodes, $byUrl['https://nl.test/nodelist.json']->status]);
+        $this->assertSame(404, $byUrl['https://dead.test/map/nodes.json']->status);
+        $this->assertNull($byUrl['https://dead.test/map/nodes.json']->format);
+        $this->assertSame('meshviewer_flat', $byUrl['https://flat.test/data/meshviewer.json']->format);
+        $this->assertSame(200, $byUrl['https://api.test/nl-city.json']->status, 'API files are recorded, too');
+        $this->assertContains('https://directory.test/directory.json', array_keys($byUrl));
+    }
+
     public function testRequestsAndTimeAreReported(): void
     {
         $result = $this->runWorld(StandardWorld::build(), skip: StandardWorld::SKIP);

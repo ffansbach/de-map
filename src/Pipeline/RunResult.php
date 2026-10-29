@@ -16,6 +16,7 @@ final readonly class RunResult
     /**
      * @param list<CommunityReport> $communities all communities seen, in output order
      * @param array<string, MetaLink> $metaLinks by meta-community name
+     * @param list<FetchRecord> $fetches every URL requested
      */
     public function __construct(
         public NodeCollection $nodes,
@@ -24,6 +25,7 @@ final readonly class RunResult
         public DateTimeImmutable $startedAt,
         public float $seconds,
         public int $requests,
+        public array $fetches = [],
     ) {
     }
 
