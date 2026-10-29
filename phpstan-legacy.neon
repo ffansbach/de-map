@@ -11,6 +11,7 @@ parameters:
         - tests/Source
         - tests/Community
         - tests/Pipeline
+        - tests/Output
         - tests/Legacy
         - tests/Parser
         - tests/Model
