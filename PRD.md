@@ -51,6 +51,9 @@ This PRD covers the **backend/parser**. The goal is a clean, secure, tested, obs
 - **R7** Secure transport of results to the webhost (replace FTP by a signed HTTPS upload API).
 - **R8** TLS verification on by default, response size limits, bounded redirects.
 
+- **R11** **Drift detection and notification.** This space changes a lot, so the operator is notified about (a) technical types never seen before, (b) a source whose response differs suspiciously from what that source (or that type) delivered before: format changed, node count dropped sharply, fields vanished, schema no longer valid. Needs run history (step 6) and a notification channel (decision pending: mail, healthchecks.io, Gitea issue, push).
+- **R12** **Maps without data.** Sources where a map page is reachable but no data file could be found (the 16 `meshviewer` communities from the audit, for example) are listed explicitly with what was tried, instead of silently ignored, so that a person can add the right data URL (or a new discovery rule). Discovery stays probing-based: only a map URL is known.
+
 ### Should
 - **R9** Structured logging (JSON lines) and metrics (InfluxDB v2, healthchecks.io) as run listeners.
 - **R10** "Which communities broke since the last run" visible at a glance.
@@ -69,8 +72,8 @@ This PRD covers the **backend/parser**. The goal is a clean, secure, tested, obs
 | 3 | Characterisation tests on the old code (golden outputs) | open |
 | 4 | New models + pure parsers, full unit coverage | open |
 | 5 | HTTP fetcher (parallel), source resolver, pipeline; side-by-side run on LXC | open |
-| 6 | Run tracking (SQLite) + structured logging | open |
-| 7 | Internal admin UI on the LXC | open |
+| 6 | Run tracking (SQLite) + structured logging; **baseline for drift detection (R11)** | open |
+| 7 | Internal admin UI on the LXC; **"page but no data" list (R12), drift alerts (R11)** | open |
 | 8 | Secure upload API (HMAC) | open |
 | 9 | Cut-over and cleanup of legacy code | open |
 | 10 | Output slimming (own PRD section later) | open |
