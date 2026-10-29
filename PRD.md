@@ -1,6 +1,6 @@
 # PRD: freifunk-karte backend modernisation
 
-Living document. It is extended at the end of every step. Last updated: 2026-10-29 (step 6).
+Living document. It is extended at the end of every step. Last updated: 2026-10-29 (step 7).
 
 ## 1. Purpose
 
@@ -73,7 +73,7 @@ This PRD covers the **backend/parser**. The goal is a clean, secure, tested, obs
 | 4 | New models + pure parsers, full unit coverage | done |
 | 5 | HTTP fetcher (parallel), source resolver, pipeline; side-by-side run on LXC | done here (live network from the dev machine); the run on the LXC is yours, see the runbook in section 11 |
 | 6 | Run tracking (SQLite) + structured logging; **baseline for drift detection (R11)** | done |
-| 7 | Internal admin UI on the LXC; **"page but no data" list (R12), drift alerts (R11)** | open |
+| 7 | Internal admin UI on the LXC; **"page but no data" list (R12), drift alerts (R11)** | done (read-only, no "run now" button) |
 | 8 | Secure upload API (HMAC); **a failed delivery is reported as `delivery-failed` (alert) and fails the healthcheck** | open |
 | 9 | Cut-over and cleanup of legacy code | open |
 | 10 | Output slimming (own PRD section later) | open |
@@ -112,6 +112,9 @@ Working rules: one step at a time, report after each, separate focused commits.
 | 2026-10-29 | Secrets stay out of the repository: `config/integrations.local.json` (gitignored) or the `config.php` of the legacy parser (`--legacy-config`) | The LXC already has the identifier and the InfluxDB settings in `config.php`. |
 | 2026-10-29 | InfluxDB keeps the legacy measurement `parser_result_count` and its field names; upload fields are left out until step 8 | Existing dashboards keep working; zero upload times would distort them. |
 | 2026-10-29 | A listener that fails never breaks a run | Monitoring must not cost the map its update. |
+| 2026-10-29 | The admin UI is read-only, server-rendered HTML with inline CSS and inline SVG charts, no JavaScript and no build step; it answers GET and HEAD only, and the database connection is `query_only` | Nothing on it can change the history or the map; nothing to maintain beyond PHP. |
+| 2026-10-29 | The admin UI fails closed: with a password hash configured it needs HTTP Basic login, without one it only answers requests from the machine itself; `admin:serve` refuses a non-local address without a password | An internal tool must not become public by forgetting a setting. |
+| 2026-10-29 | No "run now" button | Starting a long job from a web request needs queueing, locking and a stronger login than Basic auth; cron does the job. Can be added later if wanted. |
 | 2026-10-29 | Legacy behaviour is pinned with golden files and edge-case tests (`tests/Legacy`) before anything is rewritten; bugs are tested as they are, marked `LEGACY BUG`, and flipped when fixed | A rewrite is only verifiable against recorded behaviour; deleting a bug test would hide the intended change. |
 | 2026-10-29 | `StandardWorld` (reference scenario) is reused to compare the new pipeline with the legacy one in steps 4/5 | Same input, two implementations, diff the result. |
 | 2026-10-29 | Source audit and fixtures are part of the CLI (`bin/parser sources:audit`, `fixtures:build`), not one-off scripts | Re-runnable; fixtures are reproducible and anonymised by whitelist. |
@@ -370,7 +373,53 @@ Two consecutive real runs gave identical numbers and no events (24,941 nodes, 33
 - A source that flickers (empty one run, full the next) produces `stale-data` instead of `community-lost`; that is the intent.
 - Thresholds (20 nodes, 50%, 80%, 5 communities) are first guesses; change them in `DriftDetector` after some weeks of real history.
 
-## 13. Tooling
+## 13. Admin UI (step 7)
+
+Read-only view of the run history (`var/parser.sqlite`), for the operator, on the LXC.
+
+| Page | Shows |
+|------|-------|
+| `/` Overview | latest successful run (cards, charts of nodes / communities with nodes / duration over 60 runs), events to look at, a banner if a later run failed or was refused, recent runs |
+| `/runs`, `/runs/ID` | all runs (paged); one run: summary, events, **what changed since the run before**, maps without data with the reason, communities showing last-good data, requests without a good answer, slowest requests |
+| `/communities`, `/communities/KEY` | all communities of the latest run, filter by outcome / origin / search, sort by nodes, trend per community; one community: what was found and kept, **how many runs it has been dry and when it last delivered**, data URLs, what was tried and why that failed, warnings, the account of the run, history chart |
+| `/no-data` | **R12.** Maps without data grouped by reason - *a page answers but no data was found behind it* first, with the page to open and the servers that carry several such maps; then empty data, nothing at the known places, no answer, nothing to try; communities whose directory entry has no usable map apart |
+| `/fixed` | the communities of `fixedCommunities.php` sorted into: deliver nothing (since when / never), only repeat what the directory delivers today, deliver nodes of their own |
+| `/events` | warnings and alerts of all runs (filter by severity and kind, paged), with links to the run and the community |
+
+### Setup
+```bash
+bin/parser admin:password --user=admin     # asks for a password (12+ characters), prints the hash
+cp config/admin.example.json config/admin.local.json   # gitignored; put the hash in
+bin/parser admin:serve                      # http://127.0.0.1:8081/ for a look
+```
+Permanent use: serve `public-admin/` with php-fpm behind nginx (or Apache), for example
+```nginx
+server {
+    listen 127.0.0.1:8081;            # or the LXC's address on the trusted network
+    root /srv/freifunk-karte/public-admin;
+    location / {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+    }
+}
+```
+The web user needs read access to `var/parser.sqlite` (and its `-wal`/`-shm` files) and write access to `var/log/` for `admin.log`. HTTP Basic sends the password in the clear: use HTTPS (reverse proxy) as soon as it is reachable beyond the machine itself.
+
+### Security model
+- Fails closed: password configured → every request needs it (slowed down 300 ms after a wrong one); none configured → only `127.0.0.1` / `::1`.
+- Read-only: GET/HEAD only, SQLite opened `query_only`, the UI never creates or migrates the history. A missing history gives a generic 503; the detail (which names a path) goes to the log.
+- Everything coming from the data (community names, URLs, messages) is escaped by default; markup must be declared `Safe`. URLs from the outside only become links if they are http(s). Headers on every answer: CSP `default-src 'none'` (no scripts at all), `nosniff`, `X-Frame-Options: DENY`, `no-referrer`, `no-store`.
+- Tested with the data of an attack: a community named `<img src=x onerror=...>` shows as text; disabling the escaping makes 9 tests fail.
+
+### Checked against the real history (3 live runs, 336 communities)
+Every page answers in 1-20 ms. The R12 view on the live directory: **16 communities with a page but no data** (9 of them on one server, `map.freifunk-rhein-sieg.net`; Leipzig, Siegburg, Troisdorf, Berlin and others), 8 with an empty data file, 15 with nothing at the known places, 15 without any answer, 13 without a usable map; 16 API files unavailable, 24 without maps. The fixed-communities view reproduces the earlier analysis (12 dry, 16 redundant, 11 with nodes of their own). "Dry for N runs" is still short: the history only has a few runs. Look at `/fixed` again after a few weeks before removing entries.
+
+### Not done
+- A "run now" button (see decisions). Cron stays the only way to start a run.
+- Authentication beyond HTTP Basic (no sessions, no users): enough for one operator on a trusted network.
+
+## 14. Tooling
 
 ```bash
 composer install
@@ -381,11 +430,12 @@ bin/parser fixtures:build --from=RAWDIR       # see section 8
 bin/parser run --out=DIR                      # new pipeline, see section 11
 bin/parser compare OLD_DIR NEW_DIR
 bin/parser runs [ID] [--events] [--community=KEY]   # history, see section 12
+bin/parser admin:password / admin:serve              # admin UI, see section 13
 ```
 
 Dev machine: PHP 8.5, Composer 2.10. PHPUnit 11.5, PHPStan 2.1, PHP-CS-Fixer 3.x.
 
-## 14. Open questions
+## 15. Open questions
 - PHP version on www.freifunk-karte.de (constrains the upload endpoint, step 8).
 - ~~Runtime of one full legacy run~~ answered: **3 to 4 minutes** on the LXC (fluctuates). Baseline for the speed-up goal; the parallel audit of ~1150 URLs takes about 45 s.
 - Meta-communities: agreed and implemented (section 10, `MetaCommunityResolver`): 19 of 46 names get a link today. Add the 7 without link to `config/metacommunities.json` if you want them.
