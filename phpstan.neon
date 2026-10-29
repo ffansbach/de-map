@@ -1,0 +1,10 @@
+parameters:
+    level: 5
+    paths:
+        - lib
+        - tests
+    excludePaths:
+        - lib/jsv4
+    phpVersion: 80300
+includes:
+    - phpstan-baseline.neon
