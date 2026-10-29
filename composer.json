@@ -46,7 +46,8 @@
     "test": "phpunit",
     "stan": [
       "phpstan analyse --memory-limit=1G",
-      "phpstan analyse --memory-limit=1G -c phpstan-legacy.neon"
+      "phpstan analyse --memory-limit=1G -c phpstan-legacy.neon",
+      "phpstan analyse --memory-limit=1G -c phpstan-web.neon"
     ],
     "cs": "php-cs-fixer fix --dry-run --diff",
     "cs-fix": "php-cs-fixer fix",

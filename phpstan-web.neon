@@ -1,0 +1,6 @@
+# The receiver on the web server must run on old PHP: analysed as PHP 7.2 (a newer syntax is a parse error)
+parameters:
+    level: 8
+    phpVersion: 70200
+    paths:
+        - web

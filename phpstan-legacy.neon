@@ -17,6 +17,7 @@ parameters:
         - tests/Run
         - tests/Log
         - tests/Admin
+        - tests/Publish
         - tests/Legacy
         - tests/Parser
         - tests/Model

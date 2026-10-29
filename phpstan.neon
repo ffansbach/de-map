@@ -1,5 +1,7 @@
 # New code (src/, bin/, tests for it): strict. Legacy code: phpstan-legacy.neon
 parameters:
+    scanFiles:
+        - web/upload.php
     level: 8
     paths:
         - src
@@ -16,6 +18,7 @@ parameters:
         - tests/Run
         - tests/Log
         - tests/Admin
+        - tests/Publish
         - tests/Legacy
         - tests/Parser
         - tests/Model
