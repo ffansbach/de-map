@@ -1,0 +1,7 @@
+{
+    "db": "var/parser.sqlite",
+    "user": "admin",
+    "passwordHash": "make one with: bin/parser admin:password",
+    "timezone": "Europe/Berlin",
+    "title": "Freifunk Karte - parser"
+}

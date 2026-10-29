@@ -4,6 +4,7 @@ parameters:
     paths:
         - src
         - bin
+        - public-admin
         - tests/Audit
         - tests/Http
         - tests/Source

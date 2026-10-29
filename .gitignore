@@ -14,3 +14,4 @@ test.php
 CLAUDE.md
 var/
 config/integrations.local.json
+config/admin.local.json

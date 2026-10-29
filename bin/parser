@@ -3,6 +3,8 @@
 
 declare(strict_types=1);
 
+use FreifunkKarte\Command\AdminPasswordCommand;
+use FreifunkKarte\Command\AdminServeCommand;
 use FreifunkKarte\Command\CompareCommand;
 use FreifunkKarte\Command\FixturesBuildCommand;
 use FreifunkKarte\Command\RunCommand;
@@ -18,4 +20,6 @@ $application->addCommand(new FixturesBuildCommand());
 $application->addCommand(new RunCommand());
 $application->addCommand(new CompareCommand());
 $application->addCommand(new RunsCommand());
+$application->addCommand(new AdminServeCommand());
+$application->addCommand(new AdminPasswordCommand());
 $application->run();

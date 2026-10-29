@@ -5,7 +5,7 @@ declare(strict_types=1);
 // Legacy code in lib/ is deliberately not formatted: it is being replaced step by step (see PRD.md).
 $finder = PhpCsFixer\Finder::create()
     ->in(array_filter(
-        [__DIR__ . '/src', __DIR__ . '/tests', __DIR__ . '/bin'],
+        [__DIR__ . '/src', __DIR__ . '/tests', __DIR__ . '/bin', __DIR__ . '/public-admin'],
         is_dir(...)
     ));
 
