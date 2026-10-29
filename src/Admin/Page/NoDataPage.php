@@ -60,6 +60,7 @@ final class NoDataPage implements Page
 
             $lead = $reason === NoDataReason::PageWithoutData ? 'Page found' : 'Last attempts';
             $body .= sprintf('<h2>%s (%d)</h2>', Html::e(ucfirst($reason->label())), count($rows))
+                . ($reason === NoDataReason::PageWithoutData ? $this->sharedHosts($entries)->html : '')
                 . Html::table(['community', 'origin', 'declared types', $lead, 'without nodes for'], $rows)->html;
         }
 
@@ -68,6 +69,46 @@ final class NoDataPage implements Page
         }
 
         return new PageResult('Maps without data', '/no-data', new Safe($body . $this->withoutMaps($context, $runId)->html));
+    }
+
+    /**
+     * One map server can carry the maps of many communities; finding its data once helps all of them.
+     *
+     * @param list<array{NoDataReason, array<string, mixed>, list<array<string, mixed>>}> $entries
+     */
+    private function sharedHosts(array $entries): Safe
+    {
+        $hosts = [];
+
+        foreach ($entries as [, $row, $attempts]) {
+            $seen = [];
+
+            foreach ($attempts as $attempt) {
+                if (($attempt['status'] ?? null) === 200 && ($attempt['format'] ?? null) === 'html') {
+                    $host = strtolower((string) parse_url((string) $attempt['url'], PHP_URL_HOST));
+
+                    if ($host !== '' && !isset($seen[$host])) {
+                        $seen[$host] = true;
+                        $hosts[$host][] = (string) $row['key'];
+                    }
+                }
+            }
+        }
+
+        $shared = array_filter($hosts, static fn (array $keys): bool => count($keys) > 1);
+        arsort($shared);
+
+        if ($shared === []) {
+            return new Safe('');
+        }
+
+        $items = '';
+
+        foreach ($shared as $host => $keys) {
+            $items .= sprintf('<li>%s: %d communities</li>', Html::e((string) $host), count($keys));
+        }
+
+        return new Safe('<p>Servers that carry several of these maps, so one fix helps many:</p><ul>' . $items . '</ul>');
     }
 
     /**

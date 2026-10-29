@@ -63,6 +63,24 @@ final class NoDataAndFixedPagesTest extends AdminTestCase
         $this->assertStringNotContainsString('<img src=x', $html);
     }
 
+    public function testAServerThatCarriesSeveralMapsWithoutDataIsNamedOnce(): void
+    {
+        $world = (new World())
+            ->community('a', ['nodeMaps' => [['technicalType' => 'meshviewer', 'url' => 'https://maps.shared.test/a/']]])
+            ->community('b', ['nodeMaps' => [['technicalType' => 'meshviewer', 'url' => 'https://maps.shared.test/b/']]])
+            ->community('c', ['nodeMaps' => [['technicalType' => 'meshviewer', 'url' => 'https://other.test/c/']]])
+            ->route('https://maps.shared.test/a/', '<html>a</html>')
+            ->route('https://maps.shared.test/b/', '<html>b</html>')
+            ->route('https://other.test/c/', '<html>c</html>');
+        $this->record($world, '2026-10-29T12:00:00Z');
+
+        $html = $this->assertValidHtml($this->get('/no-data'));
+
+        $this->assertStringContainsString('A page answers, but no data was found behind it (3)', $html);
+        $this->assertStringContainsString('<li>maps.shared.test: 2 communities</li>', $html);
+        $this->assertStringNotContainsString('other.test: 1', $html, 'a server with a single map is no news');
+    }
+
     public function testHowLongACommunityHasBeenDry(): void
     {
         $this->seedHistory($this->repository);
