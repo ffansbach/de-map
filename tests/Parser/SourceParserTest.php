@@ -95,6 +95,15 @@ final class SourceParserTest extends TestCase
         $this->assertStringContainsString($reason, $result->warnings[0]);
     }
 
+    public function testMapConfigCarriesItsDataPaths(): void
+    {
+        $result = $this->parse('{"dataPath": ["https://a.test/", "https://b.test/"]}');
+
+        $this->assertSame(Format::FfmapConfig, $result->format);
+        $this->assertFalse($result->isUsable());
+        $this->assertSame(['https://a.test/', 'https://b.test/'], $result->dataPaths);
+    }
+
     public function testNodelistNotMatchingTheSchemaIsParsedAndWarnsOnce(): void
     {
         $body = (string) json_encode(['version' => '1.0.1', 'updated_at' => 'x', 'nodes' => [

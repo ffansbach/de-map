@@ -20,6 +20,7 @@ final readonly class ParseResult
      * @param int $invalid entries that are not nodes (no id, not an object)
      * @param list<string> $warnings anything odd about the source that a human may want to know
      * @param bool $parsed false if the source was not read at all (no node list, or a format we do not parse)
+     * @param list<string> $dataPaths only for a map config.json: where it says the data is
      */
     public function __construct(
         public Format $format,
@@ -30,6 +31,7 @@ final readonly class ParseResult
         public int $invalid = 0,
         public array $warnings = [],
         public bool $parsed = true,
+        public array $dataPaths = [],
     ) {
     }
 
@@ -55,6 +57,7 @@ final readonly class ParseResult
             $this->invalid,
             [...$this->warnings, ...$warnings],
             $this->parsed,
+            $this->dataPaths,
         );
     }
 

@@ -51,6 +51,15 @@ final class SourceParser
         $detection = $this->detector->detectData($data);
         $parser = $this->parsers[$detection->format->value] ?? null;
 
+        if ($detection->format === Format::FfmapConfig) {
+            return new ParseResult(
+                Format::FfmapConfig,
+                warnings: [$this->unsupportedReason(Format::FfmapConfig)],
+                parsed: false,
+                dataPaths: $detection->dataPaths,
+            );
+        }
+
         if ($parser === null || !is_array($data)) {
             return ParseResult::unusable($detection->format, $this->unsupportedReason($detection->format));
         }

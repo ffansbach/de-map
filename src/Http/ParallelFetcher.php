@@ -23,12 +23,19 @@ final class ParallelFetcher
     /** curl errnos that mean "TLS/certificate problem" */
     private const TLS_ERRNOS = [35, 51, 53, 54, 58, 59, 60, 64, 66, 77, 80, 82, 83, 90, 91];
 
+    /**
+     * @param list<string> $insecureHosts hosts whose certificate is known to be broken: fetched without verification
+     * @param bool $retryWithoutVerification fetch a URL again without verification if only its certificate failed
+     *                                       (for measuring - a run should list the broken host in $insecureHosts instead)
+     */
     public function __construct(
         private readonly ClientInterface $client,
         private readonly int $concurrency = 8,
         private readonly int $maxBytes = 25_000_000,
         private readonly float $timeout = 20.0,
         private readonly float $connectTimeout = 5.0,
+        private readonly array $insecureHosts = [],
+        private readonly bool $retryWithoutVerification = true,
     ) {
     }
 
@@ -40,11 +47,16 @@ final class ParallelFetcher
     public function fetch(array $urls, callable $onBody): array
     {
         $urls = $this->spreadAcrossHosts(array_values(array_unique($urls)));
-        $results = $this->pass($urls, true, $onBody);
+        $known = array_values(array_filter($urls, $this->isInsecureHost(...)));
+        $results = $this->pass(array_values(array_diff($urls, $known)), true, $onBody);
+
+        if ($known !== []) {
+            $results = [...$results, ...$this->pass($known, false, $onBody)];
+        }
 
         $tlsFailed = array_keys(array_filter(
             $results,
-            static fn (FetchResult $r): bool => $r->tlsInvalid,
+            fn (FetchResult $r): bool => $r->tlsInvalid && $this->retryWithoutVerification && !$this->isInsecureHost($r->url),
         ));
 
         if ($tlsFailed !== []) {
@@ -119,6 +131,11 @@ final class ParallelFetcher
         $pool->promise()->wait();
 
         return $results;
+    }
+
+    private function isInsecureHost(string $url): bool
+    {
+        return in_array(strtolower((string) parse_url($url, PHP_URL_HOST)), $this->insecureHosts, true);
     }
 
     /**

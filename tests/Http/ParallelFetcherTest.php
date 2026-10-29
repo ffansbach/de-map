@@ -33,8 +33,9 @@ final class ParallelFetcherTest extends TestCase
 
     /**
      * @param list<Response|\Throwable> $queue
+     * @param list<string> $insecureHosts
      */
-    private function fetcher(array $queue): ParallelFetcher
+    private function fetcher(array $queue, array $insecureHosts = [], bool $retry = true): ParallelFetcher
     {
         $history = new \ArrayObject();
         $stack = HandlerStack::create(new MockHandler($queue));
@@ -43,7 +44,7 @@ final class ParallelFetcherTest extends TestCase
         $this->assertInstanceOf(\ArrayObject::class, $history);
         $this->history = $history;
 
-        return new ParallelFetcher(new Client(['handler' => $stack]), concurrency: 1);
+        return new ParallelFetcher(new Client(['handler' => $stack]), concurrency: 1, insecureHosts: $insecureHosts, retryWithoutVerification: $retry);
     }
 
     public function testBodyCallbackOnlyFor200(): void
@@ -148,5 +149,41 @@ final class ParallelFetcherTest extends TestCase
 
         $sent = array_map(fn (int $i): string => (string) $this->sent($i)['request']->getUri(), [0, 1, 2, 3]);
         $this->assertSame(['https://a.test/1', 'https://b.test/1', 'https://a.test/2', 'https://a.test/3'], $sent);
+    }
+
+    public function testKnownBrokenHostIsFetchedWithoutVerificationFromTheStart(): void
+    {
+        $fetcher = $this->fetcher([new Response(200, [], 'x'), new Response(200, [], 'y')], ['broken.test']);
+
+        $results = $fetcher->fetch(['https://Broken.test/a', 'https://fine.test/b'], static function (): void {
+        });
+
+        $verify = [];
+
+        foreach ([0, 1] as $i) {
+            $verify[(string) $this->sent($i)['request']->getUri()] = $this->sent($i)['options']['verify'];
+        }
+
+        $this->assertSame(['https://fine.test/b' => true, 'https://broken.test/a' => false], $verify);
+        $this->assertTrue($results['https://Broken.test/a']->tlsInvalid);
+        $this->assertFalse($results['https://fine.test/b']->tlsInvalid);
+    }
+
+    public function testCertificateProblemWithoutRetryStaysAFailure(): void
+    {
+        $url = 'https://badcert.test/';
+        $fetcher = $this->fetcher([
+            new RequestException('cURL error 60: SSL certificate problem', new Request('GET', $url), null, null, ['errno' => 60]),
+        ], retry: false);
+        $bodies = 0;
+
+        $results = $fetcher->fetch([$url], function () use (&$bodies): void {
+            $bodies++;
+        });
+
+        $this->assertSame(0, $bodies);
+        $this->assertNull($results[$url]->status);
+        $this->assertTrue($results[$url]->tlsInvalid, 'flags that the certificate was the reason');
+        $this->assertCount(1, $this->history);
     }
 }

@@ -51,7 +51,7 @@ final class SourceCache
             return;
         }
 
-        $this->entries[$mapUrl] = ['urls' => array_values($dataUrls), 'foundAt' => $now->getTimestamp()];
+        $this->entries[$mapUrl] = ['urls' => $dataUrls, 'foundAt' => $now->getTimestamp()];
     }
 
     public function forget(string $mapUrl): void

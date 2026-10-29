@@ -6,6 +6,7 @@ namespace FreifunkKarte\Audit;
 
 use FreifunkKarte\Http\FetchResult;
 use FreifunkKarte\Http\ParallelFetcher;
+use FreifunkKarte\Source\Directory;
 use FreifunkKarte\Source\Discovery;
 use RuntimeException;
 
@@ -18,7 +19,7 @@ use RuntimeException;
  */
 final class SourceAuditor
 {
-    public const DIRECTORY_URL = 'https://raw.githubusercontent.com/freifunk/directory.api.freifunk.net/master/directory.json';
+    public const DIRECTORY_URL = Directory::URL;
 
     private const RAW_SAMPLES_PER_FORMAT = 3;
 

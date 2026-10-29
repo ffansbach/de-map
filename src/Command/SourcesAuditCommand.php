@@ -7,6 +7,7 @@ namespace FreifunkKarte\Command;
 use FreifunkKarte\Audit\FormatDetector;
 use FreifunkKarte\Audit\SourceAuditor;
 use FreifunkKarte\Http\ParallelFetcher;
+use FreifunkKarte\Source\FixedCommunities;
 use GuzzleHttp\Client;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -40,7 +41,7 @@ final class SourcesAuditCommand extends Command
         $auditor = new SourceAuditor($fetcher, new FormatDetector(), is_string($rawDir) ? $rawDir : null);
 
         $only = $input->getOption('only');
-        $fixed = $input->getOption('no-fixed') ? [] : $this->loadFixedCommunities(dirname(__DIR__, 2) . '/fixedCommunities.php');
+        $fixed = $input->getOption('no-fixed') ? [] : FixedCommunities::load(dirname(__DIR__, 2) . '/fixedCommunities.php');
 
         $report = $auditor->audit(
             $fixed,
@@ -58,31 +59,6 @@ final class SourcesAuditCommand extends Command
         }
 
         return Command::SUCCESS;
-    }
-
-    /**
-     * fixedCommunities.php calls $parser->addAdditional(key, object); we only need url and parser.
-     *
-     * @return array<string, array{url: string, parser: string}>
-     */
-    private function loadFixedCommunities(string $file): array
-    {
-        $collector = new class () {
-            /** @var array<string, array{url: string, parser: string}> */
-            public array $items = [];
-
-            public function addAdditional(string $key, \stdClass $item): void
-            {
-                $this->items[$key] = ['url' => (string) $item->url, 'parser' => (string) $item->parser];
-            }
-        };
-
-        (static function () use ($collector, $file): void {
-            $parser = $collector;
-            require $file;
-        })();
-
-        return $collector->items;
     }
 
     /**
