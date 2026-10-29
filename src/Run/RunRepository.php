@@ -23,12 +23,36 @@ final class RunRepository
 
     private const SCHEMA_VERSION = 1;
 
-    private function __construct(private readonly PDO $pdo)
+    private function __construct(private readonly PDO $pdo, bool $readOnly = false)
     {
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $this->pdo->exec('PRAGMA foreign_keys = ON');
         $this->pdo->exec('PRAGMA busy_timeout = 5000');
+
+        if ($readOnly) {
+            // any write fails from here on; works the same on every PHP version
+            $this->pdo->exec('PRAGMA query_only = ON');
+
+            if ($this->schemaVersion() < self::SCHEMA_VERSION) {
+                throw new RuntimeException('The history is empty or from an older version: run `bin/parser run` once first');
+            }
+
+            return;
+        }
+
         $this->migrate();
+    }
+
+    /**
+     * For readers (the admin UI): never creates, migrates or writes anything.
+     */
+    public static function openReadOnly(string $file): self
+    {
+        if (!is_file($file)) {
+            throw new RuntimeException('No history at ' . $file . ' yet: it is created by `bin/parser run`');
+        }
+
+        return new self(new PDO('sqlite:' . $file), true);
     }
 
     public static function open(string $file): self
@@ -243,6 +267,156 @@ final class RunRepository
         return $statement->rowCount();
     }
 
+    /**
+     * @return array<string, mixed>|null the newest run, whatever became of it
+     */
+    public function latestRun(): ?array
+    {
+        $row = $this->select('SELECT * FROM runs ORDER BY id DESC LIMIT 1')->fetch(PDO::FETCH_ASSOC);
+
+        return is_array($row) ? $row : null;
+    }
+
+    public function runCount(): int
+    {
+        return (int) $this->select('SELECT COUNT(*) FROM runs')->fetchColumn();
+    }
+
+    /**
+     * @return list<array<string, mixed>> newest first
+     */
+    public function runsPage(int $limit, int $offset): array
+    {
+        $statement = $this->pdo->prepare('SELECT * FROM runs ORDER BY id DESC LIMIT ? OFFSET ?');
+        $statement->execute([$limit, $offset]);
+
+        return array_values($statement->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    /**
+     * The communities of a run, without the bulky parts.
+     *
+     * @param string|null $outcome only communities with this outcome
+     * @param string|null $origin 'directory' or 'fixed'
+     * @return list<array<string, mixed>> ordered by key
+     */
+    public function communityRows(int $runId, ?string $outcome = null, ?string $origin = null): array
+    {
+        $sql = 'SELECT key, name, origin, outcome, listed, format, via_cache, stale_since, found, added, duplicates, without_location, dropped, invalid, declared_types, meta, api_url FROM community_results WHERE run_id = ?';
+        $parameters = [$runId];
+
+        if ($outcome !== null) {
+            $sql .= ' AND outcome = ?';
+            $parameters[] = $outcome;
+        }
+
+        if ($origin !== null) {
+            $sql .= ' AND origin = ?';
+            $parameters[] = $origin;
+        }
+
+        $statement = $this->pdo->prepare($sql . ' ORDER BY key');
+        $statement->execute($parameters);
+
+        return array_values(array_map(static function (array $row): array {
+            $row['declared_types'] = self::strings($row['declared_types']);
+
+            return $row;
+        }, $statement->fetchAll(PDO::FETCH_ASSOC)));
+    }
+
+    /**
+     * One community in one run with everything that was kept about it.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function communityDetail(int $runId, string $key): ?array
+    {
+        $statement = $this->pdo->prepare('SELECT * FROM community_results WHERE run_id = ? AND key = ?');
+        $statement->execute([$runId, $key]);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+
+        if (!is_array($row)) {
+            return null;
+        }
+
+        foreach (['declared_types', 'source_urls', 'warnings', 'messages'] as $column) {
+            $row[$column] = self::strings($row[$column]);
+        }
+
+        $attempts = json_decode((string) $row['attempts'], true);
+        $row['attempts'] = is_array($attempts) ? array_values(array_filter($attempts, is_array(...))) : [];
+
+        return $row;
+    }
+
+    /**
+     * The last run in which each community delivered nodes.
+     *
+     * @return array<string, array{run_id: int, started_at: string}> by community key
+     */
+    public function lastOkRuns(): array
+    {
+        $rows = $this->select("SELECT c.key AS key, MAX(c.run_id) AS run_id, r.started_at AS started_at FROM community_results c JOIN runs r ON r.id = c.run_id WHERE c.outcome = 'ok' GROUP BY c.key")->fetchAll(PDO::FETCH_ASSOC);
+        $last = [];
+
+        foreach ($rows as $row) {
+            $last[(string) $row['key']] = ['run_id' => (int) $row['run_id'], 'started_at' => (string) $row['started_at']];
+        }
+
+        return $last;
+    }
+
+    /**
+     * @return list<int> ids of the runs that produced a result, oldest first
+     */
+    public function okRunIds(): array
+    {
+        return array_values(array_map(intval(...), $this->select("SELECT id FROM runs WHERE status = 'ok' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN)));
+    }
+
+    /**
+     * @return list<array<string, mixed>> newest first, with the time of the run
+     */
+    public function eventsPage(int $limit, int $offset, ?string $minimumSeverity = null, ?string $kind = null): array
+    {
+        $levels = ['info' => ['info', 'warning', 'alert'], 'warning' => ['warning', 'alert'], 'alert' => ['alert']];
+        $allowed = $levels[$minimumSeverity ?? 'info'] ?? $levels['info'];
+        $sql = 'SELECT e.*, r.started_at AS run_started_at FROM events e JOIN runs r ON r.id = e.run_id WHERE e.severity IN (' . implode(',', array_fill(0, count($allowed), '?')) . ')';
+        $parameters = $allowed;
+
+        if ($kind !== null) {
+            $sql .= ' AND e.kind = ?';
+            $parameters[] = $kind;
+        }
+
+        $statement = $this->pdo->prepare($sql . ' ORDER BY e.id DESC LIMIT ? OFFSET ?');
+        $statement->execute([...$parameters, $limit, $offset]);
+
+        return array_values($statement->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    /**
+     * @return list<string> the kinds of events that exist, for the filter
+     */
+    public function eventKinds(): array
+    {
+        return array_values(array_map(strval(...), $this->select('SELECT DISTINCT kind FROM events ORDER BY kind')->fetchAll(PDO::FETCH_COLUMN)));
+    }
+
+    /**
+     * @param bool $onlyProblems only requests without an answer or with a status of 400 and above
+     * @return list<array<string, mixed>> slowest first
+     */
+    public function fetchesFor(int $runId, bool $onlyProblems = false, int $limit = 100): array
+    {
+        $sql = 'SELECT * FROM fetches WHERE run_id = ?' . ($onlyProblems ? ' AND (status IS NULL OR status >= 400)' : '') . ' ORDER BY seconds DESC, url LIMIT ?';
+        $statement = $this->pdo->prepare($sql);
+        $statement->execute([$runId, $limit]);
+
+        return array_values($statement->fetchAll(PDO::FETCH_ASSOC));
+    }
+
     private function storeCommunities(int $runId, RunResult $result): void
     {
         $statement = $this->pdo->prepare('INSERT INTO community_results (run_id, key, name, origin, outcome, listed, format, via_cache, stale_since, found, added, duplicates, without_location, dropped, invalid, declared_types, source_urls, warnings, messages, attempts, meta, api_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
@@ -285,12 +459,25 @@ final class RunRepository
         return json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
 
+    private function schemaVersion(): int
+    {
+        return (int) $this->select('PRAGMA user_version')->fetchColumn();
+    }
+
+    private function select(string $sql): \PDOStatement
+    {
+        $statement = $this->pdo->query($sql);
+
+        if ($statement === false) {
+            throw new RuntimeException('Query failed: ' . $sql);
+        }
+
+        return $statement;
+    }
+
     private function migrate(): void
     {
-        $statement = $this->pdo->query('PRAGMA user_version');
-        $version = $statement === false ? 0 : (int) $statement->fetchColumn();
-
-        if ($version >= self::SCHEMA_VERSION) {
+        if ($this->schemaVersion() >= self::SCHEMA_VERSION) {
             return;
         }
 

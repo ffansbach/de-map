@@ -37,4 +37,15 @@ final class RunFixtures
             retryDelayMs: 0,
         ))->run($world->fixedCommunities(), StandardWorld::SKIP);
     }
+
+    /**
+     * The reference world after a bad day: hop-town's data is gone and a community uses a new type.
+     */
+    public static function worse(): RunResult
+    {
+        return self::standard(StandardWorld::build()
+            ->route('https://hop.test/a/nodes.json', 'not json')
+            ->route('https://hop.test/b/nodes.json', 'not json')
+            ->community('newcomer', ['nodeMaps' => [['technicalType' => 'yanic', 'url' => 'https://newcomer.test/map/']]]));
+    }
 }
