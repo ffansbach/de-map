@@ -15,6 +15,7 @@ parameters:
         - tests/Config
         - tests/Command
         - tests/Run
+        - tests/Log
         - tests/Legacy
         - tests/Parser
         - tests/Model
