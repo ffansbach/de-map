@@ -14,6 +14,7 @@ use FreifunkKarte\Pipeline\CommunityReport;
 use FreifunkKarte\Pipeline\ParseRun;
 use FreifunkKarte\Source\Directory;
 use FreifunkKarte\Source\FixedCommunities;
+use FreifunkKarte\Source\LastGoodStore;
 use FreifunkKarte\Source\SourceCache;
 use GuzzleHttp\Client;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -92,6 +93,7 @@ final class RunCommand extends Command
             MetaCommunityResolver::fromFile($config->metaCommunitiesFile),
             null,
             (string) $input->getOption('directory-url'),
+            lastGood: new LastGoodStore($cacheDir . '/last-good'),
         );
 
         $only = $input->getOption('only');

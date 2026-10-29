@@ -25,6 +25,7 @@ final readonly class CommunityReport
      * @param list<SourceAttempt> $attempts every URL tried for its maps
      * @param list<string> $warnings oddities of the sources used
      * @param list<string> $messages human readable account of the run for this community
+     * @param string|null $staleSince set if the nodes are from an earlier run because the source is not answering properly
      */
     public function __construct(
         public string $key,
@@ -49,6 +50,7 @@ final readonly class CommunityReport
         public array $warnings = [],
         public array $messages = [],
         public ?int $claimedNodes = null,
+        public ?string $staleSince = null,
     ) {
     }
 }

@@ -16,6 +16,7 @@ use FreifunkKarte\Parser\ParseResult;
 use FreifunkKarte\Parser\SourceParser;
 use FreifunkKarte\Source\Directory;
 use FreifunkKarte\Source\Discovery;
+use FreifunkKarte\Source\LastGoodStore;
 use FreifunkKarte\Source\SourceCache;
 use RuntimeException;
 
@@ -42,6 +43,9 @@ final class ParseRun
     /** @var array<string, ParseResult> */
     private array $parsed = [];
 
+    /** @var array<string, DateTimeImmutable> data URL => when the nodes shown for it were saved */
+    private array $stale = [];
+
     private int $requests = 0;
 
     public function __construct(
@@ -52,6 +56,7 @@ final class ParseRun
         private readonly ?Closure $clock = null,
         private readonly string $directoryUrl = Directory::URL,
         private readonly int $retryDelayMs = 1000,
+        private readonly ?LastGoodStore $lastGood = null,
     ) {
     }
 
@@ -66,6 +71,7 @@ final class ParseRun
         };
         $this->fetches = [];
         $this->parsed = [];
+        $this->stale = [];
         $this->requests = 0;
         $started = microtime(true);
         $now = $this->now();
@@ -92,6 +98,7 @@ final class ParseRun
 
         $reports = $this->assemble($builds, $nodes = new NodeCollection(), $now);
         $this->cache->save($now);
+        $this->lastGood?->prune($now);
 
         $listed = array_values(array_filter($reports, static fn (CommunityReport $r): bool => $r->listed));
         $metaLinks = $this->metaResolver->resolve(array_map(
@@ -303,19 +310,51 @@ final class ParseRun
         // is cheap. Timeouts are not retried: a host that timed out usually does it again.
         $transient = array_values(array_filter($urls, $this->isTransient(...)));
 
-        if ($transient === []) {
+        if ($transient !== []) {
+            if ($this->retryDelayMs > 0) {
+                usleep($this->retryDelayMs * 1000);
+            }
+
+            foreach ($transient as $url) {
+                unset($this->parsed[$url]);
+            }
+
+            $this->fetchInto($transient, $now);
+        }
+
+        foreach ($urls as $url) {
+            $this->settle($url, $now);
+        }
+    }
+
+    /**
+     * Remembers what a source delivered; if it only has trouble right now, falls back on that.
+     */
+    private function settle(string $url, DateTimeImmutable $now): void
+    {
+        if ($this->lastGood === null) {
             return;
         }
 
-        if ($this->retryDelayMs > 0) {
-            usleep($this->retryDelayMs * 1000);
+        $parsed = $this->parsed[$url] ?? null;
+
+        if ($parsed !== null && $parsed->isUsable() && $parsed->nodes !== []) {
+            $this->lastGood->save($url, $parsed, $now);
+
+            return;
         }
 
-        foreach ($transient as $url) {
-            unset($this->parsed[$url]);
+        $stored = $this->isTransient($url) ? $this->lastGood->load($url, $now) : null;
+
+        if ($stored === null) {
+            return;
         }
 
-        $this->fetchInto($transient, $now);
+        $reason = ($this->fetches[$url]->status ?? 0) === 200 ? 'an empty body' : 'HTTP ' . ($this->fetches[$url]->status ?? '?');
+        $this->parsed[$url] = $stored['result']->withWarnings([
+            sprintf('source answered with %s; showing the nodes saved at %s', $reason, $stored['savedAt']->format('Y-m-d H:i')),
+        ]);
+        $this->stale[$url] = $stored['savedAt'];
     }
 
     /**
@@ -343,7 +382,7 @@ final class ParseRun
             return true;
         }
 
-        return $fetch->status === 200 && ($this->parsed[$url] ?? null)?->format === Format::Empty;
+        return $fetch->status === 200 && $this->parsed[$url]->format === Format::Empty;
     }
 
     /**
@@ -507,6 +546,7 @@ final class ParseRun
         $counts = ['found' => 0, 'added' => 0, 'duplicates' => 0, 'withoutLocation' => 0, 'dropped' => 0, 'invalid' => 0];
         $format = null;
         $viaCache = false;
+        $staleSince = null;
 
         foreach ($chosen['resolutions'] as $resolution) {
             foreach ($resolution['urls'] as $url) {
@@ -527,6 +567,10 @@ final class ParseRun
                 $counts['withoutLocation'] += $result->withoutLocation;
                 $counts['dropped'] += $result->dropped;
                 $counts['invalid'] += $result->invalid;
+                if (isset($this->stale[$url])) {
+                    $staleSince = $this->stale[$url]->format('c');
+                }
+
                 $messages[] = sprintf('%s (%s%s): %s', $url, $resolution['entry']->declaredType, $resolution['via'] === 'cache' ? ', cached' : '', $result->summary());
 
                 if ($alreadyUsed) {
@@ -579,6 +623,7 @@ final class ParseRun
             $warnings,
             $messages,
             $build->claimedNodes,
+            $staleSince,
         );
     }
 

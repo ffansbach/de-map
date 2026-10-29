@@ -12,6 +12,7 @@ use FreifunkKarte\Parser\SourceParser;
 use FreifunkKarte\Pipeline\CommunityReport;
 use FreifunkKarte\Pipeline\ParseRun;
 use FreifunkKarte\Pipeline\RunResult;
+use FreifunkKarte\Source\LastGoodStore;
 use FreifunkKarte\Source\SourceCache;
 use FreifunkKarte\Tests\Legacy\LegacyRunner;
 use FreifunkKarte\Tests\Legacy\StandardWorld;
@@ -34,7 +35,7 @@ final class ParseRunTest extends TestCase
      * @param list<string> $unreachableHosts
      * @param array<string, list<Response>> $flaky answers served first for a URL, before the world answers
      */
-    private function runWorld(World $world, ?SourceCache $cache = null, array $skip = [], ?string $only = null, array $unreachableHosts = [], bool $withFixed = true, array $flaky = []): RunResult
+    private function runWorld(World $world, ?SourceCache $cache = null, array $skip = [], ?string $only = null, array $unreachableHosts = [], bool $withFixed = true, array $flaky = [], ?LastGoodStore $lastGood = null, ?\Closure $clock = null): RunResult
     {
         $this->requests = [];
         $inner = $world->httpHandler();
@@ -57,9 +58,10 @@ final class ParseRunTest extends TestCase
             new SourceParser(),
             $cache ?? new SourceCache(),
             new MetaCommunityResolver(),
-            null,
+            $clock,
             LegacyRunner::DIRECTORY_URL,
             retryDelayMs: 0,
+            lastGood: $lastGood,
         );
 
         return $run->run($withFixed ? $world->fixedCommunities() : [], $skip, $only);
@@ -231,6 +233,72 @@ final class ParseRunTest extends TestCase
         $this->assertSame(CommunityReport::NO_DATA, $report->outcome);
         $this->assertCount(2, $this->requestsTo('https://flaky.test/'));
         $this->assertSame('empty', $report->attempts[0]->format);
+    }
+
+    public function testSourceThatHasTroubleShowsItsLastGoodNodesAndSaysSo(): void
+    {
+        $store = new LastGoodStore();
+        $empty = new Response(200, [], '');
+        $this->runWorld($this->oneNodeWorld(), lastGood: $store);
+
+        $result = $this->runWorld($this->oneNodeWorld(), lastGood: $store, flaky: ['https://flaky.test/nodelist.json' => [$empty, $empty]]);
+        $report = $this->report($result, 'flaky');
+
+        $this->assertSame(CommunityReport::OK, $report->outcome);
+        $this->assertSame(1, $result->nodes->count());
+        $this->assertNotNull($report->staleSince);
+        $this->assertCount(1, $report->warnings);
+        $this->assertStringContainsString('source answered with an empty body; showing the nodes saved at', $report->warnings[0]);
+    }
+
+    public function testServerErrorAlsoFallsBackToTheLastGoodNodes(): void
+    {
+        $store = new LastGoodStore();
+        $this->runWorld($this->oneNodeWorld(), lastGood: $store);
+
+        $result = $this->runWorld($this->oneNodeWorld(), lastGood: $store, flaky: ['https://flaky.test/nodelist.json' => [new Response(503), new Response(503)]]);
+
+        $this->assertSame(1, $result->nodes->count());
+        $this->assertStringContainsString('HTTP 503', $this->report($result, 'flaky')->warnings[0]);
+    }
+
+    public function testValidDataWithNoNodesIsBelievedAndNotReplacedByOldNodes(): void
+    {
+        $store = new LastGoodStore();
+        $this->runWorld($this->oneNodeWorld(), lastGood: $store);
+        $nowEmpty = (new World())
+            ->community('flaky', ['nodeMaps' => [['technicalType' => 'nodelist', 'url' => 'https://flaky.test/nodelist.json']]])
+            ->route('https://flaky.test/nodelist.json', '{"version":"1.0.1","nodes":[]}');
+
+        $result = $this->runWorld($nowEmpty, lastGood: $store);
+
+        $this->assertSame(0, $result->nodes->count());
+        $this->assertNull($this->report($result, 'flaky')->staleSince);
+    }
+
+    public function testNotFoundIsNotReplacedByOldNodesEither(): void
+    {
+        $store = new LastGoodStore();
+        $this->runWorld($this->oneNodeWorld(), lastGood: $store);
+        $gone = (new World())->community('flaky', ['nodeMaps' => [['technicalType' => 'nodelist', 'url' => 'https://flaky.test/nodelist.json']]]);
+
+        $this->assertSame(0, $this->runWorld($gone, lastGood: $store)->nodes->count());
+    }
+
+    public function testOldNodesAreNotShownAfterADay(): void
+    {
+        $store = new LastGoodStore();
+        $this->runWorld($this->oneNodeWorld(), lastGood: $store);
+        $empty = new Response(200, [], '');
+
+        $result = $this->runWorld(
+            $this->oneNodeWorld(),
+            lastGood: $store,
+            flaky: ['https://flaky.test/nodelist.json' => [$empty, $empty]],
+            clock: static fn (): DateTimeImmutable => new DateTimeImmutable('+25 hours'),
+        );
+
+        $this->assertSame(0, $result->nodes->count());
     }
 
     public function testNotFoundIsNotRetried(): void

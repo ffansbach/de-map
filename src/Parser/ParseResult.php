@@ -61,6 +61,66 @@ final readonly class ParseResult
         );
     }
 
+    /**
+     * @return array<string, mixed> for the last-good store
+     */
+    public function toArray(): array
+    {
+        return [
+            'format' => $this->format->value,
+            'nodes' => array_map(static fn (Node $node): array => $node->toArray(), $this->nodes),
+            'found' => $this->found,
+            'withoutLocation' => $this->withoutLocation,
+            'dropped' => $this->dropped,
+            'invalid' => $this->invalid,
+            'warnings' => $this->warnings,
+        ];
+    }
+
+    /**
+     * @param array<array-key, mixed> $data as written by {@see toArray()}; null if it is not a stored result
+     */
+    public static function fromArray(array $data): ?self
+    {
+        $format = is_string($data['format'] ?? null) ? Format::tryFrom($data['format']) : null;
+
+        if ($format === null || !is_array($data['nodes'] ?? null)) {
+            return null;
+        }
+
+        $nodes = [];
+
+        foreach ($data['nodes'] as $stored) {
+            $node = is_array($stored) ? Node::fromArray($stored) : null;
+
+            if ($node === null) {
+                return null;
+            }
+
+            $nodes[] = $node;
+        }
+
+        $warnings = is_array($data['warnings'] ?? null) ? array_values(array_filter($data['warnings'], is_string(...))) : [];
+
+        return new self(
+            $format,
+            $nodes,
+            self::count($data, 'found'),
+            self::count($data, 'withoutLocation'),
+            self::count($data, 'dropped'),
+            self::count($data, 'invalid'),
+            $warnings,
+        );
+    }
+
+    /**
+     * @param array<array-key, mixed> $data
+     */
+    private static function count(array $data, string $key): int
+    {
+        return is_int($data[$key] ?? null) ? $data[$key] : 0;
+    }
+
     public function isUsable(): bool
     {
         return $this->parsed;

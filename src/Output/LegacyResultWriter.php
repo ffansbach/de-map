@@ -92,6 +92,10 @@ final class LegacyResultWriter
                 $entry['metacommunity'] = $community->meta;
             }
 
+            if ($community->staleSince !== null) {
+                $entry['staleSince'] = $community->staleSince;
+            }
+
             $entry['outcome'] = $community->outcome;
             $entry['format'] = $community->format;
             $entry['sourceUrls'] = $community->sourceUrls;
