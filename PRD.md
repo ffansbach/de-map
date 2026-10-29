@@ -284,14 +284,15 @@ Config in `config/`: `skipped-communities.json` (empty), `insecure-hosts.json` (
 Where the ~20 s go: 5.8 s for the 337 API files, then rounds of 8.5 s, 5.2 s and 0.4 s. Each round waits for its slowest request, which is usually a dead host running into the 5 s connect timeout. An event-driven scheduler (each map advances on its own) could bring this towards 10 s; not done, the goal (speed-up) is reached.
 
 ### Why the two results differ (every difference explained)
-Of 24,394 legacy nodes 24,374 are in the new result. The 20 that are not are 16 GPS-jitter / renamed nodes (two runs, minutes apart) and 4 nodes whose coordinates the legacy parser published as garbage and the new one refuses (e.g. latitude `521281725`, longitude `843804`). New in the new result (786):
+Of 24,394 legacy nodes 24,374 are in the new result. The 20 that are not are 12 live changes (airFiber links whose GPS position jitters, one renamed node; two runs minutes apart) and 8 nodes whose coordinates the legacy parser published as garbage and the new one refuses (e.g. latitude `521281725`, longitude `843804`: a missing decimal point). New in the new result (786):
 
 | What | Nodes | Why |
 |------|------:|-----|
 | karlsruhe | 304 | the legacy parser gave up on its nodelist; the content-based pipeline found the working meshviewer map |
 | cuxhaven | 248 | the legacy run hit a host that did not answer at that moment |
 | iserlohn | 164 | declares a `nodelist` but serves the flat meshviewer format; the legacy parser read it with the nodelist parser and **skipped all 174 nodes** |
-| flat meshviewer, recently seen offline | ~70 | deliberate (one offline rule), e.g. darmstadt +12, ff_nordwest +40, winterberg |
+| flat meshviewer, offline but seen within 3 days | 63 | deliberate (one offline rule), e.g. darmstadt +12, ff_nordwest +40, winterberg |
+| the same live changes as above, seen from the other side | 7 | position of a moved node |
 | the 7 communities of the old skip list | 0 | listed now (their maps deliver nothing) |
 
 Also confirmed: `technicalType` is unreliable (iserlohn), and servers do misbehave (3Ländereck: nodelists flicker between full and empty; `map-data/bh/nodelist.json` was empty for a long time). Both are handled (content-based parsing; per-host limit, retry, last-good).
