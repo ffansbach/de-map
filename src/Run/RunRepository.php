@@ -277,6 +277,39 @@ final class RunRepository
         return is_array($row) ? $row : null;
     }
 
+    /**
+     * @return array<string, mixed>|null the newest run that produced a result
+     */
+    public function latestOkRun(): ?array
+    {
+        $row = $this->select("SELECT * FROM runs WHERE status = 'ok' ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+
+        return is_array($row) ? $row : null;
+    }
+
+    /**
+     * How many events of each severity the given runs have.
+     *
+     * @param list<int> $runIds
+     * @return array<int, array<string, int>> run id => severity => count
+     */
+    public function eventCounts(array $runIds): array
+    {
+        if ($runIds === []) {
+            return [];
+        }
+
+        $statement = $this->pdo->prepare('SELECT run_id, severity, COUNT(*) AS n FROM events WHERE run_id IN (' . implode(',', array_fill(0, count($runIds), '?')) . ') GROUP BY run_id, severity');
+        $statement->execute($runIds);
+        $counts = [];
+
+        foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $counts[(int) $row['run_id']][(string) $row['severity']] = (int) $row['n'];
+        }
+
+        return $counts;
+    }
+
     public function runCount(): int
     {
         return (int) $this->select('SELECT COUNT(*) FROM runs')->fetchColumn();
