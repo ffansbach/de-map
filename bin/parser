@@ -10,6 +10,8 @@ use FreifunkKarte\Command\FixturesBuildCommand;
 use FreifunkKarte\Command\RunCommand;
 use FreifunkKarte\Command\RunsCommand;
 use FreifunkKarte\Command\SourcesAuditCommand;
+use FreifunkKarte\Command\UploadCommand;
+use FreifunkKarte\Command\UploadSecretCommand;
 use Symfony\Component\Console\Application;
 
 require __DIR__ . '/../vendor/autoload.php';
@@ -22,4 +24,6 @@ $application->addCommand(new CompareCommand());
 $application->addCommand(new RunsCommand());
 $application->addCommand(new AdminServeCommand());
 $application->addCommand(new AdminPasswordCommand());
+$application->addCommand(new UploadCommand());
+$application->addCommand(new UploadSecretCommand());
 $application->run();

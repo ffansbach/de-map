@@ -42,8 +42,9 @@ final class RunRecorder
     /**
      * @param bool $refused the result was too small to be written; it is kept in the history anyway
      * @param string|null $deliveryError why the result files could not be delivered to the web server, if they could not
+     * @param list<string> $deliveryWarnings deliveries that failed without stopping the delivery (a second server, the statistics ping)
      */
-    public function complete(int $runId, RunResult $result, bool $refused = false, ?string $deliveryError = null): RunSummary
+    public function complete(int $runId, RunResult $result, bool $refused = false, ?string $deliveryError = null, array $deliveryWarnings = []): RunSummary
     {
         $finishedAt = $this->now();
         $this->repository->finish($runId, $result, $refused ? RunRepository::REFUSED : RunRepository::OK, $finishedAt);
@@ -75,6 +76,10 @@ final class RunRecorder
                 'run',
                 'The result could not be delivered to the web server: ' . $deliveryError,
             );
+        }
+
+        foreach ($deliveryWarnings as $warning) {
+            $events[] = new DriftEvent(DriftEvent::DELIVERY_PARTIAL, DriftEvent::WARNING, 'run', 'Part of the delivery failed: ' . $warning);
         }
 
         $this->repository->addEvents($runId, $events, $finishedAt);

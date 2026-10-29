@@ -336,4 +336,64 @@ final class RunCommandTest extends TestCase
         $this->assertSame(Command::SUCCESS, $tester->getStatusCode());
         $this->assertFileExists($this->directory . '/out/result_routers.json');
     }
+
+    private function uploadConfig(): string
+    {
+        $file = $this->directory . '/upload.json';
+        file_put_contents($file, (string) json_encode(['publishers' => [['type' => 'https', 'url' => 'https://up.test/upload.php', 'secret' => str_repeat('k', 32)]], 'statsPingUrl' => 'https://up.test/ping']));
+
+        return $file;
+    }
+
+    public function testUploadDeliversTheWrittenFilesAndPingsTheStatistics(): void
+    {
+        $requests = new \ArrayObject();
+        $world = StandardWorld::build()->route('https://up.test/upload.php', '{"ok":true,"routers":34,"communities":9}')->route('https://up.test/ping', 'ok');
+        $inner = $world->httpHandler();
+        $handler = static function (RequestInterface $request) use ($inner, $requests) {
+            if ($request->getUri()->getHost() === 'up.test') {
+                $requests->append($request->getMethod() . ' ' . $request->getUri()->getPath());
+            }
+
+            return $inner($request);
+        };
+
+        $tester = $this->execute(['--upload' => true, '--upload-config' => $this->uploadConfig()], $world, $handler);
+
+        $this->assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        $this->assertSame(['POST /upload.php', 'GET /ping'], $requests->getArrayCopy());
+        $this->assertStringContainsString('delivered https up.test', $tester->getDisplay());
+    }
+
+    public function testAFailedUploadFailsTheRunAndIsRecordedAsAnAlert(): void
+    {
+        // no route for the upload: the server answers 404
+        $tester = $this->execute(['--upload' => true, '--upload-config' => $this->uploadConfig()]);
+
+        $this->assertSame(Command::FAILURE, $tester->getStatusCode());
+        $this->assertStringContainsString('not delivered', $tester->getDisplay());
+        $this->assertFileExists($this->directory . '/out/result_routers.json', 'the files are there for a later `upload`');
+
+        $repository = RunRepository::open($this->directory . '/state/parser.sqlite');
+        $this->assertContains('delivery-failed', array_column($repository->events(1), 'kind'));
+    }
+
+    public function testUploadWithoutAnyConfigurationStopsBeforeTheRun(): void
+    {
+        $tester = $this->execute(['--upload' => true]);
+
+        $this->assertSame(Command::FAILURE, $tester->getStatusCode());
+        $this->assertStringContainsString('no upload is configured', $tester->getDisplay());
+        $this->assertDirectoryDoesNotExist($this->directory . '/out');
+    }
+
+    public function testARefusedResultIsNotUploaded(): void
+    {
+        $world = StandardWorld::build()->route('https://up.test/upload.php', '{"ok":true}');
+
+        $tester = $this->execute(['--upload' => true, '--upload-config' => $this->uploadConfig(), '--min-nodes' => '1000'], $world);
+
+        $this->assertSame(Command::FAILURE, $tester->getStatusCode());
+        $this->assertStringNotContainsString('delivered', $tester->getDisplay());
+    }
 }

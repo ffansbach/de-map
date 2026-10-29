@@ -14,6 +14,8 @@ use FreifunkKarte\Output\LegacyResultWriter;
 use FreifunkKarte\Parser\SourceParser;
 use FreifunkKarte\Pipeline\CommunityReport;
 use FreifunkKarte\Pipeline\ParseRun;
+use FreifunkKarte\Publish\DeliveryFactory;
+use FreifunkKarte\Publish\ResultFiles;
 use FreifunkKarte\Run\DriftDetector;
 use FreifunkKarte\Run\DriftEvent;
 use FreifunkKarte\Run\RecordedRun;
@@ -67,7 +69,9 @@ final class RunCommand extends Command
             ->addOption('keep-days', null, InputOption::VALUE_REQUIRED, 'forget runs older than this many days; 0 keeps the whole history', '0')
             ->addOption('no-history', null, InputOption::VALUE_NONE, 'do not record the run, compare it, log it or report it anywhere')
             ->addOption('integrations', null, InputOption::VALUE_REQUIRED, 'JSON file with the healthchecks.io / InfluxDB settings (default: config/integrations.local.json if it exists)')
-            ->addOption('legacy-config', null, InputOption::VALUE_REQUIRED, 'take the healthchecks.io / InfluxDB settings from the config.php of the legacy parser');
+            ->addOption('legacy-config', null, InputOption::VALUE_REQUIRED, 'take the healthchecks.io / InfluxDB (and, for --upload, FTP) settings from the config.php of the legacy parser')
+            ->addOption('upload', null, InputOption::VALUE_NONE, 'deliver the result files to the web server afterwards')
+            ->addOption('upload-config', null, InputOption::VALUE_REQUIRED, 'JSON file with the upload settings (default: config/upload.local.json)');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -100,6 +104,27 @@ final class RunCommand extends Command
         }
 
         $client = new Client($this->httpHandler !== null ? ['handler' => $this->httpHandler] : []);
+        $delivery = null;
+
+        if ($input->getOption('upload')) {
+            $uploadConfig = $input->getOption('upload-config');
+            $legacyConfig = $input->getOption('legacy-config');
+
+            try {
+                $delivery = DeliveryFactory::create($client, $configDir, is_string($uploadConfig) ? $uploadConfig : null, is_string($legacyConfig) ? $legacyConfig : null);
+            } catch (\Throwable $e) {
+                $io->error($e->getMessage());
+
+                return Command::FAILURE;
+            }
+
+            if (!$delivery->hasPublishers()) {
+                $io->error('--upload, but no upload is configured (see config/upload.example.json)');
+
+                return Command::FAILURE;
+            }
+        }
+
         $run = new ParseRun(
             new ParallelFetcher($client, max(1, (int) $input->getOption('concurrency')), insecureHosts: $config->insecureHosts, retryWithoutVerification: false),
             new SourceParser(),
@@ -175,8 +200,25 @@ final class RunCommand extends Command
             }
         }
 
+        $deliveryError = null;
+        $deliveryWarnings = [];
+
+        if ($delivery !== null && !$refused) {
+            try {
+                $report = $delivery->deliver(ResultFiles::fromDirectory($out));
+                $deliveryError = $report->error;
+                $deliveryWarnings = $report->warnings;
+
+                foreach ($report->results as $delivered) {
+                    $io->writeln(sprintf('%s %s: %s', $delivered->ok ? 'delivered' : 'NOT delivered', $delivered->publisher, $delivered->message));
+                }
+            } catch (\Throwable $e) {
+                $deliveryError = $e->getMessage();
+            }
+        }
+
         if ($recorded !== null) {
-            $summary = $recorded->recorder->complete($recorded->id, $result, $refused);
+            $summary = $recorded->recorder->complete($recorded->id, $result, $refused, $deliveryError, $deliveryWarnings);
             $this->printEvents($io, $summary->events);
             $keepDays = (int) $input->getOption('keep-days');
 
@@ -187,6 +229,12 @@ final class RunCommand extends Command
 
         if ($refused) {
             $io->error(sprintf('Result looks implausible (%d communities, %d nodes): nothing written. Use --force to write anyway.', $listed, $result->nodes->count()));
+
+            return Command::FAILURE;
+        }
+
+        if ($deliveryError !== null) {
+            $io->error('The result files were written but not delivered: ' . $deliveryError);
 
             return Command::FAILURE;
         }

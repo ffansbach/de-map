@@ -1,0 +1,20 @@
+{
+    "publishers": [
+        {
+            "type": "https",
+            "url": "https://www.freifunk-karte.de/upload.php",
+            "secret": "make one with: bin/parser upload:secret",
+            "required": false
+        },
+        {
+            "type": "ftp",
+            "host": "ftp.example.org",
+            "user": "user",
+            "password": "...",
+            "directory": "/cache",
+            "ssl": true,
+            "required": true
+        }
+    ],
+    "statsPingUrl": "https://www.freifunk-karte.de/log_to_db.php?token=..."
+}

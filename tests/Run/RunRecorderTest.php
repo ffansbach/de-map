@@ -141,6 +141,18 @@ final class RunRecorderTest extends TestCase
         $this->assertTrue($this->logs->hasCriticalThatContains('could not be delivered to the web server: FTP login failed'));
     }
 
+    public function testAPartialDeliveryIsAWarningNotAnAlert(): void
+    {
+        $recorder = $this->recorder($this->listener());
+        $runId = $recorder->begin('/out');
+
+        $summary = $recorder->complete($runId, RunFixtures::standard(), deliveryWarnings: ['ftp ftp.example.org: login refused']);
+
+        $this->assertSame(['delivery-partial'], array_map(static fn (DriftEvent $e): string => $e->kind, $summary->events));
+        $this->assertSame(DriftEvent::WARNING, $summary->worstSeverity());
+        $this->assertTrue($this->logs->hasWarningThatContains('Part of the delivery failed: ftp ftp.example.org: login refused'));
+    }
+
     public function testAFailedRunIsRecordedWithTheError(): void
     {
         $recorder = $this->recorder($this->listener());
