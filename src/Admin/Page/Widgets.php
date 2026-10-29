@@ -24,6 +24,25 @@ final class Widgets
     }
 
     /**
+     * How long a community has not delivered nodes, in words.
+     *
+     * @param array<string, array{run_id: int, started_at: string}> $lastOk from {@see \FreifunkKarte\Run\RunRepository::lastOkRuns()}
+     * @param list<int> $okRunIds from {@see \FreifunkKarte\Run\RunRepository::okRunIds()}
+     */
+    public static function dry(PageContext $context, string $key, array $lastOk, array $okRunIds): string
+    {
+        $last = $lastOk[$key] ?? null;
+
+        if ($last === null) {
+            return sprintf('never (%d recorded %s)', count($okRunIds), count($okRunIds) === 1 ? 'run' : 'runs');
+        }
+
+        $since = count(array_filter($okRunIds, static fn (int $id): bool => $id > $last['run_id']));
+
+        return sprintf('%d %s, last delivered %s', $since, $since === 1 ? 'run' : 'runs', $context->time($last['started_at']));
+    }
+
+    /**
      * @param array<string, int> $counts severity => number, as {@see \FreifunkKarte\Run\RunRepository::eventCounts()} gives them
      */
     public static function eventCounts(array $counts): Safe
