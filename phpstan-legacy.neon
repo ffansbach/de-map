@@ -1,0 +1,13 @@
+parameters:
+    level: 5
+    # legacy code only, baselined; new code is checked strictly by phpstan.neon
+    paths:
+        - lib
+        - tests
+    excludePaths:
+        - lib/jsv4
+        - tests/Audit
+        - tests/fixtures
+    phpVersion: 80300
+includes:
+    - phpstan-baseline.neon

@@ -1,0 +1,13 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use FreifunkKarte\Command\SourcesAuditCommand;
+use Symfony\Component\Console\Application;
+
+require __DIR__ . '/../vendor/autoload.php';
+
+$application = new Application('freifunk-karte parser');
+$application->addCommand(new SourcesAuditCommand());
+$application->run();
