@@ -80,7 +80,7 @@ final class World
     /**
      * A Guzzle handler that serves this world: known URLs answer 200, everything else 404.
      */
-    public function httpHandler(): callable
+    public function httpHandler(): \Closure
     {
         $routes = $this->routes();
 

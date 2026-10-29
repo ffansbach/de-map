@@ -10,6 +10,8 @@ parameters:
         - tests/Community
         - tests/Pipeline
         - tests/Output
+        - tests/Config
+        - tests/Command
         - tests/Legacy
         - tests/Parser
         - tests/Model

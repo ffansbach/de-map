@@ -12,3 +12,4 @@ composer.phar
 test.php
 .php-cs-fixer.cache
 CLAUDE.md
+var/
