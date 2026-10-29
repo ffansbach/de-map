@@ -9,6 +9,7 @@ parameters:
         - tests/Audit
         - tests/Http
         - tests/Source
+        - tests/Community
         - tests/Legacy
         - tests/Parser
         - tests/Model
