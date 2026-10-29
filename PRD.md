@@ -94,6 +94,10 @@ Working rules: one step at a time, report after each, separate focused commits.
 | 2026-10-29 | Choose the parser by the **content** of a response (`FormatDetector`), not by the declared `technicalType` | The audit shows the declared type is unreliable (section 8). |
 | 2026-10-29 | Parsers to keep: nodelist, nodeinfo (ffmap/meshviewer/hopglass), flat meshviewer.json. To delete: netmon/openwifimap/olsr-dot leftovers and the `geo[]` "old style" ffmap branch | 0 working sources for the former, none of 551 probed sources delivers `geo[]` (section 8). |
 | 2026-10-29 | TLS verification stays on in the new fetcher, with a per-host exception list | Only 1 of ~1150 probed URLs has an invalid certificate (section 8). |
+| 2026-10-29 | Nodelist schema is **not enforced**: parse what can be parsed, report schema deviations as warnings (and as drift signal, R11) | Operator decision. Also: the schema files are JSON Schema draft-03, and the 1.0.1 schema only accepts version 1.0.1, so the legacy check (had it worked) would have rejected today's files. |
+| 2026-10-29 | Meta-community links come back (`result_metacommunities.json`) | Operator decision. The API files only carry the meta-community **name** (46 names, set on 254 communities), no URL: needs a hand-maintained name → URL mapping (step 5). |
+| 2026-10-29 | One offline rule for all formats: an offline node is kept for 3 days if the time it was last seen is known, dropped if it is unknown or older | Operator decision. Changes the flat `meshviewer.json` behaviour (legacy dropped every offline node). |
+| 2026-10-29 | Legacy `geo[]` format is not supported by the new parsers | No source delivers it (section 8). |
 | 2026-10-29 | Legacy behaviour is pinned with golden files and edge-case tests (`tests/Legacy`) before anything is rewritten; bugs are tested as they are, marked `LEGACY BUG`, and flipped when fixed | A rewrite is only verifiable against recorded behaviour; deleting a bug test would hide the intended change. |
 | 2026-10-29 | `StandardWorld` (reference scenario) is reused to compare the new pipeline with the legacy one in steps 4/5 | Same input, two implementations, diff the result. |
 | 2026-10-29 | Source audit and fixtures are part of the CLI (`bin/parser sources:audit`, `fixtures:build`), not one-off scripts | Re-runnable; fixtures are reproducible and anonymised by whitelist. |
@@ -199,8 +203,7 @@ Dev machine: PHP 8.5, Composer 2.10. PHPUnit 11.5, PHPStan 2.1, PHP-CS-Fixer 3.x
 
 ## 11. Open questions
 - PHP version on www.freifunk-karte.de (constrains the upload endpoint, step 8).
-- Runtime of one full legacy run on the LXC (baseline for the speed-up; the audit of ~1150 URLs takes about 45 s in parallel).
-- Nodelist schema: sources deliver versions 1.0.0 and 1.0.1, the legacy validator never rejects anything (see section 9). Which schema should the new validator enforce, and what happens to sources that fail it (drop, or accept with a warning)? Test in step 4 with the real 1.0.1 fixture.
-- `result_metacommunities.json`: is a stale copy still on the webhost? Should the meta-community links in `meta_map.js` come back?
-- Offline rule for flat meshviewer nodes (always dropped) vs 3 days for the others: which one is intended?
+- ~~Runtime of one full legacy run~~ answered: **3 to 4 minutes** on the LXC (fluctuates). Baseline for the speed-up goal; the parallel audit of ~1150 URLs takes about 45 s.
+- Meta-communities: where do the URLs come from? Proposal: `config/metacommunities.json` (name → url), seeded with the 46 names from the directory, URLs filled in by hand; names without URL are listed by the admin UI. (step 5)
+- Is a stale `result_metacommunities.json` still on the webhost?
 - Is `result_statistics.json` still needed once the admin UI exists (step 7)?
