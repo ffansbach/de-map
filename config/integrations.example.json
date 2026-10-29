@@ -1,0 +1,14 @@
+{
+    "healthchecks": {
+        "identifier": "00000000-0000-0000-0000-000000000000",
+        "failOn": "warning"
+    },
+    "influxdb": {
+        "host": "http://influx.example",
+        "port": "8086",
+        "token": "...",
+        "bucket": "freifunk_karte",
+        "org": "your org",
+        "env": "live"
+    }
+}
