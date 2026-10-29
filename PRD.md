@@ -74,7 +74,7 @@ This PRD covers the **backend/parser**. The goal is a clean, secure, tested, obs
 | 5 | HTTP fetcher (parallel), source resolver, pipeline; side-by-side run on LXC | done here (live network from the dev machine); the run on the LXC is yours, see the runbook in section 11 |
 | 6 | Run tracking (SQLite) + structured logging; **baseline for drift detection (R11)** | done |
 | 7 | Internal admin UI on the LXC; **"page but no data" list (R12), drift alerts (R11)** | done (read-only, no "run now" button) |
-| 8 | Secure upload API (HMAC); **a failed delivery is reported as `delivery-failed` (alert) and fails the healthcheck** | open |
+| 8 | Secure upload API (HMAC); **a failed delivery is reported as `delivery-failed` (alert) and fails the healthcheck** | done (receiver, HTTPS and FTP publishers, `run --upload`, `upload`, `upload:secret`); not yet installed on the web host, see the runbook in section 14 |
 | 9 | Cut-over and cleanup of legacy code | open |
 | 10 | Output slimming (own PRD section later) | open |
 
@@ -118,6 +118,8 @@ Working rules: one step at a time, report after each, separate focused commits.
 | 2026-10-29 | Discovery reads the `dataPath` a map page carries inline (no config.json) and tries `meshviewer.json` as well as `nodes.json` in every data directory; relative paths are resolved against the page | Found with the real maps that delivered no data: the Rhein-Sieg server (16 data files named in its page) and Berlin (`config.json` -> `meshviewer.json`, 576 nodes that were invisible). Lists that live in the page stay current by themselves. |
 | 2026-10-29 | A map server that carries the data of many communities is handled by assignment rules (`config/source-assignments.json`: URL prefix -> community, optional backfill), not by fixed communities | Fixed communities would add 15 entries to the community list; assignment attributes the nodes to the communities that already exist. Only the label in the tooltip is affected, positions are not. |
 | 2026-10-29 | Broad all-in-one data files are marked `backfill` and added after every specific source | A node that a specific source has must not be attributed by the broad file just because it was listed first. |
+| 2026-10-29 | The upload is one signed, gzipped POST with all files; a delivery fails when a required publisher fails; HTTPS and FTP can run side by side | One atomic request instead of a file-by-file FTP session; a shadow period lets the new path prove itself before FTP goes. |
+| 2026-10-29 | The web host stays on PHP 8.2 for now | `upload.php` is written for PHP 7.2+, so it does not force an upgrade; the legacy web part on 8.5 is untested. |
 | 2026-10-29 | Legacy behaviour is pinned with golden files and edge-case tests (`tests/Legacy`) before anything is rewritten; bugs are tested as they are, marked `LEGACY BUG`, and flipped when fixed | A rewrite is only verifiable against recorded behaviour; deleting a bug test would hide the intended change. |
 | 2026-10-29 | `StandardWorld` (reference scenario) is reused to compare the new pipeline with the legacy one in steps 4/5 | Same input, two implementations, diff the result. |
 | 2026-10-29 | Source audit and fixtures are part of the CLI (`bin/parser sources:audit`, `fixtures:build`), not one-off scripts | Re-runnable; fixtures are reproducible and anonymised by whitelist. |
@@ -434,7 +436,50 @@ Every page answers in 1-20 ms. The R12 view on the live directory: **16 communit
 - A "run now" button (see decisions). Cron stays the only way to start a run.
 - Authentication beyond HTTP Basic (no sessions, no users): enough for one operator on a trusted network.
 
-## 14. Tooling
+## 14. Secure upload (step 8)
+
+The parser (LXC) delivers the result files to the web server (www.freifunk-karte.de). Two publishers exist behind one interface (`Publisher`); `Delivery` hands the files to every configured one.
+
+### Protocol v1 (HTTPS, `web/upload.php`)
+`POST` of one gzipped JSON document `{"version":1,"files":{name: content}}` (about 1/5 of the size on the wire). Headers `X-FFK-Timestamp`, `X-FFK-Nonce`, `X-FFK-Content-SHA256` and `X-FFK-Signature: v1=hex(HMAC-SHA256(secret, "FFK-UPLOAD-V1\nPOST\n<path>\n<timestamp>\n<nonce>\n<sha256 of body>"))`.
+
+### Security model (receiver)
+- HTTPS only (`requireHttps`, forwarded proto only if `trustForwardedProto`). The secret never travels, only the signature.
+- The signature is verified **before the body is read**; comparison with `hash_equals`; method, path and body hash are part of what is signed.
+- Replay: timestamp within +-300 s, nonce usable once (exclusive file creation in `stateDir`).
+- All authentication failures answer the same `401 unauthorized`; the reason is only logged.
+- Size caps (20 MB on the wire, 64 MB decoded: gzip bombs end in 422), whitelist of four file names (never used as paths), JSON shape checks, minima (1000 routers, 10 communities) and a maximum shrink (50 %) against the current data.
+- Installation: staging files, then rename; a refused or failed upload leaves the current data untouched.
+- Without a configuration (or without a secret) the receiver refuses everything (tested).
+- Not covered: a leaked secret (rotate it on both sides; the minima and the shrink check limit the damage), a compromised host.
+
+### Publishers and delivery rules
+- `HttpsPublisher`: signed, gzipped, certificate verified, redirects not followed, two attempts with a fresh nonce on connection errors/5xx/429, secret at least 32 characters, plain http only for loopback.
+- `FtpPublisher` (port of `upload_cache.php`, bugs fixed): all four files including the metacommunities, binary mode, FTP over TLS by default, uploaded as `.staging`, size-checked, then renamed; leftovers are deleted on failure; the password is never in a message.
+- `Delivery`: the delivery **fails** if a `required` publisher fails, or if there are publishers and none worked. A failing publisher that is not required is a warning (`delivery-partial`, severity warning). The statistics ping (`log_to_db.php?token=`, only after success, only on `live` when read from the legacy config) failing is a warning too.
+- A failed delivery is recorded as `delivery-failed` (alert), fails the healthcheck and makes `run` exit with failure; the files stay in `--out` for a later `bin/parser upload --from=DIR`. A refused (implausible) result is never uploaded.
+
+### Configuration
+`config/upload.local.json` (gitignored; see `config/upload.example.json`) or, for the FTP upload only, `--legacy-config=config.php` (`$serverUpload`, `$setDataLogPointToken`, `$environment`). Web side: `web/upload.config.php` (see `web/upload.config.example.php`; env `FFK_UPLOAD_CONFIG` overrides the path).
+
+### Commands
+```bash
+bin/parser upload:secret                                   # 32 random bytes, hex; the same value goes to both sides
+bin/parser upload --from=DIR [--upload-config=FILE]        # deliver an earlier run
+bin/parser run --out=DIR --upload [--upload-config=FILE]   # run, then deliver
+```
+
+### Runbook: rollout
+1. `bin/parser upload:secret`; put the value in `web/upload.config.php` on the web host (outside the web root if possible: `stateDir`; deny access to the config) and in `config/upload.local.json` on the LXC.
+2. Copy `web/upload.php` and the config to the host. Check: a GET answers 4xx, an unsigned POST answers 401.
+3. `bin/parser upload --from=<a recent --out directory>`; compare the map.
+4. Run `run --upload` with HTTPS `required: false` next to FTP `required: true` for some days; look at `bin/parser runs --events` for `delivery-partial`.
+5. Switch: HTTPS `required: true`, drop FTP.
+
+### Tested
+The receiver (36 tests), both publishers (the HTTPS one against the receiver code in-process), the delivery rules, the config loader, the commands, and **the real thing**: PHP's web server running `web/upload.php` with the `upload` command as client (success, wrong secret, no configuration, replay, wrong clock, GET/unsigned POST).
+
+## 15. Tooling
 
 ```bash
 composer install
@@ -446,12 +491,14 @@ bin/parser run --out=DIR                      # new pipeline, see section 11
 bin/parser compare OLD_DIR NEW_DIR
 bin/parser runs [ID] [--events] [--community=KEY]   # history, see section 12
 bin/parser admin:password / admin:serve              # admin UI, see section 13
+bin/parser upload / upload:secret / run --upload     # delivery, see section 14
 ```
 
 Dev machine: PHP 8.5, Composer 2.10. PHPUnit 11.5, PHPStan 2.1, PHP-CS-Fixer 3.x.
 
-## 15. Open questions
-- PHP version on www.freifunk-karte.de (constrains the upload endpoint, step 8).
+## 16. Open questions
+- ~~PHP version on www.freifunk-karte.de~~ answered: **8.2**, kept for now (selectable up to 8.5). `web/upload.php` is checked for PHP 7.2+. Whether the legacy web part runs on 8.5 is untested.
+- Rollout of the upload: HTTPS next to FTP first (FTP `required: true`, HTTPS `required: false`), then switch (section 14).
 - ~~Runtime of one full legacy run~~ answered: **3 to 4 minutes** on the LXC (fluctuates). Baseline for the speed-up goal; the parallel audit of ~1150 URLs takes about 45 s.
 - Meta-communities: agreed and implemented (section 10, `MetaCommunityResolver`): 19 of 46 names get a link today. Add the 7 without link to `config/metacommunities.json` if you want them.
 - How should the operator hear about *warnings* (new technical type, changed format)? They are visible in the ping log, the console and `bin/parser runs --events`, but they do not notify. Options: leave it; a daily digest; a second healthchecks.io check that fails on warnings.
