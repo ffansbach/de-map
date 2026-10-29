@@ -1,6 +1,6 @@
 # PRD: freifunk-karte backend modernisation
 
-Living document. It is extended at the end of every step. Last updated: 2026-10-29 (step 5).
+Living document. It is extended at the end of every step. Last updated: 2026-10-29 (step 6).
 
 ## 1. Purpose
 
@@ -51,7 +51,7 @@ This PRD covers the **backend/parser**. The goal is a clean, secure, tested, obs
 - **R7** Secure transport of results to the webhost (replace FTP by a signed HTTPS upload API).
 - **R8** TLS verification on by default, response size limits, bounded redirects.
 
-- **R11** **Drift detection and notification.** This space changes a lot, so the operator is notified about (a) technical types never seen before, (b) a source whose response differs suspiciously from what that source (or that type) delivered before: format changed, node count dropped sharply, fields vanished, schema no longer valid. Needs run history (step 6) and a notification channel (decision pending: mail, healthchecks.io, Gitea issue, push).
+- **R11** **Drift detection and notification.** This space changes a lot, so the operator is notified about (a) technical types never seen before, (b) a source whose response differs suspiciously from what that source (or that type) delivered before: format changed, node count dropped sharply, fields vanished, schema no longer valid. Needs run history (step 6) and a notification channel (implemented via healthchecks.io, see section 12; other channels are `RunListener`s).
 - **R12** **Maps without data.** Sources where a map page is reachable but no data file could be found (the 16 `meshviewer` communities from the audit, for example) are listed explicitly with what was tried, instead of silently ignored, so that a person can add the right data URL (or a new discovery rule). Discovery stays probing-based: only a map URL is known.
 
 ### Should
@@ -72,7 +72,7 @@ This PRD covers the **backend/parser**. The goal is a clean, secure, tested, obs
 | 3 | Characterisation tests on the old code (golden outputs) | done |
 | 4 | New models + pure parsers, full unit coverage | done |
 | 5 | HTTP fetcher (parallel), source resolver, pipeline; side-by-side run on LXC | done here (live network from the dev machine); the run on the LXC is yours, see the runbook in section 11 |
-| 6 | Run tracking (SQLite) + structured logging; **baseline for drift detection (R11)** | open |
+| 6 | Run tracking (SQLite) + structured logging; **baseline for drift detection (R11)** | done |
 | 7 | Internal admin UI on the LXC; **"page but no data" list (R12), drift alerts (R11)** | open |
 | 8 | Secure upload API (HMAC) | open |
 | 9 | Cut-over and cleanup of legacy code | open |
@@ -105,6 +105,12 @@ Working rules: one step at a time, report after each, separate focused commits.
 | 2026-10-29 | The hard-coded skip list is gone (`config/skipped-communities.json` is empty); unreachable hosts are not probed further | The list existed because slow hosts blocked a sequential run. In a parallel run with a 5 s connect timeout a dead host costs one slot for a moment. `lueneburg` works again, and the others deliver no data anyway. |
 | 2026-10-29 | Maps without `technicalType` are recorded but not fetched; unknown types are fetched at the declared URL only | The audit found 0 working sources among them; the record keeps R11 possible. |
 | 2026-10-29 | `bin/parser run` requires `--out`; it refuses to write fewer than 10 communities or 1000 nodes unless `--force` | A test run must not overwrite live files; same plausibility guard as `data.php`. |
+| 2026-10-29 | The run history is a SQLite file (WAL, versioned schema), written by `bin/parser run`, read by `bin/parser runs` and the admin UI | One file, no server; the UI on the LXC can read while a cron run writes. |
+| 2026-10-29 | Drift detection compares a run with the last *ok* run; thresholds are constructor arguments of `DriftDetector` | See section 12 for the rules and the severities. |
+| 2026-10-29 | Notifications go through healthchecks.io (already used by the legacy cron): `/start`, success ping, or `/fail` with the account of the run as body; `failOn` defaults to *warning* | The operator already gets mail/push from healthchecks.io. A "fail" only notifies when the check *goes down*, so it is not a message per run. Other channels can be added as `RunListener`s. |
+| 2026-10-29 | Secrets stay out of the repository: `config/integrations.local.json` (gitignored) or the `config.php` of the legacy parser (`--legacy-config`) | The LXC already has the identifier and the InfluxDB settings in `config.php`. |
+| 2026-10-29 | InfluxDB keeps the legacy measurement `parser_result_count` and its field names; upload fields are left out until step 8 | Existing dashboards keep working; zero upload times would distort them. |
+| 2026-10-29 | A listener that fails never breaks a run | Monitoring must not cost the map its update. |
 | 2026-10-29 | Legacy behaviour is pinned with golden files and edge-case tests (`tests/Legacy`) before anything is rewritten; bugs are tested as they are, marked `LEGACY BUG`, and flipped when fixed | A rewrite is only verifiable against recorded behaviour; deleting a bug test would hide the intended change. |
 | 2026-10-29 | `StandardWorld` (reference scenario) is reused to compare the new pipeline with the legacy one in steps 4/5 | Same input, two implementations, diff the result. |
 | 2026-10-29 | Source audit and fixtures are part of the CLI (`bin/parser sources:audit`, `fixtures:build`), not one-off scripts | Re-runnable; fixtures are reproducible and anonymised by whitelist. |
@@ -316,7 +322,53 @@ The legacy cron keeps running untouched; `--out` is a separate directory, nothin
 - Event-driven scheduling (see above), a negative cache for maps that never deliver (they are probed in full each run: 66 maps, about 300 requests).
 - A request budget per run (stop probing after N seconds): not needed at 20 s.
 
-## 12. Tooling
+## 12. Run history, drift detection and reporting (step 6)
+
+```
+bin/parser run --out=DIR
+   RunRecorder.begin      → history row (running), log "run started", listeners.started (healthchecks /start)
+   ParseRun, LegacyResultWriter
+   RunRecorder.complete   → history rows (run, 336 communities, ~800 fetches), DriftDetector vs. the last ok run,
+                            events stored + logged, listeners.finished (healthchecks ping / fail, InfluxDB point)
+   RunRecorder.fail       → history (failed) + alert, listeners.finished
+bin/parser runs [ID] [--events] [--community=KEY]       look at the history
+```
+
+State: `var/parser.sqlite` (`--db`), `var/log/parser-YYYY-MM-DD.log` (JSON lines, 14 days kept, `--log-file`), `--keep-days` (90) prunes old runs with everything that belongs to them. `--no-history` switches all of it off.
+
+### What is detected (R11)
+| Event | Severity | When |
+|-------|----------|------|
+| `new-technical-type` | warning | a `technicalType` no earlier run has seen (message names five communities, details all) |
+| `format-changed` | warning | a working community delivers another format than last time (nodelist → nodeinfo …) |
+| `nodes-dropped` | warning | a community with ≥ 20 nodes delivers half or fewer than last time |
+| `community-lost` | warning | delivered nodes last time, nothing now (not for communities skipped by configuration) |
+| `stale-data` | warning, then info | nodes come from the last-good store because the source has trouble |
+| `run-nodes-dropped` | **alert** | the run has less than 80% of the previous run's nodes |
+| `many-communities-lost` | **alert** | 5 or more communities lost in one run |
+| `run-failed`, `run-refused` | **alert** | no directory / exception; result too small to write |
+| `community-recovered`, `community-added`, `community-removed`, `new-source-warning` | info | for the log and the history only |
+
+Nothing is reported for the very first run (nothing to compare). Warning kinds are compared with numbers and quoted names removed, so "91x" vs "12x" is not news. Skipping a community by configuration is not "losing" it.
+
+### Reporting
+- **Console:** warnings and alerts under "To look at"; info stays in the log.
+- **healthchecks.io:** `/start`, then success ping, or `/fail` for failed/refused runs and events at or above `failOn` (default `warning`); the body is the account of the run (`run 12: ok, 25160 nodes, ...` plus the events). Exit code of `run` is non-zero only for failed and refused runs.
+- **InfluxDB:** `parser_result_count` with the legacy fields (`routers`, `communities`, `parse_time`, `mem_usage`, `curl_calls`, `env`) plus `communities_with_nodes`, `communities_no_data`, `events_warning`, `events_alert`.
+- **Setup:** `bin/parser run ... --legacy-config=config.php` takes the identifier and InfluxDB settings the legacy parser already uses; or `config/integrations.local.json` (see `integrations.example.json`).
+
+### R12 (maps with a page but no data)
+The data is collected: every run stores, per community, which URLs were tried and what came back (`community_results.attempts`, in `result_statistics.json` for maps without data). `bin/parser runs ID` lists the maps without data of a run; the UI in step 7 shows them with their attempts and history.
+
+### Checked against the live network
+Two consecutive real runs gave identical numbers and no events (24,941 nodes, 336 communities, 269 with nodes). With a doctored history ("yesterday" had another format for Karlsruhe, 900 nodes for Iserlohn, no `hopglass` type) the third real run reported exactly those three as warnings.
+
+### Limits worth knowing
+- Warnings about single communities can repeat while a community stays broken (`community-lost` is a warning each run, `stale-data` drops to info after the first). healthchecks.io only notifies when the check changes state, so a persistent problem is one message, not one per run.
+- A source that flickers (empty one run, full the next) produces `stale-data` instead of `community-lost`; that is the intent.
+- Thresholds (20 nodes, 50%, 80%, 5 communities) are first guesses; change them in `DriftDetector` after some weeks of real history.
+
+## 13. Tooling
 
 ```bash
 composer install
@@ -326,13 +378,15 @@ bin/parser sources:audit --json=report.json   # read-only, needs network
 bin/parser fixtures:build --from=RAWDIR       # see section 8
 bin/parser run --out=DIR                      # new pipeline, see section 11
 bin/parser compare OLD_DIR NEW_DIR
+bin/parser runs [ID] [--events] [--community=KEY]   # history, see section 12
 ```
 
 Dev machine: PHP 8.5, Composer 2.10. PHPUnit 11.5, PHPStan 2.1, PHP-CS-Fixer 3.x.
 
-## 13. Open questions
+## 14. Open questions
 - PHP version on www.freifunk-karte.de (constrains the upload endpoint, step 8).
 - ~~Runtime of one full legacy run~~ answered: **3 to 4 minutes** on the LXC (fluctuates). Baseline for the speed-up goal; the parallel audit of ~1150 URLs takes about 45 s.
 - Meta-communities: agreed and implemented (section 10, `MetaCommunityResolver`): 19 of 46 names get a link today. Add the 7 without link to `config/metacommunities.json` if you want them.
+- Notifications: healthchecks.io with `failOn: warning` is the default. Is that the right loudness, or should only alerts notify (`failOn: alert`) and warnings be read in `bin/parser runs --events`? Retention is 90 days.
 - The 3Ländereck network serves empty nodelists at times (and `bh` for hours): worth telling them.
 - Is `result_statistics.json` still needed once the admin UI exists (step 7)?
