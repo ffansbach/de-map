@@ -141,20 +141,19 @@ final class CommunityCacheHandlerTest extends TestCase
         }
 
         $subject = new CommunityCacheHandler($this->cacheDirPath);
+        $before = time();
         $subject->storeCache($communityKey, $entryKey, $data);
+        $after = time();
 
         $filePathName = $this->cacheDirPath.'/communities/c_'.$communityKey.'.json';
         $this->assertTrue(file_exists($filePathName));
         $actualContent = file_get_contents($filePathName);
         $actualContent = json_decode($actualContent);
 
-        // checking Timestamp
-        $storedDateTime =  new \DateTime($actualContent->$entryKey->updated);
-        $storedTS = $storedDateTime->getTimestamp();
-        $expectedDateTime =  new \DateTime($expected->$entryKey->updated);
-        $expectedTS = $expectedDateTime->getTimestamp();
-        // is between -1 and +1 of expected TS
-        $this->assertTrue(($storedTS >= ($expectedTS - 1) && $storedTS <= ($expectedTS + 1)));
+        // the timestamp is the time of the call (the data provider runs long before the test)
+        $storedTS = (new \DateTime($actualContent->$entryKey->updated))->getTimestamp();
+        $this->assertGreaterThanOrEqual($before - 1, $storedTS);
+        $this->assertLessThanOrEqual($after + 1, $storedTS);
 
         $actualContent->$entryKey->updated = 'checked';
         $expected->$entryKey->updated = 'checked';
