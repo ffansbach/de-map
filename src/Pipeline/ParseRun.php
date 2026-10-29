@@ -419,7 +419,12 @@ final class ParseRun
             }
 
             $withNodes = array_values(array_filter($stage['urls'], $this->hasNodes(...)));
-            $hits = $stage['kind'] === 'candidates' ? array_slice($withNodes, 0, 1) : $withNodes;
+            $hits = match ($stage['kind']) {
+                'candidates' => array_slice($withNodes, 0, 1),
+                // meshviewer.json and nodes.json of one directory are the same data: the first is enough
+                'datapath' => $this->firstPerDirectory($withNodes),
+                default => $withNodes,
+            };
 
             if ($hits !== []) {
                 return ['status' => 'resolved', 'urls' => $hits, 'via' => $stage['kind']];
@@ -459,11 +464,35 @@ final class ParseRun
         if ($candidates !== []) {
             $config = Discovery::baseUrl($entry->mapUrl) . 'config.json';
             $stages[] = ['kind' => 'config', 'urls' => [$config]];
-            $stages[] = ['kind' => 'datapath', 'urls' => Discovery::dataPathUrls($entry->mapUrl, isset($this->parsed[$config]) ? $this->parsed[$config]->dataPaths : [])];
+            // the data paths come from config.json or, for pages that carry their configuration inline, from the page
+            $paths = [];
+
+            foreach ([$config, $entry->mapUrl] as $source) {
+                if (isset($this->parsed[$source])) {
+                    array_push($paths, ...$this->parsed[$source]->dataPaths);
+                }
+            }
+
+            $stages[] = ['kind' => 'datapath', 'urls' => Discovery::dataPathUrls($entry->mapUrl, array_values(array_unique($paths)))];
             $stages[] = ['kind' => 'candidates', 'urls' => array_values(array_diff($candidates, [$config]))];
         }
 
         return $stages;
+    }
+
+    /**
+     * @param list<string> $urls
+     * @return list<string>
+     */
+    private function firstPerDirectory(array $urls): array
+    {
+        $first = [];
+
+        foreach ($urls as $url) {
+            $first[dirname($url)] ??= $url;
+        }
+
+        return array_values($first);
     }
 
     private function hasNodes(string $url): bool

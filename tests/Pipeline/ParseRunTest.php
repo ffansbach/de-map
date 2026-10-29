@@ -310,6 +310,76 @@ final class ParseRunTest extends TestCase
         $this->assertCount(1, $this->requestsTo('https://gone.test/'));
     }
 
+    public function testAMapPageThatNamesItsDataFilesIsFollowed(): void
+    {
+        $world = (new World())
+            ->community('rs', ['nodeMaps' => [['technicalType' => 'meshviewer', 'url' => 'https://rs.test/']]])
+            ->route('https://rs.test/', '<html><script>window.config={dataPath:["/data/a/","/data/b/"]}</script></html>')
+            ->route('https://rs.test/data/a/meshviewer.json', World::fixture('meshviewer_flat', 'a'))
+            ->route('https://rs.test/data/b/meshviewer.json', World::fixture('meshviewer_flat', 'b'));
+
+        $result = $this->runWorld($world);
+        $report = $this->report($result, 'rs');
+
+        $this->assertSame(CommunityReport::OK, $report->outcome);
+        $this->assertSame(['https://rs.test/data/a/meshviewer.json', 'https://rs.test/data/b/meshviewer.json'], $report->sourceUrls);
+        $this->assertSame(12, $report->added);
+    }
+
+    public function testBothFileNamesOfOneDirectoryAreTheSameDataAndUsedOnce(): void
+    {
+        $world = (new World())
+            ->community('rs', ['nodeMaps' => [['technicalType' => 'meshviewer', 'url' => 'https://rs.test/']]])
+            ->route('https://rs.test/', '<html>dataPath: ["/data/a/"]</html>')
+            ->route('https://rs.test/data/a/meshviewer.json', World::fixture('meshviewer_flat', 'a'))
+            ->route('https://rs.test/data/a/nodes.json', World::fixture('meshviewer_flat', 'a'));
+
+        $report = $this->report($this->runWorld($world), 'rs');
+
+        $this->assertSame(['https://rs.test/data/a/meshviewer.json'], $report->sourceUrls);
+        $this->assertSame(6, $report->added);
+        $this->assertSame(0, $report->duplicates);
+    }
+
+    public function testAConfigJsonWhoseDataPathHoldsMeshviewerJsonIsUnderstood(): void
+    {
+        $world = (new World())
+            ->community('berlin', ['nodeMaps' => [['technicalType' => 'meshviewer', 'url' => 'https://berlin.test']]])
+            ->route('https://berlin.test/config.json', (string) json_encode(['dataPath' => ['https://berlin.test/']]))
+            ->route('https://berlin.test/meshviewer.json', World::fixture('meshviewer_flat', 'be'));
+
+        $report = $this->report($this->runWorld($world), 'berlin');
+
+        $this->assertSame(CommunityReport::OK, $report->outcome);
+        $this->assertSame(['https://berlin.test/meshviewer.json'], $report->sourceUrls);
+    }
+
+    public function testRelativeDataPathsAreResolvedAgainstThePage(): void
+    {
+        $world = (new World())
+            ->community('rel', ['nodeMaps' => [['technicalType' => 'meshviewer', 'url' => 'https://rel.test/map/']]])
+            ->route('https://rel.test/map/', '<html>dataPath: ["data/x/"]</html>')
+            ->route('https://rel.test/map/data/x/meshviewer.json', World::fixture('meshviewer_flat', 'rel'));
+
+        $this->assertSame(['https://rel.test/map/data/x/meshviewer.json'], $this->report($this->runWorld($world), 'rel')->sourceUrls);
+    }
+
+    public function testWhatAPageToldUsIsRememberedAndNotAskedAgain(): void
+    {
+        $world = (new World())
+            ->community('rs', ['nodeMaps' => [['technicalType' => 'meshviewer', 'url' => 'https://rs.test/']]])
+            ->route('https://rs.test/', '<html>dataPath: ["/data/a/", "/data/b/"]</html>')
+            ->route('https://rs.test/data/a/meshviewer.json', World::fixture('meshviewer_flat', 'a'))
+            ->route('https://rs.test/data/b/meshviewer.json', World::fixture('meshviewer_flat', 'b'));
+        $cache = new SourceCache();
+
+        $this->runWorld($world, $cache);
+        $warm = $this->runWorld($world, $cache);
+
+        $this->assertTrue($this->report($warm, 'rs')->viaCache);
+        $this->assertSame(['https://rs.test/data/a/meshviewer.json', 'https://rs.test/data/b/meshviewer.json'], $this->requestsTo('https://rs.test/'), 'only the data files, not the page, not nodes.json');
+    }
+
     public function testMapWithoutDataIsListedAndReportsWhatWasTried(): void
     {
         $result = $this->runWorld(StandardWorld::build(), skip: StandardWorld::SKIP);

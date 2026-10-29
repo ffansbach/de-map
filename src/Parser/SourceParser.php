@@ -7,6 +7,7 @@ namespace FreifunkKarte\Parser;
 use DateTimeImmutable;
 use FreifunkKarte\Audit\Format;
 use FreifunkKarte\Audit\FormatDetector;
+use FreifunkKarte\Source\Discovery;
 use JsonException;
 
 /**
@@ -39,7 +40,8 @@ final class SourceParser
         }
 
         if ($trimmed[0] === '<') {
-            return ParseResult::unusable(Format::Html, 'response is a web page, not data');
+            // a map page may name its data files itself: keep them for the discovery
+            return new ParseResult(Format::Html, warnings: ['response is a web page, not data'], parsed: false, dataPaths: Discovery::inlineDataPaths($trimmed));
         }
 
         try {

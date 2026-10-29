@@ -79,30 +79,82 @@ final class Discovery
     }
 
     /**
-     * Data URLs named by a map's config.json (its dataPath entries).
+     * The files a data directory may hold: current meshviewers serve meshviewer.json, older ffmap
+     * and HopGlass setups nodes.json. The first one that has nodes is used for a directory.
+     */
+    public const DATA_FILES = ['meshviewer.json', 'nodes.json'];
+
+    /**
+     * Data URLs named by the dataPath of a map, from its config.json or from its page. A path may be
+     * a full URL, start with "/" (relative to the server) or be relative to the map's directory;
+     * a path that already names a .json file is taken as it is.
      *
      * @param list<string> $dataPaths
-     * @return list<string>
+     * @return list<string> for every path one URL per file name, in order of preference
      */
     public static function dataPathUrls(string $mapUrl, array $dataPaths): array
     {
         $parts = parse_url(self::withScheme($mapUrl));
+
+        if (!isset($parts['scheme'], $parts['host'])) {
+            return [];
+        }
+
+        $origin = $parts['scheme'] . '://' . $parts['host'] . (isset($parts['port']) ? ':' . $parts['port'] : '');
         $urls = [];
 
         foreach ($dataPaths as $path) {
-            $path .= 'nodes.json';
+            $path = trim($path);
 
-            if (preg_match('/https?:/', $path) !== 1) {
-                if (!isset($parts['scheme'], $parts['host'])) {
-                    continue;
-                }
-
-                $path = $parts['scheme'] . '://' . $parts['host'] . '/' . ltrim($path, '/');
+            if ($path === '') {
+                continue;
             }
 
-            $urls[] = $path;
+            $absolute = match (true) {
+                preg_match('~^https?://~i', $path) === 1 => $path,
+                str_starts_with($path, '/') => $origin . $path,
+                default => self::baseUrl($mapUrl) . $path,
+            };
+
+            if (preg_match('/\.json$/i', $absolute) === 1) {
+                $urls[] = $absolute;
+
+                continue;
+            }
+
+            foreach (self::DATA_FILES as $file) {
+                $urls[] = rtrim($absolute, '/') . '/' . $file;
+            }
         }
 
         return array_values(array_unique($urls));
     }
+
+    /**
+     * Some map pages carry their configuration inline instead of in a config.json:
+     * `dataPath: ["/data/a/", "/data/b/"]` in a script. Reads those paths.
+     *
+     * @return list<string> empty if the page has none
+     */
+    public static function inlineDataPaths(string $html): array
+    {
+        if (preg_match('/dataPath[\'"]?\s*:\s*(\[[^\]]*\]|"[^"]*"|\'[^\']*\')/s', $html, $block) !== 1) {
+            return [];
+        }
+
+        preg_match_all('/["\']([^"\']+)["\']/', $block[1], $quoted);
+        $paths = [];
+
+        foreach ($quoted[1] as $path) {
+            // only things that can be a path or a URL, nothing a script could make of it
+            if (preg_match('#^[A-Za-z0-9_./:%@+=~-]+$#', $path) === 1 && !str_contains($path, '..') && preg_match('~^[a-z][a-z0-9+.-]*:(?!//)~i', $path) !== 1) {
+                $paths[] = $path;
+            }
+        }
+
+        return array_slice(array_values(array_unique($paths)), 0, self::MAX_INLINE_PATHS);
+    }
+
+    /** a page that lists more than this many paths is not a map configuration */
+    private const MAX_INLINE_PATHS = 100;
 }

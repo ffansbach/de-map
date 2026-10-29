@@ -104,6 +104,17 @@ final class SourceParserTest extends TestCase
         $this->assertSame(['https://a.test/', 'https://b.test/'], $result->dataPaths);
     }
 
+    public function testAMapPageCarriesTheDataPathsItNames(): void
+    {
+        $result = $this->parse('<html><script>window.config = {dataPath: ["/data/a/", "/data/b/"]}</script></html>');
+
+        $this->assertSame(Format::Html, $result->format);
+        $this->assertFalse($result->isUsable());
+        $this->assertSame(['/data/a/', '/data/b/'], $result->dataPaths);
+        $this->assertCount(1, $result->warnings);
+        $this->assertSame([], $this->parse('<html>nothing</html>')->dataPaths);
+    }
+
     public function testNodelistNotMatchingTheSchemaIsParsedAndWarnsOnce(): void
     {
         $body = (string) json_encode(['version' => '1.0.1', 'updated_at' => 'x', 'nodes' => [

@@ -70,16 +70,81 @@ final class DiscoveryTest extends TestCase
         $this->assertSame([], Discovery::candidates('https://map.test/map/', '(none)'));
     }
 
-    public function testDataPathUrls(): void
+    public function testDataPathUrlsTryMeshviewerJsonAndNodesJson(): void
     {
         $this->assertSame([
+            'https://hop.test/a/meshviewer.json',
             'https://hop.test/a/nodes.json',
+            'https://map.test/data/meshviewer.json',
             'https://map.test/data/nodes.json',
         ], Discovery::dataPathUrls('https://map.test/map/', ['https://hop.test/a/', '/data/']));
     }
 
+    public function testDataPathsAreResolvedLikeABrowserWould(): void
+    {
+        $this->assertSame(
+            ['https://map.test/map/data/x/meshviewer.json', 'https://map.test/map/data/x/nodes.json'],
+            Discovery::dataPathUrls('https://map.test/map/index.html', ['data/x']),
+            'relative to the directory of the page, a missing slash is added',
+        );
+        $this->assertSame(
+            ['http://map.test:8080/data/meshviewer.json', 'http://map.test:8080/data/nodes.json'],
+            Discovery::dataPathUrls('http://map.test:8080/map/', ['/data/']),
+            'the port is kept',
+        );
+    }
+
+    public function testADataPathThatNamesAFileIsTakenAsItIs(): void
+    {
+        $this->assertSame(['https://map.test/data/all.json'], Discovery::dataPathUrls('https://map.test/', ['/data/all.json']));
+    }
+
     public function testDataPathUrlsAreUnique(): void
     {
-        $this->assertSame(['https://map.test/data/nodes.json'], Discovery::dataPathUrls('https://map.test/', ['/data/', 'data/']));
+        $this->assertSame(
+            ['https://map.test/data/meshviewer.json', 'https://map.test/data/nodes.json'],
+            Discovery::dataPathUrls('https://map.test/', ['/data/', 'data/', ' /data ', '']),
+        );
+    }
+
+    public function testNoDataPathUrlsWithoutAHost(): void
+    {
+        $this->assertSame([], Discovery::dataPathUrls('', ['/data/']));
+    }
+
+    /**
+     * @return array<string, array{string, list<string>}>
+     */
+    public static function inlineProvider(): array
+    {
+        return [
+            'array in a script (Rhein-Sieg)' => ['<script>window.config={dataPath:["/data/tdf/all/","/data/siegburg1/domain01/"],x:1}</script>', ['/data/tdf/all/', '/data/siegburg1/domain01/']],
+            'json style with quoted key' => ['<script>{"dataPath": ["https://a.test/d/"]}</script>', ['https://a.test/d/']],
+            'a single string' => ['<script>var c = {dataPath: "/data/"};</script>', ['/data/']],
+            'single quotes and line breaks' => ["<script>dataPath: [
+  '/data/a/',
+  '/data/b/'
+]</script>", ['/data/a/', '/data/b/']],
+            'no dataPath' => ['<html><body>a viewer</body></html>', []],
+            'an empty list' => ['<script>dataPath: []</script>', []],
+            'duplicates once' => ['dataPath: ["/data/", "/data/"]', ['/data/']],
+            'nothing a script could make of' => ['dataPath: ["javascript:alert(1)", "/ok/", "../../etc/", "a b", "<x>", "data:text/html,x"]', ['/ok/']],
+        ];
+    }
+
+    /**
+     * @param list<string> $expected
+     */
+    #[DataProvider('inlineProvider')]
+    public function testInlineDataPaths(string $html, array $expected): void
+    {
+        $this->assertSame($expected, Discovery::inlineDataPaths($html));
+    }
+
+    public function testAPageThatListsHundredsOfPathsIsCut(): void
+    {
+        $html = 'dataPath: [' . implode(',', array_map(static fn (int $i): string => '"/d' . $i . '/"', range(1, 300))) . ']';
+
+        $this->assertCount(100, Discovery::inlineDataPaths($html));
     }
 }
