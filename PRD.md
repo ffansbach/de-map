@@ -225,6 +225,21 @@ NodeCollection (first community keeps a node; legacy dedupe key; legacy router e
 ### Performance
 A 4 MB nodelist with 20,000 nodes (more than any real source) parses in 0.6 s including the schema check, 105 MB peak; the same as nodeinfo in 0.06 s. Parsing is not where the 3-4 minutes of a legacy run go: that is waiting for the network (step 5).
 
+### Meta-communities (proposal, to be built in step 5)
+**Situation.** The frontend (`js/meta_map.js`) already shows "Übergruppe: *name*" in the tooltip, because the name is part of every community entry. What has been missing is only the link: it needs `metaCommunities[name].url`, and the directory API files carry the meta-community **name** only (46 names, set on 254 communities, written inconsistently: "stuttgart" vs "Freifunk Stuttgart", "Freifunk -Bielefeld"). There is no URL anywhere in the data, and no old file to restore.
+
+**Proposal: derive the link from the members, let a small file correct it.** A pure `MetaCommunityResolver` decides per name, in this order:
+1. **Override file** `config/metacommunities.json` (`{"Freifunk Saar": {"url": "https://..."}}`). Always wins; `"url": null` suppresses a link.
+2. **A member is the meta-community:** a member whose name or directory key equals the meta name (ignoring "Freifunk", "e.V." and punctuation) → use that member's own `url` (11 names, e.g. München → `ffmuc.net`, Nord → `nord.freifunk.net`, Westerwald).
+3. **Shared host:** at least 2 members and at least 60% of them publish the same *host* (not the registrable domain, so `*.freifunk.net` subdomains do not merge, and plain `freifunk.net` is never used) → `https://host/` (8 names, e.g. Franken, Neanderfunk, 3Ländereck, Rhein-Sieg).
+4. **Otherwise no link.** The tooltip keeps showing the name as text, exactly as today.
+
+Meta-communities with a single member (20 of the 46) are the community itself; a second link to the same page adds nothing, so they only get a link through the override file.
+
+**Measured on today's directory (46 names):** 19 get a derived link, 7 get none and need a manual entry if wanted (4830.org e.V., Freifunk Hannover, MWU, Rheinland e.V., Stuttgart, SuedWest e.V., Funkfeuer), 20 are single-member.
+
+**Why this and not a hand-kept list only:** nobody has to maintain 46 URLs, new meta-communities appear without work, and the one file that exists only holds corrections. **Safeguards:** every derived link is recorded with its reason (`member`, `shared-host`, `override`); the admin UI (step 7) lists derived links for review and the drift detection (R11) reports a link that changes between runs. Output: `result_metacommunities.json` = `{"Freifunk Saar": {"url": "..."}}`, only for names with a link, written by the pipeline and uploaded together with the other files (the legacy upload never included it).
+
 ### Not done yet
 Fetching, discovery of the data URL behind a map page, the cache, run orchestration and the output files are step 5. Meta-community links (R: operator wants them back) need the name → URL mapping decided in step 5.
 
@@ -243,6 +258,5 @@ Dev machine: PHP 8.5, Composer 2.10. PHPUnit 11.5, PHPStan 2.1, PHP-CS-Fixer 3.x
 ## 12. Open questions
 - PHP version on www.freifunk-karte.de (constrains the upload endpoint, step 8).
 - ~~Runtime of one full legacy run~~ answered: **3 to 4 minutes** on the LXC (fluctuates). Baseline for the speed-up goal; the parallel audit of ~1150 URLs takes about 45 s.
-- Meta-communities: where do the URLs come from? Proposal: `config/metacommunities.json` (name → url), seeded with the 46 names from the directory, URLs filled in by hand; names without URL are listed by the admin UI. (step 5)
-- Is a stale `result_metacommunities.json` still on the webhost?
+- Meta-communities: confirm the proposal in section 10 (derive links from member communities, optional override file). No stale `result_metacommunities.json` exists on the webhost (confirmed by the operator).
 - Is `result_statistics.json` still needed once the admin UI exists (step 7)?
