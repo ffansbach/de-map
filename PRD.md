@@ -1,6 +1,6 @@
 # PRD: freifunk-karte backend modernisation
 
-Living document. It is extended at the end of every step. Last updated: 2026-10-29 (step 3).
+Living document. It is extended at the end of every step. Last updated: 2026-10-29 (step 4).
 
 ## 1. Purpose
 
@@ -70,7 +70,7 @@ This PRD covers the **backend/parser**. The goal is a clean, secure, tested, obs
 | 1 | PRD + tooling baseline (PHP 8.3, PHPUnit 11, PHPStan, CS-Fixer) | done |
 | 2 | Source audit tool + sample fixtures; decide which parsers to delete | done |
 | 3 | Characterisation tests on the old code (golden outputs) | done |
-| 4 | New models + pure parsers, full unit coverage | open |
+| 4 | New models + pure parsers, full unit coverage | done |
 | 5 | HTTP fetcher (parallel), source resolver, pipeline; side-by-side run on LXC | open |
 | 6 | Run tracking (SQLite) + structured logging; **baseline for drift detection (R11)** | open |
 | 7 | Internal admin UI on the LXC; **"page but no data" list (R12), drift alerts (R11)** | open |
@@ -98,6 +98,8 @@ Working rules: one step at a time, report after each, separate focused commits.
 | 2026-10-29 | Meta-community links come back (`result_metacommunities.json`) | Operator decision. The API files only carry the meta-community **name** (46 names, set on 254 communities), no URL: needs a hand-maintained name → URL mapping (step 5). |
 | 2026-10-29 | One offline rule for all formats: an offline node is kept for 3 days if the time it was last seen is known, dropped if it is unknown or older | Operator decision. Changes the flat `meshviewer.json` behaviour (legacy dropped every offline node). |
 | 2026-10-29 | Legacy `geo[]` format is not supported by the new parsers | No source delivers it (section 8). |
+| 2026-10-29 | `justinrainbow/json-schema` (not `opis/json-schema`) validates nodelists; `lib/jsv4` stays until cut-over | The published nodelist schemas are draft-03, which opis does not support. |
+| 2026-10-29 | The parser is chosen from the response content; a ParseResult carries counts and warnings, deduplication happens in `NodeCollection` | Parsers stay pure (string + clock in, nodes out), dedupe is a run-level concern. |
 | 2026-10-29 | Legacy behaviour is pinned with golden files and edge-case tests (`tests/Legacy`) before anything is rewritten; bugs are tested as they are, marked `LEGACY BUG`, and flipped when fixed | A rewrite is only verifiable against recorded behaviour; deleting a bug test would hide the intended change. |
 | 2026-10-29 | `StandardWorld` (reference scenario) is reused to compare the new pipeline with the legacy one in steps 4/5 | Same input, two implementations, diff the result. |
 | 2026-10-29 | Source audit and fixtures are part of the CLI (`bin/parser sources:audit`, `fixtures:build`), not one-off scripts | Re-runnable; fixtures are reproducible and anonymised by whitelist. |
@@ -189,7 +191,44 @@ On healthy input the legacy parser raises no PHP warnings.
 ### Consequence for the plan
 The warm-run finding matters for the speed-up goal: the existing caches do not save requests, they add them. Parallel fetching (step 5) plus a correct cache should reduce both request count and wall time; the baseline to beat is `calls_cold.txt` (37 requests for 13 communities) and the real LXC run time (still unknown).
 
-## 10. Tooling
+## 10. New core: models and parsers (step 4)
+
+```
+SourceParser (decode once → FormatDetector → parser by content → soft schema check for nodelists)
+  ├─ NodeInfoParser          nodes with "nodeinfo" (ffmap/meshviewer v1/v2, HopGlass)
+  ├─ MeshviewerFlatParser    flat meshviewer.json
+  └─ NodelistParser          nodelist 1.0.0 / 1.0.1
+       all extend AbstractNodeParser: location, offline and client rules live there once
+ParseResult (nodes, found, withoutLocation, dropped, invalid, warnings, parsed)
+NodeCollection (first community keeps a node; legacy dedupe key; legacy router entry shape)
+```
+
+### Rules as implemented
+- **Location:** latitude and longitude present, numeric, not 0 (unconfigured nodes) and inside -90..90 / -180..180 (new: legacy accepted anything numeric). Output strings are PHP's string cast, byte-compatible with the legacy output.
+- **State:** online flag true → `online`; false → `offline` only if the last-seen time is known and at most 3 days old, otherwise the node is dropped; no flag → `unknown` (kept). Same rule for all three formats; the clock is injected.
+- **Clients:** number, object with `total`, or list (counted); anything else 0.
+- **Entries without an id** are counted as invalid and reported once as a warning. A missing name falls back to the id.
+- **Schema:** nodelists are checked against the schema of their declared version (draft-03); an unknown or missing version is checked against the latest. Deviations are aggregated into at most 5 warning lines (`schema 1.0.1: nodes[].id: Integer value found, but a string is required (431x)`) and never stop parsing. Real nodelists often deviate, so these warnings will be common: they are input for drift detection (R11), not alarms.
+
+### Differences to the legacy parser (all deliberate, all tested)
+| Case | Legacy | New |
+|------|--------|-----|
+| Flat meshviewer node offline, last seen an hour ago | dropped | kept as `offline` |
+| Offline node without a last-seen time (any format) | dropped (nodeinfo, nodelist, flat) | dropped (unchanged) |
+| Coordinates outside the valid range | accepted | refused, counted, warning |
+| Non-numeric coordinates in a nodelist | accepted | refused |
+| Old `geo[]` format | parsed | not supported (no source delivers it) |
+| Entry without id | included with empty id | counted as invalid |
+
+`LegacyParityTest` replays all 32 legacy edge cases and the three fixtures through the new parsers; only the first, fifth and sixth rows show up as differences there.
+
+### Performance
+A 4 MB nodelist with 20,000 nodes (more than any real source) parses in 0.6 s including the schema check, 105 MB peak; the same as nodeinfo in 0.06 s. Parsing is not where the 3-4 minutes of a legacy run go: that is waiting for the network (step 5).
+
+### Not done yet
+Fetching, discovery of the data URL behind a map page, the cache, run orchestration and the output files are step 5. Meta-community links (R: operator wants them back) need the name → URL mapping decided in step 5.
+
+## 11. Tooling
 
 ```bash
 composer install
@@ -201,7 +240,7 @@ bin/parser fixtures:build --from=RAWDIR       # see section 8
 
 Dev machine: PHP 8.5, Composer 2.10. PHPUnit 11.5, PHPStan 2.1, PHP-CS-Fixer 3.x.
 
-## 11. Open questions
+## 12. Open questions
 - PHP version on www.freifunk-karte.de (constrains the upload endpoint, step 8).
 - ~~Runtime of one full legacy run~~ answered: **3 to 4 minutes** on the LXC (fluctuates). Baseline for the speed-up goal; the parallel audit of ~1150 URLs takes about 45 s.
 - Meta-communities: where do the URLs come from? Proposal: `config/metacommunities.json` (name → url), seeded with the 46 names from the directory, URLs filled in by hand; names without URL are listed by the admin UI. (step 5)
