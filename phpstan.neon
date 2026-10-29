@@ -5,4 +5,5 @@ parameters:
         - src
         - bin
         - tests/Audit
+        - tests/Legacy
     phpVersion: 80300

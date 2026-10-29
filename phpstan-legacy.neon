@@ -7,6 +7,7 @@ parameters:
     excludePaths:
         - lib/jsv4
         - tests/Audit
+        - tests/Legacy
         - tests/fixtures
     phpVersion: 80300
 includes:
