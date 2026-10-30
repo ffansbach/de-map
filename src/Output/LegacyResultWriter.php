@@ -4,20 +4,18 @@ declare(strict_types=1);
 
 namespace FreifunkKarte\Output;
 
-use FreifunkKarte\Pipeline\CommunityReport;
 use FreifunkKarte\Pipeline\RunResult;
 use RuntimeException;
 
 /**
- * Writes the files the website reads: result_routers.json, result_communities.json,
- * result_statistics.json (for debug.php) and result_metacommunities.json.
+ * Writes the files the website reads: result_routers.json, result_communities.json and
+ * result_metacommunities.json.
  *
- * The first two keep the exact shape and encoding of the legacy parser, js/meta_map.js depends
- * on them. The statistics keep what debug.php reads and add the new facts next to it.
+ * The shape and the encoding of the first two are what js/meta_map.js depends on.
  */
 final class LegacyResultWriter
 {
-    public const FILES = ['result_routers.json', 'result_communities.json', 'result_statistics.json', 'result_metacommunities.json'];
+    public const FILES = ['result_routers.json', 'result_communities.json', 'result_metacommunities.json'];
 
     /**
      * @return array<string, string> file name => path
@@ -31,7 +29,6 @@ final class LegacyResultWriter
         $contents = [
             'result_routers.json' => self::encode($result->nodes->toRouterEntries()),
             'result_communities.json' => self::encode($this->communities($result)),
-            'result_statistics.json' => self::encode($this->statistics($result)),
             'result_metacommunities.json' => self::encode($this->metaCommunities($result)),
         ];
 
@@ -67,62 +64,6 @@ final class LegacyResultWriter
         }
 
         return $communities;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function statistics(RunResult $result): array
-    {
-        $entries = [];
-
-        foreach ($result->communities as $community) {
-            $entry = [
-                // the key, not the display name: that is what debug.php has always shown
-                'name' => $community->key,
-                'apifile' => $community->apiUrl ?? $community->url,
-                'message' => $community->messages,
-            ];
-
-            if ($community->outcome !== CommunityReport::API_UNAVAILABLE && $community->outcome !== CommunityReport::SKIPPED) {
-                $entry['claimed_nodecount'] = $community->claimedNodes ?? false;
-            }
-
-            if ($community->meta !== null) {
-                $entry['metacommunity'] = $community->meta;
-            }
-
-            if ($community->staleSince !== null) {
-                $entry['staleSince'] = $community->staleSince;
-            }
-
-            $entry['outcome'] = $community->outcome;
-            $entry['format'] = $community->format;
-            $entry['sourceUrls'] = $community->sourceUrls;
-
-            if ($community->outcome === CommunityReport::NO_DATA && $community->attempts !== []) {
-                // what has been tried for a map that gave no data
-                $entry['attempts'] = array_map(static fn ($a): array => [
-                    'url' => $a->url,
-                    'status' => $a->status,
-                    'error' => $a->error,
-                    'format' => $a->format,
-                ], $community->attempts);
-            }
-
-            $entries[$community->key] = $entry;
-        }
-
-        return [
-            'errorCommunities' => $entries,
-            'timestamp' => $result->startedAt->format('c'),
-            'run' => [
-                'requests' => $result->requests,
-                'seconds' => round($result->seconds, 1),
-                'nodes' => $result->nodes->count(),
-                'communities' => count($result->listedCommunities()),
-            ],
-        ];
     }
 
     /**

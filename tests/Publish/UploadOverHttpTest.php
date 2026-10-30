@@ -128,7 +128,6 @@ final class UploadOverHttpTest extends TestCase
 
         file_put_contents($this->directory . '/out/result_routers.json', (string) json_encode($nodes));
         file_put_contents($this->directory . '/out/result_communities.json', (string) json_encode($communities));
-        file_put_contents($this->directory . '/out/result_statistics.json', '{"errorCommunities":{},"timestamp":"2026-10-29T12:00:00+00:00"}');
         file_put_contents($this->directory . '/out/result_metacommunities.json', '{}');
     }
 
@@ -154,7 +153,7 @@ final class UploadOverHttpTest extends TestCase
         $this->assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         $this->assertStringContainsString('installed 1100 nodes and 11 communities', $tester->getDisplay());
 
-        foreach (['result_routers.json', 'result_communities.json', 'result_statistics.json', 'result_metacommunities.json'] as $name) {
+        foreach (['result_routers.json', 'result_communities.json', 'result_metacommunities.json'] as $name) {
             $this->assertFileEquals($this->directory . '/out/' . $name, $this->directory . '/target/' . $name);
         }
     }

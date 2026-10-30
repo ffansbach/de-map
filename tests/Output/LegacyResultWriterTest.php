@@ -92,39 +92,6 @@ final class LegacyResultWriterTest extends TestCase
         $this->assertSame((string) json_encode($legacy), $raw, 'byte for byte what the legacy parser would write');
     }
 
-    public function testStatisticsKeepWhatDebugPhpReadsAndAddTheNewFacts(): void
-    {
-        (new LegacyResultWriter())->write($this->runResult(StandardWorld::build()), $this->directory);
-        $statistics = $this->read('result_statistics.json');
-
-        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/', $statistics['timestamp']);
-        $this->assertSame(['requests', 'seconds', 'nodes', 'communities'], array_keys($statistics['run']));
-        $this->assertSame(40, $statistics['run']['nodes']);
-
-        $mv = $statistics['errorCommunities']['mv-city'];
-        $this->assertSame('mv-city', $mv['name']);
-        $this->assertSame('https://api.test/mv-city.json', $mv['apifile']);
-        $this->assertSame('Meta Nord', $mv['metacommunity']);
-        $this->assertFalse($mv['claimed_nodecount']);
-        $this->assertContains('meta-community: Meta Nord', $mv['message']);
-        $this->assertSame(['ok', 'nodeinfo'], [$mv['outcome'], $mv['format']]);
-
-        // every community seen is in there, also the ones that are not listed
-        $this->assertSame('skipped', $statistics['errorCommunities']['skipped-town']['outcome']);
-        $this->assertArrayNotHasKey('claimed_nodecount', $statistics['errorCommunities']['broken-api']);
-    }
-
-    public function testMapsWithoutDataListWhatWasTried(): void
-    {
-        (new LegacyResultWriter())->write($this->runResult(StandardWorld::build()), $this->directory);
-        $dead = $this->read('result_statistics.json')['errorCommunities']['dead-town'];
-
-        $this->assertSame('no-data', $dead['outcome']);
-        $this->assertSame('https://dead.test/map/', $dead['attempts'][0]['url']);
-        $this->assertSame(404, $dead['attempts'][0]['status']);
-        $this->assertArrayNotHasKey('attempts', $this->read('result_statistics.json')['errorCommunities']['nl-city']);
-    }
-
     public function testMetaCommunitiesAreAnObjectEvenWithoutLinks(): void
     {
         (new LegacyResultWriter())->write($this->runResult(StandardWorld::build()), $this->directory);

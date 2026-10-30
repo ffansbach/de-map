@@ -67,7 +67,6 @@ final class HttpsPublisherTest extends TestCase
         return new ResultFiles([
             'result_routers.json' => (string) json_encode($nodes),
             'result_communities.json' => (string) json_encode($communities),
-            'result_statistics.json' => '{"errorCommunities":{},"timestamp":"2026-10-29T12:00:00+00:00"}',
             'result_metacommunities.json' => '{}',
         ]);
     }

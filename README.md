@@ -134,9 +134,9 @@ php bin/parser run --out=web/cache        # holt alle Daten, ca. 30–60 Sekunde
 php -S localhost:8000 -t web              # Entwicklungsserver für die Karte starten
 ```
 
-Dann <http://localhost:8000/> öffnen. `bin/parser run` schreibt vier Dateien nach `web/cache/`
-(`result_routers.json`, `result_communities.json`, `result_metacommunities.json`,
-`result_statistics.json`) und legt den Verlauf in `var/parser.sqlite` ab. Mit `php bin/parser runs`
+Dann <http://localhost:8000/> öffnen. `bin/parser run` schreibt drei Dateien nach `web/cache/`
+(`result_routers.json`, `result_communities.json`, `result_metacommunities.json`)
+und legt den Verlauf in `var/parser.sqlite` ab. Mit `php bin/parser runs`
 siehst du anschließend, was der Lauf gefunden hat.
 
 > `--out` hat bewusst keinen Standardwert: Ein Testlauf soll nie versehentlich die Dateien einer
@@ -200,7 +200,6 @@ web/
 ├── css/  js/  img/  templates/                     Oberfläche (js/ enthält die mitgelieferten Bibliotheken)
 ├── upload.php                                      Empfänger für den Upload des Parsers
 ├── cache/                                          hier landen die Ergebnisdateien (anfangs leer)
-├── debug.php                                       Fehleransicht (optional; die Admin-Oberfläche ersetzt sie)
 ├── log_to_db.php  lib/log.php                      Statistik (optional, braucht MySQL)
 ├── config.php_example.php                          Vorlage → wird zu config.php
 └── upload.config.example.php                       Vorlage → wird zu upload.config.php
@@ -709,7 +708,7 @@ src/                  Parser, Auslieferung, Admin-Oberfläche (Namensraum Freifu
   Run/ Log/             Verlauf (SQLite), Erkennung von Auffälligkeiten, Meldungen
   Publish/ Admin/       Auslieferung (HTTPS/FTP), Admin-Oberfläche
 web/                  alles für den Webserver, fertig zum Hochladen (kein Composer nötig):
-  index.php data.php fetch.php debug.php   die Karte (ohne Framework, ohne Build-Schritt)
+  index.php data.php fetch.php             die Karte (ohne Framework, ohne Build-Schritt)
   upload.php                               Empfänger für den Upload (eigenständig, ab PHP 7.2)
   log_to_db.php lib/log.php                die optionale Statistik (MySQL)
   js/ css/ img/ templates/                 Oberfläche; js/ enthält auch die mitgelieferten Bibliotheken

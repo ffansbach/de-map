@@ -12,7 +12,7 @@ use RuntimeException;
 final readonly class ResultFiles
 {
     public const REQUIRED = ['result_routers.json', 'result_communities.json'];
-    public const OPTIONAL = ['result_statistics.json', 'result_metacommunities.json'];
+    public const OPTIONAL = ['result_metacommunities.json'];
 
     /**
      * @param array<string, string> $files file name => content

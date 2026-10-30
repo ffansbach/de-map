@@ -73,7 +73,6 @@ final class ReceiverTest extends TestCase
         return [
             'result_routers.json' => (string) json_encode($nodes),
             'result_communities.json' => (string) json_encode($communityList),
-            'result_statistics.json' => (string) json_encode(['errorCommunities' => [], 'timestamp' => '2026-10-29T12:00:00+00:00']),
             'result_metacommunities.json' => '{}',
         ];
     }
@@ -370,7 +369,7 @@ final class ReceiverTest extends TestCase
             'routers that are not JSON' => [static fn (array $f): array => ['version' => 1, 'files' => ['result_routers.json' => '<?php evil();'] + $f], 'is not valid JSON'],
             'routers that are no nodes' => [static fn (array $f): array => ['version' => 1, 'files' => ['result_routers.json' => '[1, 2, 3]'] + $f], 'an entry is not a node'],
             'communities that are no communities' => [static fn (array $f): array => ['version' => 1, 'files' => ['result_communities.json' => '{"a": 5}'] + $f], 'an entry is not a community'],
-            'statistics that are none' => [static fn (array $f): array => ['version' => 1, 'files' => ['result_statistics.json' => '{"x": 1}'] + $f], 'not the statistics'],
+            'the retired statistics file' => [static fn (array $f): array => ['version' => 1, 'files' => $f + ['result_statistics.json' => '{}']], 'unknown file'],
             'the routers are missing' => [static fn (array $f): array => ['version' => 1, 'files' => array_diff_key($f, ['result_routers.json' => 1])], 'result_routers.json is missing'],
             'the communities are missing' => [static fn (array $f): array => ['version' => 1, 'files' => array_diff_key($f, ['result_communities.json' => 1])], 'result_communities.json is missing'],
         ];
@@ -430,7 +429,7 @@ final class ReceiverTest extends TestCase
     public function testAFailureWhileInstallingGivesAGenericErrorAndLeavesNoStagingFile(): void
     {
         // a directory where a result file should go makes the final rename fail
-        mkdir($this->target . '/result_statistics.json');
+        mkdir($this->target . '/result_metacommunities.json');
 
         [$status, $answer] = $this->send();
 
@@ -440,14 +439,14 @@ final class ReceiverTest extends TestCase
         $this->assertStringContainsString('cannot replace', implode("\n", $this->log));
         $this->assertSame([], glob($this->target . '/*.staging'));
 
-        rmdir($this->target . '/result_statistics.json');
+        rmdir($this->target . '/result_metacommunities.json');
     }
 
     public function testOptionalFilesMayBeLeftOut(): void
     {
-        $files = array_diff_key(self::files(), ['result_statistics.json' => 1, 'result_metacommunities.json' => 1]);
+        $files = array_diff_key(self::files(), ['result_metacommunities.json' => 1]);
 
         $this->assertSame(200, $this->send([], $files)[0]);
-        $this->assertFileDoesNotExist($this->target . '/result_statistics.json');
+        $this->assertFileDoesNotExist($this->target . '/result_metacommunities.json');
     }
 }

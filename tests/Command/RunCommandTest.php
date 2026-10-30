@@ -79,6 +79,20 @@ final class RunCommandTest extends TestCase
         return $decoded;
     }
 
+    /**
+     * The newest run as the history database holds it (what the admin UI shows).
+     *
+     * @return array{run: array<string, mixed>, communities: array<string, \FreifunkKarte\Run\StoredCommunity>}
+     */
+    private function latestRunInHistory(): array
+    {
+        $history = RunRepository::openReadOnly($this->directory . '/state/parser.sqlite');
+        $run = $history->latestRun();
+        $this->assertNotNull($run);
+
+        return ['run' => $run, 'communities' => $history->communities((int) $run['id'])];
+    }
+
     public function testOutIsRequired(): void
     {
         $tester = new CommandTester(new RunCommand(StandardWorld::build()->httpHandler(), $this->directory));
@@ -125,13 +139,13 @@ final class RunCommandTest extends TestCase
         file_put_contents($this->directory . '/config/skipped-communities.json', '{"flat-town": "too slow"}');
 
         $this->execute(['--skip' => 'hop-town, dup-a']);
-        $communities = $this->readOut('result_statistics.json')['errorCommunities'];
+        $communities = $this->latestRunInHistory()['communities'];
 
         foreach (['flat-town', 'hop-town', 'dup-a'] as $key) {
-            $this->assertSame('skipped', $communities[$key]['outcome'], $key);
+            $this->assertSame('skipped', $communities[$key]->outcome, $key);
         }
 
-        $this->assertSame('ok', $communities['mv-city']['outcome']);
+        $this->assertSame('ok', $communities['mv-city']->outcome);
     }
 
     public function testOnlyRunsOneCommunity(): void
@@ -144,11 +158,11 @@ final class RunCommandTest extends TestCase
     public function testASecondRunUsesWhatTheFirstOneLearned(): void
     {
         $this->execute([]);
-        $first = $this->readOut('result_statistics.json')['run'];
+        $first = $this->latestRunInHistory()['run'];
         $this->assertFileExists($this->directory . '/cache/sources.json');
 
         $this->execute([]);
-        $second = $this->readOut('result_statistics.json')['run'];
+        $second = $this->latestRunInHistory()['run'];
 
         $this->assertLessThan($first['requests'], $second['requests']);
         $this->assertSame($first['nodes'], $second['nodes']);

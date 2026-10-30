@@ -506,7 +506,7 @@ Dev machine: PHP 8.5, Composer 2.10. PHPUnit 11.5, PHPStan 2.1, PHP-CS-Fixer 3.x
 - Meta-communities: agreed and implemented (section 10, `MetaCommunityResolver`): 19 of 46 names get a link today. Add the 7 without link to `config/metacommunities.json` if you want them.
 - How should the operator hear about *warnings* (new technical type, changed format)? They are visible in the ping log, the console and `bin/parser runs --events`, but they do not notify. Options: leave it; a daily digest; a second healthchecks.io check that fails on warnings.
 - The 3Ländereck network serves empty nodelists at times (and `bh` for hours): worth telling them.
-- Is `result_statistics.json` still needed once the admin UI exists (step 7)?
+- ~~Is `result_statistics.json` still needed once the admin UI exists (step 7)?~~ No. Removed 2026-10-31 together with the public debug view (see section 17).
 
 ## 17. Cut-over and cleanup (step 9)
 
@@ -529,4 +529,6 @@ Dev machine: PHP 8.5, Composer 2.10. PHPUnit 11.5, PHPStan 2.1, PHP-CS-Fixer 3.x
 - `fetch.php` set `display_errors` to On (a failing stats query showed host and user names). **Fixed 2026-10-31:** errors are logged, never shown (a failing request now answers an empty 500).
 
 **Web part in its own directory (2026-10-31).** Everything the web host serves now lives in `web/`: `index.php`, `data.php`, `fetch.php`, `debug.php`, `log_to_db.php`, `upload.php`, `lib/log.php`, `css/`, `js/`, `img/`, `templates/`, `favicon.ico`, an empty `cache/` and the two example configs (`config.php_example.php`, `upload.config.example.php`, both now web-only). Reason: the production host is shared hosting with FTP only, no SSH and no Composer; the operator uploads this directory as it is, without parser code mixed in. The web part needs no `vendor/` (checked by running a copy of `web/` alone). Moved with `git mv`; `fixedCommunities.php`, `schema/`, `config/`, `src/`, `public-admin/` stay at the root (parser side). Unused `css/MarkerCluster*.css` (leftover of the old clustering library) were removed. `.gitignore` keeps `web/cache/*` (except `.gitkeep`), `web/config.php` and `web/upload.config.php` out of Git. PHPStan: `phpstan-web.neon` analyses `web/upload.php` as PHP 7.2, `phpstan-legacy.neon` `web/lib`.
+
+**Public debug view removed (2026-10-31).** `web/debug.php` and `fetch.php?get_debug` exposed `result_statistics.json` (214 KB with internal API URLs and messages) to everybody, and the admin UI replaces them. The parser no longer writes or uploads `result_statistics.json`; per-community diagnostics live only in the history database. The receiver (`web/upload.php`) accepts only the three remaining files, so **roll out in this order: parser first, then the web host** (a newer receiver refuses an older parser's upload because of the retired file). A `cache/result_statistics.json` left on the host should be deleted by hand.
 

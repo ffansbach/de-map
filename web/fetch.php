@@ -36,15 +36,6 @@ if(isset($_REQUEST['content']) && isset($supported[$_REQUEST['content']]))
 	include(__DIR__.'/'.$supported[$_REQUEST['content']]['tpl']);
 
 }
-elseif(isset($_REQUEST['get_debug']))
-{
-	$filename = 'cache/result_statistics.json';
-
-	if(file_exists($filename))
-	{
-		echo file_get_contents($filename);
-	}
-}
 
 function fetchStats()
 {

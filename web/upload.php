@@ -21,7 +21,7 @@
 
 final class FfkUploadReceiver
 {
-    const FILES = array('result_routers.json', 'result_communities.json', 'result_statistics.json', 'result_metacommunities.json');
+    const FILES = array('result_routers.json', 'result_communities.json', 'result_metacommunities.json');
     const REQUIRED = array('result_routers.json', 'result_communities.json');
     const MIN_SECRET_LENGTH = 32;
 
@@ -274,10 +274,6 @@ final class FfkUploadReceiver
                 if (!is_array($community) || !isset($community['name'], $community['url'])) {
                     return 'an entry is not a community';
                 }
-            }
-        } elseif ($name === 'result_statistics.json') {
-            if (!isset($data['timestamp'], $data['errorCommunities']) || !is_array($data['errorCommunities'])) {
-                return 'not the statistics';
             }
         }
 
