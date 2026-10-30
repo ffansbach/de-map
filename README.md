@@ -220,6 +220,16 @@ scp web/upload.config.example.php "$ZIEL/upload.config.php"
 ssh benutzer@webserver 'cd /var/www/freifunk-karte && mkdir -p cache && chown www-data: cache'   # Benutzer des Webservers einsetzen
 ```
 
+**Ohne SSH-Zugang** (typisch bei günstigem Webhosting): Du brauchst nur einen FTP-/SFTP-Zugang oder
+den Dateimanager deines Anbieters. Lade dieselben Dateien und Ordner dorthin hoch, benenne
+`config.php_example.php` in `config.php` und `web/upload.config.example.php` in `upload.config.php` um,
+lege das Verzeichnis `cache/` an und gib ihm Schreibrechte für PHP (je nach Anbieter `755`, `775` oder
+`777` – so streng wie möglich, aber so, dass PHP hineinschreiben kann). Den Upload selbst erledigt der
+Parser über HTTPS; auf dem Webserver läuft sonst nichts, was eine Shell bräuchte. Auch `stateDir`
+(siehe unten) legt der Empfänger bei Bedarf selbst an (Rechte `0700`); der Standard, das temporäre
+Verzeichnis des Systems, funktioniert bei vielen Anbietern unverändert. Darin liegen nur leere Dateien
+`nonce-…` ohne vertrauliche Inhalte – nimm trotzdem ein Verzeichnis, das nicht öffentlich abrufbar ist.
+
 **`config.php`** bearbeiten – die Pflichtangaben für die Karte (alle Variablen siehe
 [Referenz](#configphp-webserver)):
 
