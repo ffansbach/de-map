@@ -1,0 +1,7 @@
+# Apache: when the whole project directory is served (a dev or LXC box), keep the private parts private.
+# var/ holds the history (parser.sqlite), config/ the passwords and tokens, the rest is source code.
+# The document root should rather be public-admin/ or the legacy web files only; this is the second line of defence.
+# There is deliberately no <IfModule>: without mod_rewrite the server answers 500 instead of silently publishing.
+RewriteEngine On
+RewriteRule ^(var|config|src|vendor|bin|tests|schema|templates|\.git|\.claude)(/|$) - [F]
+RewriteRule ^(composer\.(json|lock)|phpunit\.xml|phpstan.*\.neon|\.php-cs-fixer.*|\.phpunit.*|\.gitignore|.*\.md|config\.php_example\.php)$ - [F]
