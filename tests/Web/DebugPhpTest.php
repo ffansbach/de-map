@@ -91,6 +91,14 @@ final class DebugPhpTest extends TestCase
         $this->assertStringContainsString('Letzter Lauf: 30.10.2026', $page);
     }
 
+    public function testTimesAreShownInGermanTime(): void
+    {
+        // 12:00 UTC on 30 October 2026 is 13:00 in Germany (summer time ended on the 25th)
+        $this->writeDebug(['bsp' => self::community()]);
+
+        $this->assertStringContainsString('Letzter Lauf: 30.10.2026 13:00', $this->page());
+    }
+
     public function testACommunityWithNodesShowsTheCounts(): void
     {
         $this->writeDebug(['bsp' => self::community()]);
