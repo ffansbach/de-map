@@ -1,8 +1,10 @@
 {
-  "name": "vendor_name/freifunk-karte",
-  "description": "description",
+  "name": "stilgarbf/freifunk-karte",
+  "description": "Sammelt die Knotenlisten aller deutschen Freifunk-Communities und zeigt sie auf einer Karte: Parser, Auslieferung, Karte",
+  "type": "project",
+  "homepage": "https://www.freifunk-karte.de/",
   "minimum-stability": "stable",
-  "license": "GNU General Public License v2.0",
+  "license": "GPL-2.0-only",
   "authors": [
     {
       "name": "Tino Dietel",
@@ -10,7 +12,7 @@
     }
   ],
   "require": {
-    "php": ">=8.3",
+    "php": ">=8.4.1",
     "ext-curl": "*",
     "guzzlehttp/guzzle": "^7.8",
     "influxdata/influxdb-client-php": "^3.5",

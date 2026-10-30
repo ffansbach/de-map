@@ -3,4 +3,4 @@ parameters:
     # the old web part (web/lib/log.php, plain PHP, no baseline needed); new code is checked strictly by phpstan.neon
     paths:
         - web/lib
-    phpVersion: 80300
+    phpVersion: 80401

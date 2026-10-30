@@ -104,15 +104,13 @@ ihres letzten Kontakts bekannt ist.
 
 |  | Parser-Server | Webserver (Karte) |
 |---|---|---|
-| **PHP** | **8.4.1 oder neuer** (CLI)¹ | **7.2 oder neuer** |
+| **PHP** | **8.4.1 oder neuer** (CLI) | **7.2 oder neuer** |
 | **Erweiterungen** | `curl`, `json`, `mbstring`, `pdo_sqlite`, `zlib`; `ftp` nur für den FTP-Upload | `zlib` (Upload), `json`; `mysqli` nur für die optionale Statistik |
 | **Composer** | ja | nein |
 | **Datenbank** | SQLite-Datei (wird selbst angelegt) | keine (nur optional MySQL/MariaDB für die Statistik) |
 | **Netzwerk** | ausgehend HTTPS zu GitHub und zu allen Community-Servern | eingehend HTTPS vom Parser |
 | **Software** | Cron, `flock` | Apache oder nginx mit PHP (FPM oder mod_php), HTTPS |
 
-¹ In `composer.json` steht formal PHP 8.3, das mitgelieferte `composer.lock` enthält aber Pakete, die
-8.4.1 verlangen. Getestet ist mit PHP 8.4 und 8.5.
 
 Parser und Webserver können **auf derselben Maschine** laufen, müssen es aber nicht – und in der
 Praxis ist es oft ein kleiner Container für den Parser und ein normaler Webspace für die Karte.
