@@ -7,7 +7,6 @@ namespace FreifunkKarte\Tests\Command;
 use FreifunkKarte\Command\CompareCommand;
 use FreifunkKarte\Command\RunCommand;
 use FreifunkKarte\Run\RunRepository;
-use FreifunkKarte\Tests\Legacy\LegacyRunner;
 use FreifunkKarte\Tests\Legacy\StandardWorld;
 use FreifunkKarte\Tests\Legacy\World;
 use PHPUnit\Framework\TestCase;
@@ -55,7 +54,7 @@ final class RunCommandTest extends TestCase
         // the reference world has a directory URL of its own
         $tester = new CommandTester($command);
         $tester->execute($options + [
-            '--directory-url' => LegacyRunner::DIRECTORY_URL,
+            '--directory-url' => World::DIRECTORY_URL,
             '--out' => $this->directory . '/out',
             '--cache-dir' => $this->directory . '/cache',
             '--db' => $this->directory . '/state/parser.sqlite',

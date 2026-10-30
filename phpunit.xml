@@ -13,10 +13,7 @@
     </testsuites>
     <source>
         <include>
-            <directory>lib</directory>
+            <directory>src</directory>
         </include>
-        <exclude>
-            <directory>lib/jsv4</directory>
-        </exclude>
     </source>
 </phpunit>

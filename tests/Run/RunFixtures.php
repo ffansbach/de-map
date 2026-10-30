@@ -10,7 +10,6 @@ use FreifunkKarte\Parser\SourceParser;
 use FreifunkKarte\Pipeline\ParseRun;
 use FreifunkKarte\Pipeline\RunResult;
 use FreifunkKarte\Source\SourceCache;
-use FreifunkKarte\Tests\Legacy\LegacyRunner;
 use FreifunkKarte\Tests\Legacy\StandardWorld;
 use FreifunkKarte\Tests\Legacy\World;
 use GuzzleHttp\Client;
@@ -33,7 +32,7 @@ final class RunFixtures
             new SourceCache(),
             new MetaCommunityResolver(),
             null,
-            LegacyRunner::DIRECTORY_URL,
+            World::DIRECTORY_URL,
             retryDelayMs: 0,
         ))->run($world->fixedCommunities(), StandardWorld::SKIP);
     }

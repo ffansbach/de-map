@@ -14,11 +14,13 @@ use RuntimeException;
 /**
  * A small fake Freifunk world: a directory, community API files and node sources.
  *
- * Node sources come from tests/fixtures/sources. The legacy parser drops offline nodes by age
+ * Node sources come from tests/fixtures/sources. The parsers drop offline nodes by age
  * (time()), so fixture dates are moved so that they keep the age they had when captured.
  */
 final class World
 {
+    public const DIRECTORY_URL = 'https://directory.test/directory.json';
+
     /** shortly after the fixtures were captured */
     private const FIXTURE_TIME = '2026-10-29T10:39:00+00:00';
 
@@ -74,7 +76,7 @@ final class World
      */
     public function routes(): array
     {
-        return [LegacyRunner::DIRECTORY_URL => (string) json_encode($this->directory)] + $this->routes;
+        return [self::DIRECTORY_URL => (string) json_encode($this->directory)] + $this->routes;
     }
 
     /**

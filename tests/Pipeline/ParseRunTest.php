@@ -16,7 +16,6 @@ use FreifunkKarte\Source\LastGoodStore;
 use FreifunkKarte\Source\SourceAssignment;
 use FreifunkKarte\Source\SourceAssignments;
 use FreifunkKarte\Source\SourceCache;
-use FreifunkKarte\Tests\Legacy\LegacyRunner;
 use FreifunkKarte\Tests\Legacy\StandardWorld;
 use FreifunkKarte\Tests\Legacy\World;
 use GuzzleHttp\Client;
@@ -61,7 +60,7 @@ final class ParseRunTest extends TestCase
             $cache ?? new SourceCache(),
             new MetaCommunityResolver(),
             $clock,
-            LegacyRunner::DIRECTORY_URL,
+            World::DIRECTORY_URL,
             retryDelayMs: 0,
             lastGood: $lastGood,
             assignments: $assignments ?? new SourceAssignments(),
