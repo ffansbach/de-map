@@ -39,7 +39,7 @@ sich über die Umgebungsvariable `FFK_UPLOAD_CONFIG` angeben.
 |---|---|---|
 | `secret` | – (**Pflicht**) | Gemeinsames Geheimnis, mindestens 32 Zeichen (`bin/parser upload:secret`). Ohne gültiges Geheimnis lehnt der Empfänger alles ab. |
 | `target` | – (**Pflicht**) | Verzeichnis für die Ergebnisdateien; muss existieren und für PHP beschreibbar sein. Normalerweise `__DIR__ . '/cache'`. |
-| `stateDir` | `<tmp>/ffk-upload` | Hier merkt sich der Empfänger verbrauchte Einmalwerte (Replay-Schutz). Beschreibbar, möglichst außerhalb des Web-Verzeichnisses. |
+| `stateDir` | `<target>/.upload-state` | Hier merkt sich der Empfänger verbrauchte Einmalwerte (Replay-Schutz). Beschreibbar; der Standard liegt im `target`-Verzeichnis statt im gemeinsam genutzten `/tmp`. |
 | `requireHttps` | `true` | Verlangt HTTPS. Nur für lokale Tests abschalten. |
 | `trustForwardedProto` | `false` | `true`, wenn ein Reverse-Proxy TLS beendet und `X-Forwarded-Proto: https` setzt. |
 | `expectedPath` | automatisch | Pfad, der in die Signatur eingeht; nur nötig, wenn ein Proxy den Pfad umschreibt. |

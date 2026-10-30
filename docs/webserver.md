@@ -66,9 +66,10 @@ rsync -av --exclude='*example*' --exclude='cache/*' web/ benutzer@webserver:/var
 Die beiden `*example*`-Vorlagen brauchst du auf dem Server nicht. Das Verzeichnis `cache/` muss dort
 existieren (es ist im Upload enthalten) und **für PHP beschreibbar** sein – je nach Anbieter Rechte
 `755`, `775` oder `777`; so streng wie möglich, aber so, dass PHP hineinschreiben kann. Auch das Verzeichnis `stateDir`
-(in `upload.config.php` eingestellt) legt der Empfänger bei Bedarf selbst an (Rechte `0700`); der Standard, das temporäre
-Verzeichnis des Systems, funktioniert bei vielen Anbietern unverändert. Darin liegen nur leere Dateien
-`nonce-…` ohne vertrauliche Inhalte – nimm trotzdem ein Verzeichnis, das nicht öffentlich abrufbar ist.
+legt der Empfänger bei Bedarf selbst an (Rechte `0700`). Ohne Angabe ist es `.upload-state` im `target`-Verzeichnis
+(`cache/`), also nicht im gemeinsam genutzten `/tmp`, wo bei Shared Hosting ein anderer Benutzer das Verzeichnis
+blockieren könnte. Darin liegen nur leere Dateien `nonce-…` ohne vertrauliche Inhalte; wer will, stellt in
+`upload.config.php` ein Verzeichnis außerhalb des Web-Verzeichnisses ein (siehe oben).
 
 **Spätere Aktualisierungen:** Lade einfach die geänderten Dateien aus `web/` erneut hoch (oder alles).
 Wichtig ist nur, dass dabei `config.php`, `upload.config.php` und der Inhalt von `cache/` auf dem

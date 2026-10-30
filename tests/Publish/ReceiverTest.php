@@ -268,6 +268,27 @@ final class ReceiverTest extends TestCase
         $this->assertSame(401, $this->receiver()->handle($server, $reader)[0], 'state is on disk, not in memory');
     }
 
+    public function testWithoutAStateDirTheNoncesLiveNextToTheResultFilesNotInTheSharedTempDirectory(): void
+    {
+        $default = $this->target . '/.upload-state';
+
+        try {
+            $receiver = $this->receiver(['stateDir' => null]);
+            [$server, $reader] = $this->request(self::files());
+
+            $this->assertSame(200, $receiver->handle($server, $reader)[0]);
+            $this->assertCount(1, glob($default . '/nonce-*') ?: []);
+            $this->assertSame(401, $receiver->handle($server, $reader)[0], 'replay protection works with the default directory');
+            $this->assertSame('0700', substr(sprintf('%o', fileperms($default)), -4));
+        } finally {
+            foreach (glob($default . '/*') ?: [] as $file) {
+                unlink($file);
+            }
+
+            @rmdir($default);
+        }
+    }
+
     public function testOldNoncesAreForgottenButANewRequestStillWorks(): void
     {
         $receiver = $this->receiver();

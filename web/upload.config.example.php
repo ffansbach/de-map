@@ -10,8 +10,9 @@ return array(
     'secret' => 'REPLACE WITH THE OUTPUT OF bin/parser upload:secret',
     // where the map reads its result files (the cache/ directory of the web part)
     'target' => __DIR__ . '/cache',
-    // somewhere writable, outside the web root if possible
-    'stateDir' => sys_get_temp_dir() . '/ffk-upload',
+    // where used one-time values are remembered (replay protection); optional, the default is
+    // .upload-state inside the target directory. Only empty files named nonce-... live there.
+    // 'stateDir' => '/var/lib/ffk-upload',
     // 'requireHttps' => true,
     // behind a reverse proxy that terminates TLS: 'trustForwardedProto' => true,
     // the upload is refused if it holds fewer than this (the same guard data.php had)

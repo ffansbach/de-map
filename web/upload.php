@@ -44,7 +44,7 @@ final class FfkUploadReceiver
         $this->config = array_merge(array(
             'secret' => '',
             'target' => '',
-            'stateDir' => sys_get_temp_dir() . '/ffk-upload',
+            'stateDir' => null,
             'maxBytes' => 20000000,
             'maxDecodedBytes' => 64000000,
             'timestampWindow' => 300,
@@ -55,6 +55,13 @@ final class FfkUploadReceiver
             'minRouters' => 1000,
             'maxShrink' => 0.5,
         ), $config);
+
+        if (!is_string($this->config['stateDir']) || $this->config['stateDir'] === '') {
+            // not the shared temp directory: on shared hosting another user could block it (mkdir) or fill it
+            $this->config['stateDir'] = is_string($this->config['target']) && $this->config['target'] !== ''
+                ? rtrim($this->config['target'], '/\\') . '/.upload-state'
+                : sys_get_temp_dir() . '/ffk-upload';
+        }
         $this->clock = $clock !== null ? $clock : 'time';
         $this->logger = $logger !== null ? $logger : 'error_log';
     }
