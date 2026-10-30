@@ -36,8 +36,7 @@ final class UploadCommand extends Command
         $this
             ->addOption('from', null, InputOption::VALUE_REQUIRED, 'directory with the result_*.json files')
             ->addOption('config-dir', null, InputOption::VALUE_REQUIRED, 'directory with upload.local.json')
-            ->addOption('upload-config', null, InputOption::VALUE_REQUIRED, 'JSON file with the upload settings (default: config/upload.local.json)')
-            ->addOption('legacy-config', null, InputOption::VALUE_REQUIRED, 'take the FTP settings from an old-style config.php');
+            ->addOption('upload-config', null, InputOption::VALUE_REQUIRED, 'JSON file with the upload settings (default: config/upload.local.json)');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -54,14 +53,12 @@ final class UploadCommand extends Command
         $configOption = $input->getOption('config-dir');
         $configDir = is_string($configOption) ? $configOption : ($this->projectDir ?? dirname(__DIR__, 2)) . '/config';
         $upload = $input->getOption('upload-config');
-        $legacy = $input->getOption('legacy-config');
 
         try {
             $delivery = DeliveryFactory::create(
                 new Client($this->httpHandler !== null ? ['handler' => $this->httpHandler] : []),
                 $configDir,
                 is_string($upload) ? $upload : null,
-                is_string($legacy) ? $legacy : null,
             );
 
             if (!$delivery->hasPublishers()) {

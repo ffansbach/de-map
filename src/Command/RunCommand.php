@@ -71,7 +71,6 @@ final class RunCommand extends Command
             ->addOption('keep-detail-days', null, InputOption::VALUE_REQUIRED, 'drop the requests and messages of runs older than this many days and keep their summaries; 0 keeps all detail', '30')
             ->addOption('no-history', null, InputOption::VALUE_NONE, 'do not record the run, compare it, log it or report it anywhere')
             ->addOption('integrations', null, InputOption::VALUE_REQUIRED, 'JSON file with the healthchecks.io / InfluxDB settings (default: config/integrations.local.json if it exists)')
-            ->addOption('legacy-config', null, InputOption::VALUE_REQUIRED, 'take the healthchecks.io / InfluxDB (and, for --upload, FTP) settings from an old-style config.php (as used before config/integrations.local.json)')
             ->addOption('upload', null, InputOption::VALUE_NONE, 'deliver the result files to the web server afterwards')
             ->addOption('upload-config', null, InputOption::VALUE_REQUIRED, 'JSON file with the upload settings (default: config/upload.local.json)');
     }
@@ -110,10 +109,9 @@ final class RunCommand extends Command
 
         if ($input->getOption('upload')) {
             $uploadConfig = $input->getOption('upload-config');
-            $legacyConfig = $input->getOption('legacy-config');
 
             try {
-                $delivery = DeliveryFactory::create($client, $configDir, is_string($uploadConfig) ? $uploadConfig : null, is_string($legacyConfig) ? $legacyConfig : null);
+                $delivery = DeliveryFactory::create($client, $configDir, is_string($uploadConfig) ? $uploadConfig : null);
             } catch (\Throwable $e) {
                 $io->error($e->getMessage());
 
@@ -279,12 +277,7 @@ final class RunCommand extends Command
 
     private function integrations(InputInterface $input, string $configDir, string $projectDir): IntegrationConfig
     {
-        $legacy = $input->getOption('legacy-config');
         $json = $input->getOption('integrations');
-
-        if (is_string($legacy)) {
-            return IntegrationConfig::fromLegacyConfig($legacy);
-        }
 
         if (is_string($json)) {
             return IntegrationConfig::fromJsonFile($json);

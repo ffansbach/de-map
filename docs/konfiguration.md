@@ -29,10 +29,6 @@ Alle `*.local.json`, `config.php` und `upload.config.php` stehen in der `.gitign
 | `$dbAccess` | nein | Statistik: `array('host' => …, 'db' => …, 'user' => …, 'pass' => …)`; leeres Array = aus. |
 | `$setDataLogPointToken` | nein | Statistik: Token, das `log_to_db.php` prüft. |
 
-Ältere Installationen lassen den Parser zusätzlich mit `--legacy-config=config.php` eine `config.php`
-im Projektstamm des Parser-Servers lesen; darin stehen dann `$environment`, `$healtcheckIdentifier`,
-`$influxDB`, `$serverUpload` und `$setDataLogPointToken`. Diese Datei hat nichts mit `web/config.php`
-zu tun und ist für neue Installationen nicht nötig – sie nutzen die JSON-Dateien in `config/`.
 
 ## `upload.config.php` (Webserver)
 

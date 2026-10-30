@@ -9,7 +9,7 @@ use RuntimeException;
 
 /**
  * Where the result files go. Secrets live outside the repository: in config/upload.local.json
- * (see upload.example.json) or, for an FTP upload, in an old-style config.php (--legacy-config).
+ * (see upload.example.json).
  */
 final readonly class UploadConfig
 {
@@ -44,52 +44,6 @@ final readonly class UploadConfig
         $ping = $data['statsPingUrl'] ?? null;
 
         return new self($publishers, is_string($ping) && $ping !== '' ? $ping : null);
-    }
-
-    /**
-     * Reads $serverUpload (FTP), $setDataLogPointToken and $environment from an old-style config.php.
-     * The statistics are only pinged on the live environment.
-     */
-    public static function fromLegacyConfig(string $file): self
-    {
-        if (!is_file($file)) {
-            throw new RuntimeException($file . ' does not exist');
-        }
-
-        ob_start();
-
-        try {
-            $variables = (static function (string $configFile): array {
-                require $configFile;
-                unset($configFile);
-
-                return get_defined_vars();
-            })($file);
-        } finally {
-            ob_end_clean();
-        }
-
-        $ftp = $variables['serverUpload'] ?? null;
-        $publishers = [];
-
-        if (is_array($ftp) && is_string($ftp['host'] ?? null) && $ftp['host'] !== '') {
-            $publishers[] = [
-                'type' => 'ftp',
-                'host' => $ftp['host'],
-                'user' => (string) ($ftp['user'] ?? ''),
-                'password' => (string) ($ftp['password'] ?? ''),
-                'directory' => (string) ($ftp['target'] ?? '/'),
-                'required' => true,
-            ];
-        }
-
-        $token = $variables['setDataLogPointToken'] ?? null;
-        $live = ($variables['environment'] ?? null) === 'live';
-
-        return new self(
-            $publishers,
-            $live && is_string($token) && $token !== '' ? 'https://www.freifunk-karte.de/log_to_db.php?token=' . rawurlencode($token) : null,
-        );
     }
 
     /**

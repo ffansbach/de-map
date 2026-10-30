@@ -79,24 +79,4 @@ final class UploadConfigTest extends TestCase
 
         UploadConfig::fromJsonFile($this->write('up.json', '{'));
     }
-
-    public function testTheLegacyConfigGivesTheFtpAndPingsOnlyOnLive(): void
-    {
-        $live = $this->write('live.php', "<?php\n\$serverUpload = ['host' => 'ftp.example.org', 'user' => 'u', 'password' => 'p', 'target' => '/cache'];\n\$setDataLogPointToken = 'a b';\n\$environment = 'live';\n");
-        $dev = $this->write('dev.php', "<?php\n\$serverUpload = ['host' => 'ftp.example.org', 'user' => 'u', 'password' => 'p'];\n\$setDataLogPointToken = 'x';\n\$environment = 'dev';\n");
-
-        $config = UploadConfig::fromLegacyConfig($live);
-
-        $this->assertSame('ftp', $config->publishers[0]['type']);
-        $this->assertSame('/cache', $config->publishers[0]['directory']);
-        $this->assertSame('https://www.freifunk-karte.de/log_to_db.php?token=a%20b', $config->statsPingUrl);
-        $this->assertNull(UploadConfig::fromLegacyConfig($dev)->statsPingUrl);
-    }
-
-    public function testALegacyConfigWithoutFtpHasNoPublishers(): void
-    {
-        $file = $this->write('none.php', "<?php\n\$serverUpload = [];\n");
-
-        $this->assertSame([], UploadConfig::fromLegacyConfig($file)->publishers);
-    }
 }

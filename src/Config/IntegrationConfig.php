@@ -13,9 +13,8 @@ use GuzzleHttp\ClientInterface;
 use RuntimeException;
 
 /**
- * The outside services a run reports to. Secrets live outside the repository: either in
- * config/integrations.local.json (see integrations.example.json) or in the old-style config.php
- * (--legacy-config), which already has the healthchecks identifier and the InfluxDB settings.
+ * The outside services a run reports to. Secrets live outside the repository, in
+ * config/integrations.local.json (see integrations.example.json).
  */
 final readonly class IntegrationConfig
 {
@@ -44,44 +43,6 @@ final readonly class IntegrationConfig
             ? $healthchecks['failOn'] : DriftEvent::ALERT;
 
         return new self($url, $failOn, self::influx(is_array($data['influxdb'] ?? null) ? $data['influxdb'] : []));
-    }
-
-    /**
-     * Reads $healtcheckIdentifier, $influxDB and $environment from an old-style config.php.
-     */
-    public static function fromLegacyConfig(string $file): self
-    {
-        if (!is_file($file)) {
-            throw new RuntimeException($file . ' does not exist');
-        }
-
-        ob_start();
-
-        try {
-            $variables = (static function (string $configFile): array {
-                require $configFile;
-                unset($configFile);
-
-                return get_defined_vars();
-            })($file);
-        } finally {
-            ob_end_clean();
-        }
-
-        $identifier = $variables['healtcheckIdentifier'] ?? null;
-        $influx = is_array($variables['influxDB'] ?? null) ? $variables['influxDB'] : [];
-
-        if (isset($influx['add_tag_env'])) {
-            $influx['env'] = $influx['add_tag_env'];
-        } elseif (is_string($variables['environment'] ?? null)) {
-            $influx['env'] = $variables['environment'];
-        }
-
-        return new self(
-            is_string($identifier) && $identifier !== '' ? 'https://hc-ping.com/' . $identifier : null,
-            DriftEvent::ALERT,
-            self::influx($influx),
-        );
     }
 
     /**

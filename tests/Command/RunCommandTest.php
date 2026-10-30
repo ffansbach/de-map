@@ -346,24 +346,6 @@ final class RunCommandTest extends TestCase
         $this->assertStringStartsWith('POST https://hc.test/ping/abc run 1: ok, 34 nodes, 11 communities', $requests[1]);
     }
 
-    public function testHealthchecksFromTheLegacyConfigPhp(): void
-    {
-        file_put_contents($this->directory . '/config.php', "<?php\n\$healtcheckIdentifier = 'legacy-id';\n");
-        $requests = [];
-        $inner = StandardWorld::build()->httpHandler();
-        $handler = static function (RequestInterface $request, array $options) use ($inner, &$requests) {
-            if ($request->getUri()->getHost() === 'hc-ping.com') {
-                $requests[] = $request->getMethod() . ' ' . $request->getUri();
-            }
-
-            return $inner($request, $options);
-        };
-
-        $this->execute(['--legacy-config' => $this->directory . '/config.php'], null, $handler);
-
-        $this->assertSame(['POST https://hc-ping.com/legacy-id/start', 'POST https://hc-ping.com/legacy-id'], $requests);
-    }
-
     public function testFailingHealthchecksDoesNotFailTheRun(): void
     {
         file_put_contents($this->directory . '/integrations.json', (string) json_encode(['healthchecks' => ['url' => 'https://hc.test/ping/abc']]));

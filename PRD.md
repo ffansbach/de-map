@@ -89,7 +89,7 @@ Working rules: one step at a time, report after each, separate focused commits.
 | 2026-10-29 | Drift detection compares a run with the last *ok* run; thresholds are constructor arguments of `DriftDetector` | See section 9 for the rules and the severities. |
 | 2026-10-29 | Notifications go through healthchecks.io (already used by the legacy cron): `/start`, success ping, or `/fail` with the account of the run as body. **The check fails only on a widespread failure or when the result cannot be delivered to the web server** (`failOn: alert`); warnings are in the body of the success ping | Operator decision. A failing check is the alarm; one community lost or a new technical type must not trigger it. Other channels can be added as `RunListener`s. |
 | 2026-10-29 | The whole run history is kept (`--keep-days 0`, the default); JSON logs are kept 14 days | Operator decision. Measured: a run takes about 420 KB in the SQLite file (336 communities with messages, about 700 fetches), so roughly 0.9 GB per year at 6 runs a day. Fine for a long time; if it ever matters, old runs can be compacted (drop messages, attempts and fetches, keep the summary rows) instead of deleted. |
-| 2026-10-29 | Secrets stay out of the repository: `config/integrations.local.json` (gitignored) or the `config.php` of the legacy parser (`--legacy-config`) | The LXC already has the identifier and the InfluxDB settings in `config.php`. |
+| 2026-10-29 | Secrets stay out of the repository: `config/integrations.local.json` (gitignored) | (`--legacy-config`, which read the old `config.php`, was removed 2026-10-30 after the LXC migrated.) |
 | 2026-10-29 | InfluxDB keeps the legacy measurement `parser_result_count` and its field names; upload fields are left out until step 8 | Existing dashboards keep working; zero upload times would distort them. |
 | 2026-10-29 | A listener that fails never breaks a run | Monitoring must not cost the map its update. |
 | 2026-10-29 | The admin UI is read-only, server-rendered HTML with inline CSS and inline SVG charts, no JavaScript and no build step; it answers GET and HEAD only, and the database connection is `query_only` | Nothing on it can change the history or the map; nothing to maintain beyond PHP. |
@@ -249,7 +249,7 @@ Nothing is reported for the very first run (nothing to compare). Warning kinds a
 - **Console:** warnings and alerts under "To look at"; info stays in the log.
 - **healthchecks.io:** `/start`, then a success ping, or `/fail`. The check **fails only when** the run failed or was refused, a *widespread* problem was found (`run-nodes-dropped`: less than 80% of the previous run's nodes; `many-communities-lost`: 5 or more communities at once), or the result **could not be delivered to the web server** (`delivery-failed`). One lost community, a new technical type or a changed format are warnings: they do not fail the check, but they are in the body of every ping (the log of the check on healthchecks.io), in the console output, and in `bin/parser runs --events`. `failOn` in the integration config can be set to `warning` to make them fail the check, too. healthchecks.io notifies when the check goes down and when it recovers, not on every ping.
 - **InfluxDB:** `parser_result_count` with the legacy fields (`routers`, `communities`, `parse_time`, `mem_usage`, `curl_calls`, `env`) plus `communities_with_nodes`, `communities_no_data`, `events_warning`, `events_alert`.
-- **Setup:** `bin/parser run ... --legacy-config=config.php` takes the identifier and InfluxDB settings the legacy parser already uses; or `config/integrations.local.json` (see `integrations.example.json`).
+- **Setup:** `config/integrations.local.json` (see `integrations.example.json`).
 
 ### R12 (maps with a page but no data)
 The data is collected: every run stores, per community, which URLs were tried and what came back (`community_results.attempts`, in `result_statistics.json` for maps without data). `bin/parser runs ID` lists the maps without data of a run; the UI in step 7 shows them with their attempts and history.
@@ -326,7 +326,7 @@ The parser (LXC) delivers the result files to the web server (www.freifunk-karte
 - A failed delivery is recorded as `delivery-failed` (alert), fails the healthcheck and makes `run` exit with failure; the files stay in `--out` for a later `bin/parser upload --from=DIR`. A refused (implausible) result is never uploaded.
 
 ### Configuration
-`config/upload.local.json` (gitignored; see `config/upload.example.json`) or, for the FTP upload only, `--legacy-config=config.php` (`$serverUpload`, `$setDataLogPointToken`, `$environment`). Web side: `web/upload.config.php` (see `web/upload.config.example.php`; env `FFK_UPLOAD_CONFIG` overrides the path).
+`config/upload.local.json` (gitignored; see `config/upload.example.json`) (the old `--legacy-config` was removed 2026-10-30). Web side: `web/upload.config.php` (see `web/upload.config.example.php`; env `FFK_UPLOAD_CONFIG` overrides the path).
 
 ### Commands
 ```bash
@@ -363,7 +363,7 @@ Dev machine: PHP 8.5, Composer 2.10. PHPUnit 11.5, PHPStan 2.1, PHP-CS-Fixer 3.x
 
 ## 14. Cut-over and cleanup (step 9)
 
-**Cut-over (2026-10-29 14:00):** hourly cron on the LXC runs `bin/parser run --out=var/out --upload --legacy-config=config.php`; the old `data.php?reparse...` cron line is commented out. By 2026-10-30 morning 15 runs in a row were `ok` (about 26,400 nodes, 36 s each, no alert apart from one transient dip in run 3).
+**Cut-over (2026-10-29 14:00):** hourly cron on the LXC runs `bin/parser run --out=var/out --upload --legacy-config=config.php` (since 2026-10-30 without `--legacy-config`, settings in `config/integrations.local.json`); the old `data.php?reparse...` cron line is commented out. By 2026-10-30 morning 15 runs in a row were `ok` (about 26,400 nodes, 36 s each, no alert apart from one transient dip in run 3).
 
 **Removed (2026-10-30):**
 - `data.php` parse and upload path: the file now only reads `cache/result_*.json` and echoes them (`communities`, `allTheRouters`, `metaCommunities`), byte-identical to the old cached branch, without `config.php` or `vendor/`. The web part works with the files alone. **Caching (2026-10-31):** `data.php` sends a weak `ETag` and `Last-Modified` taken from name, mtime and size of the three result files and answers `If-None-Match` / `If-Modified-Since` with an empty `304` before anything is decoded (If-None-Match wins; `-gzip`/`-br` suffixes a proxy may append are ignored; no validators if a file is missing). `Cache-Control: public, max-age=600` (10 minutes, was 3600; revalidating is cheap now), so a visitor asks again after ten minutes and normally gets a 304 instead of the 0.72 MB (brotli) body, and sees a new run within ten minutes. The data format is unchanged (step 10 "slimming" was dropped: ~30 % of an already compressed download). `tests/Web/DataPhpTest` runs the real file under PHP's web server.
@@ -393,7 +393,6 @@ Dev machine: PHP 8.5, Composer 2.10. PHPUnit 11.5, PHPStan 2.1, PHP-CS-Fixer 3.x
 
 Decided to wait, in this order of usefulness:
 
-- **Remove `--legacy-config`.** Needs the LXC first: create `config/integrations.local.json` from the values in the old `config.php` (`$healtcheckIdentifier`, `$influxDB`, `$environment`), drop `--legacy-config=config.php` from the cron line, check one run's healthchecks.io ping, then delete `fromLegacyConfig` (UploadConfig, IntegrationConfig), the option in `run` and `upload`, and the legacy paragraphs of the README.
 - **`fixedCommunities.php` as JSON** (`config/fixed-communities.json`, 17 entries). Review the admin page `/fixed` after a few weeks of history first (which entries stay dry).
 - **Split `ParseRun.php`** (about 870 lines) when the pipeline is changed next; well covered by tests.
 - **Small web things:** drop the unused `isCachedresult` from `data.php`; send `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options` from `index.php`.

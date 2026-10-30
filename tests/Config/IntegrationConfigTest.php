@@ -79,42 +79,6 @@ final class IntegrationConfigTest extends TestCase
         IntegrationConfig::fromJsonFile($this->file);
     }
 
-    public function testTheLegacyConfigPhpIsUnderstood(): void
-    {
-        file_put_contents($this->file, <<<'PHP'
-            <?php
-            $environment = 'dev';
-            $healtcheckIdentifier = 'legacy-uuid';
-            $influxDB = ['host' => 'http://influx.test', 'port' => '8086', 'org' => 'o', 'token' => 't', 'bucket' => 'b', 'add_tag_env' => $environment];
-            echo "this output must not leak";
-            PHP);
-
-        $config = IntegrationConfig::fromLegacyConfig($this->file);
-
-        $this->assertSame('https://hc-ping.com/legacy-uuid', $config->healthchecksUrl);
-        $this->assertSame('alert', $config->healthchecksFailOn);
-        $this->assertNotNull($config->influx);
-        $this->assertSame('dev', $config->influx['env']);
-        $this->assertSame('b', $config->influx['bucket']);
-    }
-
-    public function testLegacyConfigWithoutTheServicesConfiguresNothing(): void
-    {
-        file_put_contents($this->file, "<?php\n\$environment = 'dev';\n\$influxDB = ['host' => 'your influxdb host'];\n");
-
-        $config = IntegrationConfig::fromLegacyConfig($this->file);
-
-        $this->assertNull($config->healthchecksUrl);
-        $this->assertNull($config->influx);
-    }
-
-    public function testMissingLegacyConfigIsAnError(): void
-    {
-        $this->expectException(RuntimeException::class);
-
-        IntegrationConfig::fromLegacyConfig('/nonexistent/config.php');
-    }
-
     public function testTheShippedExampleIsValid(): void
     {
         $config = IntegrationConfig::fromJsonFile(__DIR__ . '/../../config/integrations.example.json');
