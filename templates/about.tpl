@@ -37,8 +37,8 @@
 <h3>Technik</h3>
 <ul>
 	<li>Leaflet <a href="http://leafletjs.com/" target="_blank" rel="noopener">http://leafletjs.com/</a></li>
-	<li>Leaflet-Markercluster <a href="https://github.com/Leaflet/Leaflet.markercluster" target="_blank" rel="noopener">https://github.com/Leaflet/Leaflet.markercluster</a></li>
-
+	<li>PruneCluster <a href="https://github.com/SINTEF-9012/PruneCluster" target="_blank" rel="noopener">https://github.com/SINTEF-9012/PruneCluster</a></li>
+	<li>heatmap.js und Leaflet Heatmap Overlay <a href="https://www.patrick-wied.at/static/heatmapjs/" target="_blank" rel="noopener">https://www.patrick-wied.at/static/heatmapjs/</a></li>
 	<li>Bootstrap <a href="http://getbootstrap.com/" target="_blank" rel="noopener">http://getbootstrap.com/</a></li>
 </ul>
 <h3>Attribution</h3>
