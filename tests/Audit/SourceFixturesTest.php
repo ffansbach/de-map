@@ -41,7 +41,7 @@ final class SourceFixturesTest extends TestCase
     }
 
     #[DataProvider('fixtureProvider')]
-    public function testFixtureContainsNoPersonalData(string $file): void
+    public function testFixtureContainsNoPersonalData(string $file, Format $format, int $nodes, int $located): void
     {
         $body = (string) file_get_contents(__DIR__ . '/../fixtures/sources/' . $file);
 
