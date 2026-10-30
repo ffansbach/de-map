@@ -21,7 +21,7 @@ bin/parser            Einstieg der Kommandozeile
 src/                  Parser, Auslieferung, Admin-Oberfläche (Namensraum FreifunkKarte\)
   Parser/ Model/        Formate lesen, Knoten prüfen und deduplizieren
   Http/ Source/         paralleles Abrufen, Datenquellen finden, Zwischenspeicher
-  Pipeline/ Output/     der Lauf als Ganzes, Ergebnisdateien
+  Pipeline/ Output/     der Lauf als Ganzes (ParseRun steuert; Resolve/ folgt den Karten bis zu den Daten, Assemble/ verteilt die Knoten auf Communities), Ergebnisdateien
   Run/ Log/             Verlauf (SQLite), Erkennung von Auffälligkeiten, Meldungen
   Publish/ Admin/       Auslieferung (HTTPS/FTP), Admin-Oberfläche
 web/                  alles für den Webserver, fertig zum Hochladen (kein Composer nötig):

@@ -178,13 +178,13 @@ Fetching, discovery of the data URL behind a map page, the cache, run orchestrat
 
 ```
 bin/parser run --out=DIR
-  ParseRun
-   1 directory.json                      (1 request)
-   2 all API files, in parallel
-   3 maps, in rounds - per map one stage per round, stop at the first that yields nodes:
+  ParseRun            orchestrates; holds no state of its own (a RunState per run)
+   1 directory.json                      (1 request)             CommunityBuilder
+   2 all API files, in parallel                               CommunityBuilder, CommunityBuild
+   3 maps, in rounds - per map one stage per round, stop at the first that yields nodes:   Resolve/ (SourceResolver, MapWalker, SourceProbe, FetchPolicy)
         cached data URLs → declared URL → config.json → its dataPath URLs → other usual locations
         (a community with a declared nodelist: its other maps wait, and are never fetched if the nodelist delivers)
-   4 assemble: nodelist communities first, then the others, fixed communities last; first community keeps a node
+   4 assemble: nodelist communities first, then the others, fixed communities last; first community keeps a node   Assemble/ (MapChooser, ProcessingOrder, AssignmentPlanner, Plan, ReportBuilder)
   ParallelFetcher   workers + FetchQueue: 12 in flight, 2 per host, TLS verified, 25 MB cap, 3 redirects
   SourceParser      by content: NodeInfo / MeshviewerFlat / Nodelist (soft schema check)
   SourceCache       which data URLs a map page led to; entry expires 7 days after it was found
@@ -389,12 +389,13 @@ Dev machine: PHP 8.5, Composer 2.10. PHPUnit 11.5, PHPStan 2.1, PHP-CS-Fixer 3.x
 
 **More cleanup on 2026-10-31.** The legacy leftovers are gone from the code: `Format::LegacyGeo` was removed (no source delivers `geo[]`), `LegacyResultWriter` is `ResultWriter`, `tests/Legacy` is `tests/Support`, the recorded nodes and communities moved from `tests/fixtures/golden/legacy` to `golden/reference` (still the regression anchor for the map files), and `phpstan-legacy.neon` is `phpstan-weblib.neon`. `.gitattributes` fixes the line endings to LF. `composer.json` says PHP `>=8.4.1` like the lock and has real package metadata. The only legacy plumbing that stays is `--legacy-config` / `fromLegacyConfig`, because the LXC cron still reads healthchecks.io and InfluxDB from the old `config.php` (see the backlog).
 
+**`ParseRun` split on 2026-10-30.** The 870-line class is now an orchestrator (about 100 lines) over small classes with one job each: `CommunityBuilder`/`CommunityBuild` (directory, API files), `Resolve/` (`SourceResolver` rounds, `MapWalker` stage logic, `SourceProbe` fetch + retry + last-good, `FetchPolicy` what to do with a bad answer), `Assemble/` (`MapChooser`, `ProcessingOrder`, `AssignmentPlanner` -> `Plan`, `ReportBuilder`, `CommunityAssembler`), and `RunState` for what a run has learned. The nested arrays (`['status' => ..., 'urls' => ...]`) became value objects and enums (`Walk`, `Stage`, `StageKind`, `Choice`, `Resolution`, `PlanStep`, `AddedSource`). Behaviour is unchanged (the golden references and all `ParseRunTest` cases passed untouched); each class has its own unit test. One small saving: whether a community's nodelist holds back its other maps is worked out once per community and round instead of once per map.
+
 ## 15. Backlog (noted for later)
 
 Decided to wait, in this order of usefulness:
 
 - **`fixedCommunities.php` as JSON** (`config/fixed-communities.json`, 17 entries). Review the admin page `/fixed` after a few weeks of history first (which entries stay dry).
-- **Split `ParseRun.php`** (about 870 lines) when the pipeline is changed next; well covered by tests.
 - **Small web things:** drop the unused `isCachedresult` from `data.php`; send `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options` from `index.php`.
 - **CI:** a workflow that runs `composer check` on PHP 8.4 and 8.5 (Gitea Actions or GitHub Actions).
 - **Dependency updates:** Guzzle 8, PHPUnit 13, Symfony Console 8 are available; `composer audit` reports no advisories. Keep `php-http/guzzle7-adapter`: the InfluxDB client finds it at runtime.
