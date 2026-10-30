@@ -20,3 +20,6 @@ config/integrations.local.json
 config/admin.local.json
 web/upload.config.php
 config/upload.local.json
+
+# security audit reports contain hashes and local paths: never track
+sec_findings*.md
