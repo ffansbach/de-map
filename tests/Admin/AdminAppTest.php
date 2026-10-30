@@ -9,6 +9,7 @@ use FreifunkKarte\Admin\AdminConfig;
 use FreifunkKarte\Admin\Page;
 use FreifunkKarte\Admin\PageContext;
 use FreifunkKarte\Admin\PageResult;
+use FreifunkKarte\Admin\Routes;
 use FreifunkKarte\Admin\Safe;
 use FreifunkKarte\Run\RunRepository;
 use FreifunkKarte\Tests\Run\RunFixtures;
@@ -54,6 +55,27 @@ final class AdminAppTest extends AdminTestCase
         $this->assertSame(200, $response->getStatusCode());
         $this->assertSame('text/html; charset=utf-8', $response->getHeaderLine('Content-Type'));
         $this->assertStringContainsString('[{"id":"42"},{"q":"x"}]', (string) $response->getBody());
+    }
+
+    public function testMountedInASubDirectoryRoutesWithoutAndLinksWithThePrefix(): void
+    {
+        $this->seedHistory($this->repository);
+        $app = Routes::app($this->repository, new AdminConfig(), new NullLogger(), '/tino/freifunkkarte/public-admin');
+
+        $page = $app->handle(self::request('/tino/freifunkkarte/public-admin/runs'));
+
+        $this->assertSame(200, $page->getStatusCode());
+        $html = $this->assertValidHtml($page);
+        $this->assertStringContainsString('href="/tino/freifunkkarte/public-admin/communities"', $html, 'navigation');
+        $this->assertStringContainsString('href="/tino/freifunkkarte/public-admin/runs/', $html, 'links inside a page');
+        $this->assertStringNotContainsString('href="/communities"', $html);
+
+        $root = $app->handle(self::request('/tino/freifunkkarte/public-admin/'));
+        $this->assertSame(200, $root->getStatusCode());
+
+        // the prefix does not leak into the next request of an app without one
+        $plain = Routes::app($this->repository, new AdminConfig())->handle(self::request('/runs'));
+        $this->assertStringContainsString('href="/communities"', (string) $plain->getBody());
     }
 
     public function testTrailingSlashIsIgnoredAndTheRootWorks(): void

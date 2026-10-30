@@ -1,0 +1,8 @@
+# Apache: every address that is not a real file goes to the front controller.
+# The UI works from a sub-directory (/tino/freifunkkarte/public-admin/) as well as from the root of a host.
+Options -Indexes
+DirectoryIndex index.php
+
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.php [L]

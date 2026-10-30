@@ -36,6 +36,7 @@ final class AdminApp
         private readonly AdminConfig $config,
         private readonly array $routes,
         private readonly LoggerInterface $logger = new NullLogger(),
+        private readonly string $basePath = '',
     ) {
         $this->auth = new Auth($config);
     }
@@ -52,6 +53,8 @@ final class AdminApp
             return $this->secure(new Response(405, ['Allow' => 'GET, HEAD', 'Content-Type' => 'text/plain; charset=utf-8'], "This UI is read-only.\n"));
         }
 
+        Html::setBasePath($this->basePath);
+
         try {
             $result = $this->route($request);
             $html = Layout::render($result, $this->config, $this->repository->latestRun());
@@ -59,6 +62,8 @@ final class AdminApp
             $this->logger->error('admin page failed', ['path' => $request->getUri()->getPath(), 'error' => $e->getMessage(), 'exception' => $e::class]);
 
             return $this->secure(new Response(500, ['Content-Type' => 'text/plain; charset=utf-8'], "Something went wrong. The details are in the log.\n"));
+        } finally {
+            Html::setBasePath('');
         }
 
         return $this->secure(new Response($result->status, ['Content-Type' => 'text/html; charset=utf-8'], $request->getMethod() === 'HEAD' ? '' : $html));
@@ -80,7 +85,13 @@ final class AdminApp
 
     private function route(ServerRequestInterface $request): PageResult
     {
-        $path = rtrim($request->getUri()->getPath(), '/');
+        $path = $request->getUri()->getPath();
+
+        if ($this->basePath !== '' && str_starts_with($path, $this->basePath)) {
+            $path = substr($path, strlen($this->basePath));
+        }
+
+        $path = rtrim($path, '/');
         $path = $path === '' ? '/' : $path;
 
         foreach ($this->routes as [$pattern, $page]) {

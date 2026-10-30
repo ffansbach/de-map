@@ -23,7 +23,7 @@ final class Layout
         $nav = '';
 
         foreach (self::NAV as $path => $label) {
-            $nav .= sprintf('<a href="%s"%s>%s</a>', Html::e($path), $page->nav === $path ? ' aria-current="page"' : '', Html::e($label));
+            $nav .= sprintf('<a href="%s"%s>%s</a>', Html::e(Html::url($path)), $page->nav === $path ? ' aria-current="page"' : '', Html::e($label));
         }
 
         $status = '';

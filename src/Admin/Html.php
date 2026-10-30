@@ -36,13 +36,32 @@ final class Html
     }
 
     /**
+     * Where the UI is mounted (`/tino/freifunkkarte/public-admin`, or `` at the root of a host).
+     * Set by AdminApp for the time of a request: the pages build their links without knowing it.
+     */
+    private static string $basePath = '';
+
+    public static function setBasePath(string $basePath): void
+    {
+        self::$basePath = $basePath;
+    }
+
+    /**
+     * An address inside the UI, e.g. `/runs/3`, with the mount point in front.
+     */
+    public static function url(string $path): string
+    {
+        return self::$basePath . $path;
+    }
+
+    /**
      * @param array<string, string|int|null> $query
      */
     public static function link(string $path, string|Safe $label, array $query = []): Safe
     {
         $query = array_filter($query, static fn (string|int|null $v): bool => $v !== null && $v !== '');
 
-        return new Safe(sprintf('<a href="%s">%s</a>', self::e($path . ($query !== [] ? '?' . http_build_query($query) : '')), $label instanceof Safe ? $label->html : self::e($label)));
+        return new Safe(sprintf('<a href="%s">%s</a>', self::e(self::url($path) . ($query !== [] ? '?' . http_build_query($query) : '')), $label instanceof Safe ? $label->html : self::e($label)));
     }
 
     /**

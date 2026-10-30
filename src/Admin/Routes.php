@@ -13,9 +13,9 @@ final class Routes
     /**
      * The admin UI with all its pages.
      */
-    public static function app(RunRepository $repository, AdminConfig $config, LoggerInterface $logger = new NullLogger()): AdminApp
+    public static function app(RunRepository $repository, AdminConfig $config, LoggerInterface $logger = new NullLogger(), string $basePath = ''): AdminApp
     {
-        return new AdminApp($repository, $config, self::all(), $logger);
+        return new AdminApp($repository, $config, self::all(), $logger, $basePath);
     }
 
     /**

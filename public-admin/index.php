@@ -35,7 +35,10 @@ try {
         return;
     }
 
-    ResponseEmitter::emit(Routes::app($repository, $config, $logger)->handle(ServerRequest::fromGlobals()));
+    // served from a sub-directory of a shared host (`/tino/freifunkkarte/public-admin/`): links and routes need to know
+    $basePath = rtrim(str_replace('\\', '/', dirname((string) ($_SERVER['SCRIPT_NAME'] ?? '/index.php'))), '/');
+
+    ResponseEmitter::emit(Routes::app($repository, $config, $logger, $basePath)->handle(ServerRequest::fromGlobals()));
 } catch (Throwable $e) {
     // never show details to the client; they are in the web server's error log
     error_log('admin UI: ' . $e::class . ': ' . $e->getMessage());
