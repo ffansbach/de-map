@@ -14,8 +14,8 @@ use RuntimeException;
 
 /**
  * The outside services a run reports to. Secrets live outside the repository: either in
- * config/integrations.local.json (see integrations.example.json) or in the config.php of the
- * legacy parser, which already has the healthchecks identifier and the InfluxDB settings.
+ * config/integrations.local.json (see integrations.example.json) or in the old-style config.php
+ * (--legacy-config), which already has the healthchecks identifier and the InfluxDB settings.
  */
 final readonly class IntegrationConfig
 {
@@ -47,7 +47,7 @@ final readonly class IntegrationConfig
     }
 
     /**
-     * Reads $healtcheckIdentifier, $influxDB and $environment from the legacy config.php.
+     * Reads $healtcheckIdentifier, $influxDB and $environment from an old-style config.php.
      */
     public static function fromLegacyConfig(string $file): self
     {

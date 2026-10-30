@@ -10,7 +10,7 @@ use FreifunkKarte\Config\IntegrationConfig;
 use FreifunkKarte\Config\RunConfig;
 use FreifunkKarte\Http\ParallelFetcher;
 use FreifunkKarte\Log\LoggerFactory;
-use FreifunkKarte\Output\LegacyResultWriter;
+use FreifunkKarte\Output\ResultWriter;
 use FreifunkKarte\Parser\SourceParser;
 use FreifunkKarte\Pipeline\CommunityReport;
 use FreifunkKarte\Pipeline\ParseRun;
@@ -71,7 +71,7 @@ final class RunCommand extends Command
             ->addOption('keep-detail-days', null, InputOption::VALUE_REQUIRED, 'drop the requests and messages of runs older than this many days and keep their summaries; 0 keeps all detail', '30')
             ->addOption('no-history', null, InputOption::VALUE_NONE, 'do not record the run, compare it, log it or report it anywhere')
             ->addOption('integrations', null, InputOption::VALUE_REQUIRED, 'JSON file with the healthchecks.io / InfluxDB settings (default: config/integrations.local.json if it exists)')
-            ->addOption('legacy-config', null, InputOption::VALUE_REQUIRED, 'take the healthchecks.io / InfluxDB (and, for --upload, FTP) settings from the config.php of the legacy parser')
+            ->addOption('legacy-config', null, InputOption::VALUE_REQUIRED, 'take the healthchecks.io / InfluxDB (and, for --upload, FTP) settings from an old-style config.php (as used before config/integrations.local.json)')
             ->addOption('upload', null, InputOption::VALUE_NONE, 'deliver the result files to the web server afterwards')
             ->addOption('upload-config', null, InputOption::VALUE_REQUIRED, 'JSON file with the upload settings (default: config/upload.local.json)');
     }
@@ -167,7 +167,7 @@ final class RunCommand extends Command
 
             $listed = count($result->listedCommunities());
             $refused = !$input->getOption('force') && ($listed < (int) $input->getOption('min-communities') || $result->nodes->count() < (int) $input->getOption('min-nodes'));
-            $paths = $refused ? [] : (new LegacyResultWriter())->write($result, $out);
+            $paths = $refused ? [] : (new ResultWriter())->write($result, $out);
         } catch (\Throwable $e) {
             if ($recorded !== null) {
                 $recorded->recorder->fail($recorded->id, $e);

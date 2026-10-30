@@ -18,7 +18,7 @@ final class NodeCollectionTest extends TestCase
         return new Node($id, $name, $lat, $long, NodeStatus::Online, 2);
     }
 
-    public function testDedupeKeyIsTheLegacyFormula(): void
+    public function testDedupeKeyFormulaIsStable(): void
     {
         $this->assertSame(md5('alpha' . 'a' . '50.1' . '8.1'), self::node()->dedupeKey());
     }

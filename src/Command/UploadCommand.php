@@ -37,7 +37,7 @@ final class UploadCommand extends Command
             ->addOption('from', null, InputOption::VALUE_REQUIRED, 'directory with the result_*.json files')
             ->addOption('config-dir', null, InputOption::VALUE_REQUIRED, 'directory with upload.local.json')
             ->addOption('upload-config', null, InputOption::VALUE_REQUIRED, 'JSON file with the upload settings (default: config/upload.local.json)')
-            ->addOption('legacy-config', null, InputOption::VALUE_REQUIRED, 'take the FTP settings from the config.php of the legacy parser');
+            ->addOption('legacy-config', null, InputOption::VALUE_REQUIRED, 'take the FTP settings from an old-style config.php');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int

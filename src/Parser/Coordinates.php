@@ -13,12 +13,12 @@ final readonly class Coordinates
     }
 
     /**
-     * Same acceptance as the legacy parsers: both values present, numeric and not 0 (null island
+     * Accepted: both values present, numeric and not 0 (null island
      * is where nodes without a configured position end up). New: values outside the valid range
      * are refused.
      *
      * The strings are PHP's own string cast of what the source delivered, so that the output
-     * stays byte-compatible with the legacy one (a float like 12.0 becomes "12").
+     * stays what the map has always received (a float like 12.0 becomes "12").
      */
     public static function from(mixed $lat, mixed $long): self|LocationProblem
     {

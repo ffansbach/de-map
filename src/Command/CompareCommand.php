@@ -14,14 +14,14 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'compare',
-    description: 'Compare two directories of result files, e.g. the legacy parser\'s and the new one\'s',
+    description: 'Compare two directories of result files (for example two runs) by what is on the map',
 )]
 final class CompareCommand extends Command
 {
     protected function configure(): void
     {
         $this
-            ->addArgument('old', InputArgument::REQUIRED, 'directory with result_routers.json and result_communities.json (legacy)')
+            ->addArgument('old', InputArgument::REQUIRED, 'the older directory, with result_routers.json and result_communities.json')
             ->addArgument('new', InputArgument::REQUIRED, 'directory with the new result files');
     }
 

@@ -55,7 +55,7 @@ final class SourceAuditorTest extends TestCase
             'https://map.test/data/nodes.json' => self::NODEINFO,
             'https://netmon.test/' => '<html>netmon</html>',
             'http://schemeless.test/map/data/nodes.json' => self::NODEINFO,
-            'https://fixed.test/nodes.json' => '{"nodes": [{"name": "x", "geo": [50.1, 8.6]}]}',
+            'https://fixed.test/nodes.json' => '{"nodes": [{"nodeinfo": {"hostname": "x", "location": {"latitude": 50.1, "longitude": 8.6}}}]}',
         ];
     }
 
@@ -104,7 +104,7 @@ final class SourceAuditorTest extends TestCase
 
         $fixed = $byKey['ff_fixed/ffmap'];
         $this->assertTrue($fixed['working']);
-        $this->assertSame('legacy_geo', $fixed['format']);
+        $this->assertSame('nodeinfo', $fixed['format']);
         $this->assertSame('fixed', $fixed['origin']);
 
         $summary = $report['summary'];

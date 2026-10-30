@@ -18,7 +18,7 @@ final class CoordinatesTest extends TestCase
     {
         return [
             'floats' => [50.1, 8.1, '50.1/8.1'],
-            'whole float loses its decimals like the legacy string cast' => [12.0, 7.5, '12/7.5'],
+            'whole float loses its decimals like the string cast' => [12.0, 7.5, '12/7.5'],
             'numeric strings stay as they are' => ['50.5', '8.50', '50.5/8.50'],
             'southern and western hemisphere' => [-33.9, -70.5, '-33.9/-70.5'],
             'limits are valid' => [90, 180, '90/180'],
@@ -51,9 +51,9 @@ final class CoordinatesTest extends TestCase
         $this->assertSame($expected, $result->lat . '/' . $result->long);
     }
 
-    public function testLongFloatsAreCastLikeTheLegacyParser(): void
+    public function testLongFloatsAreCastWithPhpsOwnStringCast(): void
     {
-        // the legacy output is (string) $float, which depends on the "precision" ini setting
+        // the output is (string) $float, which depends on the "precision" ini setting
         $result = Coordinates::from(50.123456789012345, 8.1);
 
         $this->assertInstanceOf(Coordinates::class, $result);

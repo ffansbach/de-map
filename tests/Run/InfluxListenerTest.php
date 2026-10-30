@@ -32,7 +32,7 @@ final class InfluxListenerTest extends TestCase
         return [new InfluxListener($writer, 'live'), $writer];
     }
 
-    public function testFinishedRunWritesTheLegacyMeasurementAndFields(): void
+    public function testFinishedRunWritesTheMeasurementAndFieldsOfTheDashboards(): void
     {
         [$listener, $writer] = $this->listener();
         $events = [new DriftEvent('a', DriftEvent::WARNING, 's', 'm'), new DriftEvent('b', DriftEvent::ALERT, 's', 'm'), new DriftEvent('c', DriftEvent::INFO, 's', 'm')];
@@ -43,7 +43,7 @@ final class InfluxListenerTest extends TestCase
         [$measurement, $tags, $fields] = $writer->points[0];
         $this->assertSame('parser_result_count', $measurement);
         $this->assertSame([], $tags);
-        // the field names of the legacy parser
+        // the field names the dashboards read
         $this->assertSame(40, $fields['routers']);
         $this->assertSame(13, $fields['communities']);
         $this->assertSame(52428800, $fields['mem_usage']);

@@ -8,7 +8,7 @@ use DateTimeImmutable;
 use FreifunkKarte\Audit\Format;
 use FreifunkKarte\Model\NodeStatus;
 use FreifunkKarte\Parser\SourceParser;
-use FreifunkKarte\Tests\Legacy\World;
+use FreifunkKarte\Tests\Support\World;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -41,7 +41,7 @@ final class SourceParserTest extends TestCase
     public function testMeshviewerFlatFixtureKeepsRecentlyOfflineNodes(): void
     {
         // the fixture has two offline nodes with a position that were seen a day ago and
-        // minutes ago: they stay (the legacy parser dropped every offline node of this format)
+        // minutes ago: they stay
         $result = $this->parse(World::fixture('meshviewer_flat'));
 
         $this->assertSame(Format::MeshviewerFlat, $result->format);
@@ -79,7 +79,7 @@ final class SourceParserTest extends TestCase
             'empty node list' => ['{"nodes": []}', Format::NodesEmpty, 'empty'],
             'map config' => ['{"dataPath": "/data/"}', Format::FfmapConfig, 'config.json'],
             'unknown nodes' => ['{"nodes": [{"foo": 1}]}', Format::NodesUnknown, 'unknown format'],
-            'old geo format' => ['{"nodes": [{"name": "x", "geo": [50.1, 8.1]}]}', Format::LegacyGeo, 'no longer supported'],
+            'old geo format' => ['{"nodes": [{"name": "x", "geo": [50.1, 8.1]}]}', Format::NodesUnknown, 'unknown format'],
         ];
     }
 

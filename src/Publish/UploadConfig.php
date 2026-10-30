@@ -9,7 +9,7 @@ use RuntimeException;
 
 /**
  * Where the result files go. Secrets live outside the repository: in config/upload.local.json
- * (see upload.example.json) or, for the FTP upload of the legacy parser, in its config.php.
+ * (see upload.example.json) or, for an FTP upload, in an old-style config.php (--legacy-config).
  */
 final readonly class UploadConfig
 {
@@ -47,8 +47,8 @@ final readonly class UploadConfig
     }
 
     /**
-     * Reads $serverUpload (FTP), $setDataLogPointToken and $environment from the legacy config.php.
-     * Like the legacy parser, the statistics are only pinged on the live environment.
+     * Reads $serverUpload (FTP), $setDataLogPointToken and $environment from an old-style config.php.
+     * The statistics are only pinged on the live environment.
      */
     public static function fromLegacyConfig(string $file): self
     {

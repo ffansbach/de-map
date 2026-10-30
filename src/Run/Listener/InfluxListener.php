@@ -13,7 +13,7 @@ use FreifunkKarte\Run\RunSummary;
 
 /**
  * Writes the numbers of a finished run to InfluxDB. The measurement and the field names are the
- * ones the legacy parser wrote (parser_result_count: routers, communities, parse_time, mem_usage,
+ * ones the dashboards have always read (parser_result_count: routers, communities, parse_time, mem_usage,
  * curl_calls, env), so existing dashboards keep working; a few fields are new.
  */
 final class InfluxListener implements RunListener

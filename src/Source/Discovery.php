@@ -6,7 +6,7 @@ namespace FreifunkKarte\Source;
 
 /**
  * A community gives us the URL of a map page, not of the data behind it. These are the places
- * where the data usually is - the rules the legacy parser probed, without its quirks.
+ * where the data usually is - the usual places of ffmap and meshviewer data.
  */
 final class Discovery
 {
@@ -14,7 +14,7 @@ final class Discovery
     public const DISCOVERY_TYPES = ['ffmap', 'meshviewer', 'hopglass'];
 
     /**
-     * "map.example.org/foo" becomes "http://map.example.org/foo", like the legacy parser did.
+     * "map.example.org/foo" becomes "http://map.example.org/foo", as browsers do.
      */
     public static function withScheme(string $url): string
     {

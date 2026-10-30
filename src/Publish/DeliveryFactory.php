@@ -10,7 +10,7 @@ final class DeliveryFactory
 {
     /**
      * @param string|null $jsonFile the upload settings; without it config/upload.local.json is used if it exists
-     * @param string|null $legacyConfig config.php of the legacy parser (its FTP settings), used if there is no JSON file
+     * @param string|null $legacyConfig old-style config.php (its FTP settings), used if there is no JSON file
      */
     public static function create(ClientInterface $client, string $configDir, ?string $jsonFile = null, ?string $legacyConfig = null): Delivery
     {

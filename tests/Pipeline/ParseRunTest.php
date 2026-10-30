@@ -17,8 +17,8 @@ use FreifunkKarte\Source\LastGoodStore;
 use FreifunkKarte\Source\SourceAssignment;
 use FreifunkKarte\Source\SourceAssignments;
 use FreifunkKarte\Source\SourceCache;
-use FreifunkKarte\Tests\Legacy\StandardWorld;
-use FreifunkKarte\Tests\Legacy\World;
+use FreifunkKarte\Tests\Support\StandardWorld;
+use FreifunkKarte\Tests\Support\World;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Promise\Create;
@@ -90,21 +90,21 @@ final class ParseRunTest extends TestCase
         return array_values(array_filter($this->requests, static fn (string $url): bool => str_starts_with($url, $prefix)));
     }
 
-    public function testReferenceWorldGivesTheLegacyResultPlusTheDeliberateDifferences(): void
+    public function testReferenceWorldGivesTheRecordedResultPlusTheDeliberateDifferences(): void
     {
         $result = $this->runWorld(StandardWorld::build(), skip: StandardWorld::SKIP);
 
-        /** @var list<array<string, mixed>> $legacy */
-        $legacy = json_decode((string) file_get_contents(__DIR__ . '/../fixtures/golden/legacy/routers.json'), true);
+        /** @var list<array<string, mixed>> $reference */
+        $reference = json_decode((string) file_get_contents(__DIR__ . '/../fixtures/golden/reference/routers.json'), true);
         $new = $result->nodes->toRouterEntries();
 
-        // everything the legacy parser found is still there, unchanged
-        foreach ($legacy as $router) {
-            $this->assertContains($router, $new, 'legacy node missing: ' . json_encode($router));
+        // everything that was recorded is still there, unchanged
+        foreach ($reference as $router) {
+            $this->assertContains($router, $new, 'recorded node missing: ' . json_encode($router));
         }
 
         // and exactly these are new: hop-town's second dataPath, recently seen offline flat nodes
-        $extra = array_filter($new, static fn (array $router): bool => !in_array($router, $legacy, true));
+        $extra = array_filter($new, static fn (array $router): bool => !in_array($router, $reference, true));
         $perCommunity = array_count_values(array_column($extra, 'community'));
         ksort($perCommunity);
 
@@ -115,12 +115,12 @@ final class ParseRunTest extends TestCase
         }
     }
 
-    public function testListedCommunitiesAreTheLegacyOnesInTheLegacyOrder(): void
+    public function testListedCommunitiesAreTheRecordedOnesInTheRecordedOrder(): void
     {
         $result = $this->runWorld(StandardWorld::build(), skip: StandardWorld::SKIP);
 
-        /** @var array<string, array{name: string, url: string, meta: string|false}> $legacy */
-        $legacy = json_decode((string) file_get_contents(__DIR__ . '/../fixtures/golden/legacy/communities.json'), true);
+        /** @var array<string, array{name: string, url: string, meta: string|false}> $reference */
+        $reference = json_decode((string) file_get_contents(__DIR__ . '/../fixtures/golden/reference/communities.json'), true);
 
         $listed = [];
 
@@ -128,7 +128,7 @@ final class ParseRunTest extends TestCase
             $listed[$community->key] = ['name' => $community->name, 'url' => $community->url, 'meta' => $community->meta ?? false];
         }
 
-        $this->assertSame($legacy, $listed);
+        $this->assertSame($reference, $listed);
     }
 
     public function testNoUrlIsRequestedTwice(): void
@@ -671,7 +671,6 @@ final class ParseRunTest extends TestCase
         $coldRequests = count($this->requests);
         $warm = $this->runWorld(StandardWorld::build(), $cache, StandardWorld::SKIP);
 
-        // the legacy parser needed more requests warm (40) than cold (37)
         $this->assertLessThan($coldRequests, count($this->requests));
         $this->assertSame($cold->nodes->toRouterEntries(), $warm->nodes->toRouterEntries());
 

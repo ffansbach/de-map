@@ -1,4 +1,4 @@
-# New code (src/, bin/, tests for it): strict. Legacy code: phpstan-legacy.neon
+# New code (src/, bin/, tests for it): strict. The plain-PHP web part: phpstan-weblib.neon (web/lib) and phpstan-web.neon (upload.php, as PHP 7.2)
 parameters:
     scanFiles:
         - web/upload.php
@@ -20,7 +20,7 @@ parameters:
         - tests/Admin
         - tests/Publish
         - tests/Web
-        - tests/Legacy
+        - tests/Support
         - tests/Parser
         - tests/Model
     phpVersion: 80401

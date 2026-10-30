@@ -9,8 +9,7 @@ use Throwable;
 
 /**
  * The old way, kept as a fallback and for running next to the new one: upload every file under a
- * staging name, check its size, and only then rename all of them into place. (The legacy script
- * sent text mode, never sent the metacommunities, and its delete had no connection to delete on.)
+ * staging name, check its size, and only then rename all of them into place, in binary mode.
  */
 final class FtpPublisher implements Publisher
 {

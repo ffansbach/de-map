@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace FreifunkKarte\Tests\Legacy;
+namespace FreifunkKarte\Tests\Support;
 
 use DateTimeImmutable;
 use DateTimeZone;

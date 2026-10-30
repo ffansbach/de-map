@@ -15,8 +15,6 @@ enum Format: string
     case NodeInfo = 'nodeinfo';
     /** flat nodes with node_id/hostname/location: current meshviewer.json */
     case MeshviewerFlat = 'meshviewer_flat';
-    /** very old ffmap nodes with a geo[] array */
-    case LegacyGeo = 'legacy_geo';
     /** ffmap/HopGlass config.json that points to the data via dataPath */
     case FfmapConfig = 'ffmap_config';
     case NodesUnknown = 'nodes_unknown';
@@ -32,7 +30,7 @@ enum Format: string
     public function isNodeSource(): bool
     {
         return match ($this) {
-            self::Nodelist, self::NodeInfo, self::MeshviewerFlat, self::LegacyGeo => true,
+            self::Nodelist, self::NodeInfo, self::MeshviewerFlat => true,
             default => false,
         };
     }

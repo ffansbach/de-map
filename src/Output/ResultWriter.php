@@ -13,7 +13,7 @@ use RuntimeException;
  *
  * The shape and the encoding of the first two are what js/meta_map.js depends on.
  */
-final class LegacyResultWriter
+final class ResultWriter
 {
     public const FILES = ['result_routers.json', 'result_communities.json', 'result_metacommunities.json'];
 
@@ -86,7 +86,7 @@ final class LegacyResultWriter
     }
 
     /**
-     * Default flags on purpose: same bytes as the legacy parser (escaped slashes and unicode).
+     * Default flags on purpose: the bytes the map has always received (escaped slashes and unicode).
      */
     private static function encode(mixed $data): string
     {

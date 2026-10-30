@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace FreifunkKarte\Output;
 
 /**
- * Compares two sets of result files (the legacy parser's and the new one's) by what is on the map.
+ * Compares two sets of result files (for example two runs) by what is on the map.
  */
 final class ResultComparer
 {

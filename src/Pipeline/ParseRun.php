@@ -28,8 +28,8 @@ use RuntimeException;
  * Everything that waits for the network is done for all communities at once, in rounds:
  *   1. the directory, 2. all API files, 3. the maps - for each map one stage per round:
  *   cached data URLs, the declared URL, its config.json, the dataPath URLs from that, the
- *   other usual locations. A map stops at the first stage that yields nodes, like the legacy
- *   parser did, but all maps advance together.
+ *   other usual locations. A map stops at the first stage that yields nodes, but all maps
+ *   advance together.
  *
  * Priorities (as before): a community with a nodelist uses only that; otherwise the first map
  * that yields nodes; nodelist communities come first, fixed communities last; the first

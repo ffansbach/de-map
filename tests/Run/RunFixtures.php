@@ -10,8 +10,8 @@ use FreifunkKarte\Parser\SourceParser;
 use FreifunkKarte\Pipeline\ParseRun;
 use FreifunkKarte\Pipeline\RunResult;
 use FreifunkKarte\Source\SourceCache;
-use FreifunkKarte\Tests\Legacy\StandardWorld;
-use FreifunkKarte\Tests\Legacy\World;
+use FreifunkKarte\Tests\Support\StandardWorld;
+use FreifunkKarte\Tests\Support\World;
 use GuzzleHttp\Client;
 
 /**

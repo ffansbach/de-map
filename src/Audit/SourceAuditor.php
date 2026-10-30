@@ -14,7 +14,7 @@ use RuntimeException;
  * Read-only audit of every node source the map knows about: which technicalType
  * is declared, what the URL really delivers and whether nodes can be read from it.
  *
- * Probing follows the legacy parser: the declared URL first; for ffmap/meshviewer/hopglass
+ * Probing: the declared URL first; for ffmap/meshviewer/hopglass
  * maps without a direct hit the usual nodes.json locations and the dataPath of a config.json.
  */
 final class SourceAuditor

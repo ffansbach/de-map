@@ -48,9 +48,9 @@ final class FormatDetectorTest extends TestCase
                 ]}',
                 Format::MeshviewerFlat, 2, 1,
             ],
-            'legacy geo' => [
-                '{"nodes": [{"name": "x", "geo": [50.1, 8.6]}, {"name": "y", "geo": null}]}',
-                Format::LegacyGeo, 2, 1,
+            'the old geo[] format is no node list any more' => [
+                '{"nodes": [{"name": "x", "geo": [50.1, 8.6]}]}',
+                Format::NodesUnknown, 1, 0,
             ],
             'nodelist with lon' => [
                 '{"version": "1.0.0", "nodes": [{"id": "a", "position": {"lat": 50.1, "lon": 8.6}}]}',
@@ -64,8 +64,8 @@ final class FormatDetectorTest extends TestCase
                 Format::Nodelist, 2, 1,
             ],
             'format decided by a later node' => [
-                '{"nodes": [1, {"foo": 1}, {"geo": [50.1, 8.6]}]}',
-                Format::LegacyGeo, 3, 1,
+                '{"nodes": [1, {"foo": 1}, {"nodeinfo": {"location": {"latitude": 50.1, "longitude": 8.6}}}]}',
+                Format::NodeInfo, 3, 1,
             ],
             'nodelist with long' => [
                 '{"version": "1.0.0", "nodes": [{"id": "a", "position": {"lat": 50.1, "long": 8.6}}, {"id": "b", "position": {}}]}',
@@ -105,7 +105,7 @@ final class FormatDetectorTest extends TestCase
     {
         $detector = new FormatDetector();
 
-        $this->assertTrue($detector->detect('{"nodes": [{"geo": [1, 2]}]}')->hasNodes());
+        $this->assertTrue($detector->detect('{"nodes": [{"nodeinfo": {}}]}')->hasNodes());
         $this->assertFalse($detector->detect('{"nodes": []}')->hasNodes());
         $this->assertFalse($detector->detect('{"nodes": [{"foo": 1}]}')->hasNodes());
     }

@@ -101,14 +101,13 @@ final class FormatDetector
         return match (true) {
             isset($node['nodeinfo']) => Format::NodeInfo,
             isset($node['node_id']) || (isset($node['hostname']) && isset($node['location'])) => Format::MeshviewerFlat,
-            array_key_exists('geo', $node) => Format::LegacyGeo,
             isset($node['id']) && (array_key_exists('position', $node) || isset($node['status'])) => Format::Nodelist,
             default => null,
         };
     }
 
     /**
-     * The same plausibility the legacy parser applies: coordinates present, numeric (nodelist: non-empty).
+     * Plausible coordinates: present and numeric (nodelist: non-empty).
      *
      * @param array<array-key, mixed> $node
      */
@@ -117,7 +116,6 @@ final class FormatDetector
         return match ($format) {
             Format::NodeInfo => $this->coordinates($node['nodeinfo']['location'] ?? null, 'latitude', 'longitude'),
             Format::MeshviewerFlat => $this->coordinates($node['location'] ?? null, 'latitude', 'longitude'),
-            Format::LegacyGeo => !empty($node['geo'][0]) && !empty($node['geo'][1]),
             Format::Nodelist => $this->nodelistCoordinates($node['position'] ?? null),
             default => false,
         };

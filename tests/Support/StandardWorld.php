@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace FreifunkKarte\Tests\Legacy;
+namespace FreifunkKarte\Tests\Support;
 
 /**
- * The reference scenario for the legacy parser. Step 4/5 of the rewrite runs the same world through the
- * new pipeline and compares the result.
+ * The reference scenario: a small invented Freifunk world that the pipeline tests run against. The files in
+ * tests/fixtures/golden/reference are the recorded nodes and communities of this world.
  *
  * Communities and what they exercise:
  *  - nl-city:        nodelist AND meshviewer map; the nodelist must win
@@ -46,8 +46,6 @@ final class StandardWorld
             ->community('hop-town', ['nodeMaps' => [
                 ['technicalType' => 'hopglass', 'url' => 'https://hop.test/'],
             ]])
-            // the legacy parser asks for "//config.json", the new one for "/config.json"
-            ->route('https://hop.test//config.json', (string) json_encode(['dataPath' => ['https://hop.test/a/', 'https://hop.test/b/']]))
             ->route('https://hop.test/config.json', (string) json_encode(['dataPath' => ['https://hop.test/a/', 'https://hop.test/b/']]))
             ->route('https://hop.test/a/nodes.json', World::fixture('nodeinfo', 'hopa'))
             ->route('https://hop.test/b/nodes.json', World::fixture('nodeinfo', 'hopb'))

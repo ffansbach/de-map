@@ -6,17 +6,17 @@ namespace FreifunkKarte\Tests\Output;
 
 use FreifunkKarte\Community\MetaCommunityResolver;
 use FreifunkKarte\Http\ParallelFetcher;
-use FreifunkKarte\Output\LegacyResultWriter;
+use FreifunkKarte\Output\ResultWriter;
 use FreifunkKarte\Parser\SourceParser;
 use FreifunkKarte\Pipeline\ParseRun;
 use FreifunkKarte\Pipeline\RunResult;
 use FreifunkKarte\Source\SourceCache;
-use FreifunkKarte\Tests\Legacy\StandardWorld;
-use FreifunkKarte\Tests\Legacy\World;
+use FreifunkKarte\Tests\Support\StandardWorld;
+use FreifunkKarte\Tests\Support\World;
 use GuzzleHttp\Client;
 use PHPUnit\Framework\TestCase;
 
-final class LegacyResultWriterTest extends TestCase
+final class ResultWriterTest extends TestCase
 {
     private string $directory;
 
@@ -64,37 +64,37 @@ final class LegacyResultWriterTest extends TestCase
 
     public function testWritesTheFourFilesAndNoTemporaryOnes(): void
     {
-        $paths = (new LegacyResultWriter())->write($this->runResult(StandardWorld::build()), $this->directory);
+        $paths = (new ResultWriter())->write($this->runResult(StandardWorld::build()), $this->directory);
 
-        $expected = LegacyResultWriter::FILES;
+        $expected = ResultWriter::FILES;
         sort($expected);
 
-        $this->assertSame(LegacyResultWriter::FILES, array_keys($paths));
+        $this->assertSame(ResultWriter::FILES, array_keys($paths));
         $this->assertSame($expected, array_map('basename', glob($this->directory . '/*') ?: []));
     }
 
-    public function testRoutersAndCommunitiesHaveTheLegacyShapeAndEncoding(): void
+    public function testRoutersAndCommunitiesHaveTheShapeAndEncodingTheMapReads(): void
     {
-        (new LegacyResultWriter())->write($this->runResult(StandardWorld::build()), $this->directory);
+        (new ResultWriter())->write($this->runResult(StandardWorld::build()), $this->directory);
 
         $routers = $this->read('result_routers.json');
         $this->assertCount(40, $routers);
         $this->assertSame(['id', 'lat', 'long', 'name', 'community', 'status', 'clients'], array_keys($routers[0]));
 
-        /** @var array<string, array{name: string, url: string, meta: string|false}> $legacy */
-        $legacy = json_decode((string) file_get_contents(__DIR__ . '/../fixtures/golden/legacy/communities.json'), true);
-        $this->assertSame($legacy, $this->read('result_communities.json'));
+        /** @var array<string, array{name: string, url: string, meta: string|false}> $reference */
+        $reference = json_decode((string) file_get_contents(__DIR__ . '/../fixtures/golden/reference/communities.json'), true);
+        $this->assertSame($reference, $this->read('result_communities.json'));
 
-        // json_encode defaults, like the legacy parser: slashes are escaped
+        // json_encode defaults: slashes are escaped
         $raw = (string) file_get_contents($this->directory . '/result_communities.json');
         $this->assertStringContainsString('https:\/\/flat.example\/home', $raw);
         $this->assertStringStartsWith('{"nl-city":{"name":"Freifunk nl-city"', $raw);
-        $this->assertSame((string) json_encode($legacy), $raw, 'byte for byte what the legacy parser would write');
+        $this->assertSame((string) json_encode($reference), $raw, 'byte for byte the recorded reference');
     }
 
     public function testMetaCommunitiesAreAnObjectEvenWithoutLinks(): void
     {
-        (new LegacyResultWriter())->write($this->runResult(StandardWorld::build()), $this->directory);
+        (new ResultWriter())->write($this->runResult(StandardWorld::build()), $this->directory);
 
         $this->assertSame('{}', (string) file_get_contents($this->directory . '/result_metacommunities.json'));
     }
@@ -104,7 +104,7 @@ final class LegacyResultWriterTest extends TestCase
         $maps = static fn (string $key): array => ['metacommunity' => 'Funk Nord', 'url' => "https://funknord.test/$key/", 'nodeMaps' => []];
         $world = (new World())->community('a', $maps('a'))->community('b', $maps('b'));
 
-        (new LegacyResultWriter())->write($this->runResult($world), $this->directory);
+        (new ResultWriter())->write($this->runResult($world), $this->directory);
 
         $this->assertSame(['Funk Nord' => ['url' => 'https://funknord.test/']], $this->read('result_metacommunities.json'));
     }
@@ -114,7 +114,7 @@ final class LegacyResultWriterTest extends TestCase
         mkdir($this->directory);
         file_put_contents($this->directory . '/result_routers.json', 'old');
 
-        (new LegacyResultWriter())->write($this->runResult(StandardWorld::build()), $this->directory);
+        (new ResultWriter())->write($this->runResult(StandardWorld::build()), $this->directory);
 
         $this->assertNotSame('old', file_get_contents($this->directory . '/result_routers.json'));
     }

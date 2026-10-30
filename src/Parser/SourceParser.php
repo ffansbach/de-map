@@ -78,7 +78,6 @@ final class SourceParser
     private function unsupportedReason(Format $format): string
     {
         return match ($format) {
-            Format::LegacyGeo => 'old ffmap format with geo[] is no longer supported',
             Format::FfmapConfig => 'response is a map config.json, not a node list',
             Format::NodesEmpty => 'node list is empty',
             Format::NodesUnknown => 'nodes are in an unknown format',

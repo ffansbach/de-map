@@ -22,7 +22,7 @@ final readonly class Node
 
     /**
      * Two sources describing the same node (same name, id and position) give the same key.
-     * The formula is the legacy one, so deduplication stays comparable.
+     * The formula has not changed over the years, so deduplication stays comparable.
      */
     public function dedupeKey(): string
     {

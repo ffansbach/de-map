@@ -181,9 +181,9 @@ Still to create in step 3 (characterisation): a trimmed `directory.json`, a few 
 
 ## 9. Legacy characterisation (step 3)
 
-The untouched legacy `NodeListParser` runs against a fake network (`tests/Legacy`): `FakeCurlHelper` answers from a route table and records every request, `LegacyRunner` captures result files, debug messages, echo output and PHP warnings, `World`/`StandardWorld` build a reference scenario of 13 communities and 3 fixed ones from the source fixtures (dates are shifted so offline-node ages stay constant). Goldens live in `tests/fixtures/golden/legacy/` (`routers.json`, `communities.json`, `calls_cold.txt`, `calls_warm.txt`); regenerate deliberately with `UPDATE_GOLDEN=1 vendor/bin/phpunit tests/Legacy`.
+The untouched legacy `NodeListParser` runs against a fake network (`tests/Legacy`): `FakeCurlHelper` answers from a route table and records every request, `LegacyRunner` captures result files, debug messages, echo output and PHP warnings, `World`/`StandardWorld` build a reference scenario of 13 communities and 3 fixed ones from the source fixtures (dates are shifted so offline-node ages stay constant). Goldens live in `tests/fixtures/golden/reference/` (`routers.json`, `communities.json`, `calls_cold.txt`, `calls_warm.txt`); regenerate deliberately with `UPDATE_GOLDEN=1 vendor/bin/phpunit tests/Legacy`.
 
-**Removed in step 9 (2026-10-30):** the legacy parser, `FakeCurlHelper`, `LegacyRunner`, the edge-case and parity tests and the call-count goldens are gone (they are in git before commit `05c4d83`, if the old behaviour is ever needed). Kept: `World`/`StandardWorld`, and the recorded `communities.json`/`routers.json`, which `ParseRunTest` and `LegacyResultWriterTest` hold the new output to. There is no `UPDATE_GOLDEN` any more; the two files are fixed references.
+**Removed in step 9 (2026-10-30):** the legacy parser, `FakeCurlHelper`, `LegacyRunner`, the edge-case and parity tests and the call-count goldens are gone (they are in git before commit `05c4d83`, if the old behaviour is ever needed). Kept: `World`/`StandardWorld`, and the recorded `communities.json`/`routers.json`, which `ParseRunTest` and `ResultWriterTest` hold the new output to. There is no `UPDATE_GOLDEN` any more; the two files are fixed references.
 
 ### Rules the rewrite must keep (pinned by tests)
 - Nodelist beats every other map of the same community; the other maps are not even fetched.
@@ -281,7 +281,7 @@ bin/parser run --out=DIR
   SourceParser      by content: NodeInfo / MeshviewerFlat / Nodelist (soft schema check)
   SourceCache       which data URLs a map page led to; entry expires 7 days after it was found
   LastGoodStore     last nodes of every source, 24 h; used only when the server has trouble
-  MetaCommunityResolver, LegacyResultWriter (result_routers / communities / statistics / metacommunities)
+  MetaCommunityResolver, ResultWriter (result_routers / communities / statistics / metacommunities)
 bin/parser compare OLD_DIR NEW_DIR      diff two result directories by what is on the map
 ```
 
@@ -351,7 +351,7 @@ Live result (same day): 26,374 nodes against 24,941 before the fixes. Berlin +57
 ```
 bin/parser run --out=DIR
    RunRecorder.begin      → history row (running), log "run started", listeners.started (healthchecks /start)
-   ParseRun, LegacyResultWriter
+   ParseRun, ResultWriter
    RunRecorder.complete   → history rows (run, 336 communities, ~800 fetches), DriftDetector vs. the last ok run,
                             events stored + logged, listeners.finished (healthchecks ping / fail, InfluxDB point)
    RunRecorder.fail       → history (failed) + alert, listeners.finished
@@ -528,7 +528,7 @@ Dev machine: PHP 8.5, Composer 2.10. PHPUnit 11.5, PHPStan 2.1, PHP-CS-Fixer 3.x
 - **`composer.json` said PHP >= 8.3 while the lock needs 8.4.1** (`symfony/string` v8.1 is a production dependency). **Fixed 2026-10-31:** `php` is `>=8.4.1`, the lock hash was refreshed without any package change, PHPStan analyses as 8.4.1, and the package metadata (name `stilgarbf/freifunk-karte`, description, `type: project`, homepage, license `GPL-2.0-only`) is real. Only the parser server uses `vendor/`.
 - `fetch.php` set `display_errors` to On (a failing stats query showed host and user names). **Fixed 2026-10-31:** errors are logged, never shown (a failing request now answers an empty 500).
 
-**Web part in its own directory (2026-10-31).** Everything the web host serves now lives in `web/`: `index.php`, `data.php`, `fetch.php`, `debug.php`, `log_to_db.php`, `upload.php`, `lib/log.php`, `css/`, `js/`, `img/`, `templates/`, `favicon.ico`, an empty `cache/` and the two example configs (`config.php_example.php`, `upload.config.example.php`, both now web-only). Reason: the production host is shared hosting with FTP only, no SSH and no Composer; the operator uploads this directory as it is, without parser code mixed in. The web part needs no `vendor/` (checked by running a copy of `web/` alone). Moved with `git mv`; `fixedCommunities.php`, `schema/`, `config/`, `src/`, `public-admin/` stay at the root (parser side). Unused `css/MarkerCluster*.css` (leftover of the old clustering library) were removed. `.gitignore` keeps `web/cache/*` (except `.gitkeep`), `web/config.php` and `web/upload.config.php` out of Git. PHPStan: `phpstan-web.neon` analyses `web/upload.php` as PHP 7.2, `phpstan-legacy.neon` `web/lib`.
+**Web part in its own directory (2026-10-31).** Everything the web host serves now lives in `web/`: `index.php`, `data.php`, `fetch.php`, `debug.php`, `log_to_db.php`, `upload.php`, `lib/log.php`, `css/`, `js/`, `img/`, `templates/`, `favicon.ico`, an empty `cache/` and the two example configs (`config.php_example.php`, `upload.config.example.php`, both now web-only). Reason: the production host is shared hosting with FTP only, no SSH and no Composer; the operator uploads this directory as it is, without parser code mixed in. The web part needs no `vendor/` (checked by running a copy of `web/` alone). Moved with `git mv`; `fixedCommunities.php`, `schema/`, `config/`, `src/`, `public-admin/` stay at the root (parser side). Unused `css/MarkerCluster*.css` (leftover of the old clustering library) were removed. `.gitignore` keeps `web/cache/*` (except `.gitkeep`), `web/config.php` and `web/upload.config.php` out of Git. PHPStan: `phpstan-web.neon` analyses `web/upload.php` as PHP 7.2, `phpstan-weblib.neon` `web/lib`.
 
 **Public debug view removed (2026-10-31).** `web/debug.php` and `fetch.php?get_debug` exposed `result_statistics.json` (214 KB with internal API URLs and messages) to everybody, and the admin UI replaces them. The parser no longer writes or uploads `result_statistics.json`; per-community diagnostics live only in the history database. The receiver (`web/upload.php`) accepts only the three remaining files, so **roll out in this order: parser first, then the web host** (a newer receiver refuses an older parser's upload because of the retired file). A `cache/result_statistics.json` left on the host should be deleted by hand.
 

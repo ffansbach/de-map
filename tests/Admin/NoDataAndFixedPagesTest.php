@@ -9,8 +9,8 @@ use FreifunkKarte\Admin\AdminApp;
 use FreifunkKarte\Admin\AdminConfig;
 use FreifunkKarte\Admin\Routes;
 use FreifunkKarte\Run\RunRepository;
-use FreifunkKarte\Tests\Legacy\World;
 use FreifunkKarte\Tests\Run\RunFixtures;
+use FreifunkKarte\Tests\Support\World;
 use Psr\Http\Message\ResponseInterface;
 
 final class NoDataAndFixedPagesTest extends AdminTestCase

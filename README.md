@@ -701,7 +701,7 @@ composer cs-fix                # Code-Stil automatisch korrigieren
 vendor/bin/phpunit --filter testName tests/Pipeline/ParseRunTest.php   # einzelner Test
 ```
 
-Die Tests laufen ohne Netzwerk gegen eine erfundene Freifunk-Welt (`tests/Legacy/World.php`). Einige
+Die Tests laufen ohne Netzwerk gegen eine erfundene Freifunk-Welt (`tests/Support/World.php`). Einige
 Tests starten einen echten PHP-Webserver (Admin-Oberfläche, Upload, `data.php`).
 
 **Aufbau**
