@@ -22,7 +22,10 @@ if (!is_array($dbAccess)
 $db = new \mysqli($dbAccess['host'], $dbAccess['user'], $dbAccess['pass'], $dbAccess['db']);
 
 if ($db->connect_errno) {
-    echo 'Failed to connect to MySQL: (' . $db->connect_errno . ') ' . $db->connect_error;
+    // the details (host, user name) belong in the server's error log, not in the response
+    error_log('log_to_db.php: failed to connect to MySQL: (' . $db->connect_errno . ') ' . $db->connect_error);
+    http_response_code(500);
+    echo 'database not available';
     return;
 }
 

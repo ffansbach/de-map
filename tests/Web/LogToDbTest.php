@@ -90,7 +90,7 @@ final class LogToDbTest extends TestCase
         }
 
         $process = proc_open(
-            [PHP_BINARY, '-d', 'disable_classes=mysqli', '-d', 'auto_prepend_file=' . $this->directory . '/stub.php', $this->directory . '/log_to_db.php'],
+            [PHP_BINARY, '-d', 'error_log=' . $this->directory . '/error.log', '-d', 'disable_classes=mysqli', '-d', 'auto_prepend_file=' . $this->directory . '/stub.php', $this->directory . '/log_to_db.php'],
             [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']],
             $pipes,
             $this->directory,
@@ -162,11 +162,14 @@ final class LogToDbTest extends TestCase
         $this->assertSame([], $result['queries']);
     }
 
-    public function testReportsAConnectionError(): void
+    public function testReportsAConnectionErrorWithoutDetails(): void
     {
         $result = $this->runScript('secret-token', 2002);
 
-        $this->assertSame('Failed to connect to MySQL: (2002) Connection refused', $result['output']);
+        $this->assertStringContainsString('database not available', $result['output']);
+        $this->assertStringNotContainsString('Connection refused', $result['output'], 'the details go to the error log, not to the caller');
+        $this->assertStringNotContainsString('db.test', $result['output']);
+        $this->assertStringContainsString('(2002) Connection refused', (string) file_get_contents($this->directory . '/error.log'));
         $this->assertSame(['connect db.test u stats'], $result['queries']);
     }
 
