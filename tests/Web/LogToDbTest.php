@@ -90,7 +90,7 @@ final class LogToDbTest extends TestCase
         }
 
         $process = proc_open(
-            [PHP_BINARY, '-d', 'error_log=' . $this->directory . '/error.log', '-d', 'disable_classes=mysqli', '-d', 'auto_prepend_file=' . $this->directory . '/stub.php', $this->directory . '/log_to_db.php'],
+            [PHP_BINARY, '-n', '-d', 'display_errors=1', '-d', 'error_log=' . $this->directory . '/error.log', '-d', 'disable_classes=mysqli', '-d', 'auto_prepend_file=' . $this->directory . '/stub.php', $this->directory . '/log_to_db.php'],
             [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']],
             $pipes,
             $this->directory,
