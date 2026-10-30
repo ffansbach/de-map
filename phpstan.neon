@@ -19,6 +19,7 @@ parameters:
         - tests/Log
         - tests/Admin
         - tests/Publish
+        - tests/Web
         - tests/Legacy
         - tests/Parser
         - tests/Model
