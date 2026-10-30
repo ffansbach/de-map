@@ -88,6 +88,16 @@ Wer sie nicht öffentlich haben möchte, löscht `debug.php` auf dem Webserver.
 - **Apache:** das `.htaccess` im Projektstamm sperrt `var/`, `config/`, `src/` und weitere private
   Ordner, falls doch einmal das ganze Projekt ausgeliefert wird. Es braucht `AllowOverride` und
   `mod_rewrite`; verlass dich aber nicht darauf, sondern lade nur den Inhalt von `web/` hoch.
+- **nginx (und alles ohne `.htaccess`):** das `.htaccess` wirkt dort **nicht**. Würde das ganze Projekt
+  ausgeliefert, wären `var/parser.sqlite` (Verlauf), `config/` (Passwort-Hash, Tokens) und der Quellcode
+  abrufbar. Der Document Root gehört deshalb immer auf `web/` (die Karte) bzw. `public-admin/` (die
+  Admin-Oberfläche), nie auf das Projektverzeichnis. Wenn es sich gar nicht vermeiden lässt:
+
+  ```nginx
+  location ~ ^/(var|config|src|vendor|bin|tests|schema|\.git)(/|$) { deny all; }
+  location ~ ^/(composer\.(json|lock)|phpunit\.xml|phpstan.*\.neon)$ { deny all; }
+  location ~ /\.(?!well-known) { deny all; }
+  ```
 
 **Prüfen:** ein GET auf den Empfänger muss abgelehnt werden, die Startseite muss laden:
 

@@ -25,7 +25,7 @@ entstehen:
 | `var/log/` | JSON-Logs, eine Datei pro Tag, 14 Tage lang |
 
 Das Projektverzeichnis darf **nicht** als Ganzes über einen Webserver ausgeliefert werden (dort
-liegen Konfiguration und Verlauf); für den Parser ist auf diesem Server gar kein Webserver nötig.
+liegen Konfiguration und Verlauf; das `.htaccess` schützt nur unter Apache, nginx siehe [Webserver](webserver.md)); für den Parser ist auf diesem Server gar kein Webserver nötig.
 Läuft die Karte auf derselben Maschine, zeigt der Document Root des Webservers auf `web/`.
 
 ## Schritt 2: Upload-Geheimnis erzeugen
