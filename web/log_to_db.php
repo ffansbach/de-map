@@ -6,8 +6,10 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/log.php';
 
-if (!isset($_REQUEST['token'])
-    || $_REQUEST['token'] != $setDataLogPointToken) {
+// strings only and compared as such: "10" must not equal "1e1", and the time of the check tells nothing
+if (!is_string($setDataLogPointToken) || $setDataLogPointToken === ''
+    || !isset($_REQUEST['token']) || !is_string($_REQUEST['token'])
+    || !hash_equals($setDataLogPointToken, $_REQUEST['token'])) {
     return;
 }
 

@@ -127,6 +127,22 @@ final class LogToDbTest extends TestCase
         }
     }
 
+    public function testTheTokenIsComparedAsAStringNotAsANumber(): void
+    {
+        file_put_contents($this->directory . '/config.php', "<?php\n\$setDataLogPointToken = '10';\n\$dbAccess = array('host' => 'db.test', 'user' => 'u', 'pass' => 'p', 'db' => 'stats');");
+
+        $this->assertSame([], $this->runScript('1e1')['queries'], '"1e1" == "10" in PHP, but it is not the token');
+        $this->assertSame([], $this->runScript('10.0')['queries']);
+        $this->assertNotSame([], $this->runScript('10')['queries']);
+    }
+
+    public function testAnEmptyConfiguredTokenLetsNobodyIn(): void
+    {
+        file_put_contents($this->directory . '/config.php', "<?php\n\$setDataLogPointToken = '';\n\$dbAccess = array('host' => 'db.test', 'user' => 'u', 'pass' => 'p', 'db' => 'stats');");
+
+        $this->assertSame([], $this->runScript('')['queries']);
+    }
+
     public function testWritesNothingWhenThereAreNoNodes(): void
     {
         $this->writeRouters(0);
