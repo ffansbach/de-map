@@ -11,6 +11,12 @@ if (isset($_REQUEST['minlat']) && isset($_REQUEST['maxlat']) && isset($_REQUEST[
 }
 
 
+// coordinates are written as plain numbers, whatever the file holds (locale independent, no markup possible)
+function gpxCoordinate($value)
+{
+	return rtrim(rtrim(sprintf('%.7F', (float) $value), '0'), '.');
+}
+
 header("Content-Type: text/xml");
 header('Content-Disposition: attachment; filename="ffnodes.gpx"');
 
@@ -34,7 +40,7 @@ else
 			continue;
 		}
 
-		echo '<wpt lon="'.$r->long.'" lat="'.$r->lat.'">
+		echo '<wpt lon="'.gpxCoordinate($r->long).'" lat="'.gpxCoordinate($r->lat).'">
 <name>'.htmlspecialchars($r->name).'</name>
 <desc>'.htmlspecialchars($r->name).' ('.htmlspecialchars($r->community).')</desc>
 </wpt>
