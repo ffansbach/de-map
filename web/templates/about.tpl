@@ -5,16 +5,20 @@
 	Communities in Deutschland zu beziehen. Aus deren API-Files werden dann die Links zu Knotenkarten gelesen.
 </p>
 <p>
-	3 Arten von Knotenkarten können dann zum Beziehen von Daten genutzt werden: Netmon, ffmap und OpenWifiMap.
+	Hinter diesen Links wird nach Knotenlisten gesucht. Das Format wird an den Daten selbst erkannt: &quot;nodelist&quot;
+	(empfohlen), die nodeinfo-Daten von ffmap, Meshviewer und HopGlass sowie die flache meshviewer.json.
 	Die dort gezeigten Knoten/Router/Zugangspunkte der jeweiligen Community fließen dann in diese Karte ein.
 </p>
 <p>
-	Als viertes Format wird &quot;nodelist&quot; verarbeitet, welches für alle Communities sinnvoll ist, die keine der 3 Kartenlösungen verwenden.<br>
-	Informationen zur nodelist gibt es auf <a href="https://github.com/ffansbach/nodelist" target="_blank">github -&gt; nodelist</a>.
+	Communities, die keine dieser Kartenlösungen verwenden, können eine Knotenliste im Format &quot;nodelist&quot; anbieten.<br>
+	Informationen zur nodelist gibt es auf <a href="https://github.com/ffansbach/nodelist" target="_blank" rel="noopener">github -&gt; nodelist</a>.
 </p>
 <h4>Verarbeitung</h4>
 <p>
 	Alle 60 Minuten werden die Daten neu verarbeitet und so aktualisiert.
+</p>
+<p>
+	Antwortet der Server einer Community vorübergehend nicht, werden bis zu 24 Stunden lang ihre zuletzt bekannten Daten gezeigt.
 </p>
 <p>
 	Knoten, die länger offline sind, werden nicht auf der Karte angezeigt.
