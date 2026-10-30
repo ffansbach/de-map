@@ -61,7 +61,7 @@ foreach ($communities as $key => $community) {
 ksort($byMeta, SORT_NATURAL | SORT_FLAG_CASE);
 
 ?><!doctype html>
-<html lang="de">
+<html lang="de" id="debug">
 	<head>
 		<meta charset="utf-8">
 		<meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -71,7 +71,7 @@ ksort($byMeta, SORT_NATURAL | SORT_FLAG_CASE);
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
 		<link rel="stylesheet" href="css/site.css" />
 	</head>
-	<body id="debug">
+	<body>
 		<div class="container" style="margin-top: 20px">
 			<div class="jumbotron">
 				<h1>Freifunk-Karte Debugview</h1>

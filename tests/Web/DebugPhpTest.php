@@ -73,6 +73,12 @@ final class DebugPhpTest extends TestCase
         $this->assertStringContainsString('noch keine Parserdaten', $this->page());
     }
 
+    public function testThePageCanScroll(): void
+    {
+        // css/site.css hides the overflow of <html> for the map; html#debug turns it back on
+        $this->assertStringContainsString('<html lang="de" id="debug">', $this->page());
+    }
+
     public function testTheListGroupsCommunitiesByMetaCommunity(): void
     {
         $this->writeDebug(['bsp' => self::community(), 'solo' => self::community(['name' => 'Solo', 'meta' => null])]);
