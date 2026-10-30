@@ -121,7 +121,7 @@ final class DataPhpTest extends TestCase
 
         $this->assertSame(200, $response->getStatusCode());
         $this->assertStringStartsWith('application/json', $response->getHeaderLine('Content-Type'));
-        $this->assertSame('public, max-age=3600', $response->getHeaderLine('Cache-Control'));
+        $this->assertSame('public, max-age=600', $response->getHeaderLine('Cache-Control'));
 
         $body = (string) $response->getBody();
         // the page has always received < > & ' \" as hex escapes
@@ -156,7 +156,7 @@ final class DataPhpTest extends TestCase
         $this->assertSame(304, $response->getStatusCode());
         $this->assertSame('', (string) $response->getBody());
         $this->assertSame($etag, $response->getHeaderLine('ETag'));
-        $this->assertSame('public, max-age=3600', $response->getHeaderLine('Cache-Control'));
+        $this->assertSame('public, max-age=600', $response->getHeaderLine('Cache-Control'));
     }
 
     public function testRecognisesTheEtagAsProxiesAndBrowsersReturnIt(): void

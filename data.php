@@ -9,7 +9,7 @@
  * browser that asks again after max-age gets an empty 304 and nothing is read or decoded.
  */
 
-$offset = 1 * 60 * 60;
+$offset = 10 * 60;
 header('Cache-Control: public, max-age=' . $offset);
 header("Expires: " . gmdate("D, d M Y H:i:s", time() + $offset) . " GMT");
 
