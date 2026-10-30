@@ -12,7 +12,7 @@ $healtcheckIdentifier = 'your healthchecks.io uuid';
 
 $environment = 'dev'; //for logging purpose . ie InfluxDB
 
-$tileServerUrl = 'http://{s}.tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png';
+$tileServerUrl = 'https://tile.openstreetmap.de/{z}/{x}/{y}.png';
 $tileServerAttribution = '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
 $mapInitalView = array(
