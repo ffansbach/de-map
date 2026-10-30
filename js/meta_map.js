@@ -121,6 +121,9 @@ function init()
 
 	map.on('moveend overlayadd overlayremove', setDirectLink);
 
+	// the cluster under the mouse is replaced while moving or zooming, and gets no mouseout
+	map.on('movestart zoomstart', hideClusterHull);
+
 	setDirectLink();
 
 }
@@ -512,11 +515,26 @@ function onLocationFound(e)
 var centerOnPosition = new L.Control.CenterOnPosition();
 
 /**
+ * removes the area of the hovered cluster from the map, if there is one
+ */
+function hideClusterHull()
+{
+	if(clusterArea)
+	{
+		map.removeLayer(clusterArea);
+		clusterArea = null;
+	}
+}
+
+/**
  * shows the area of the hovered cluster
  * @param  {object} cluster
  */
 function showClusterHull(cluster)
 {
+	// never leave a previous hull behind: its variable is overwritten below
+	hideClusterHull();
+
 	var convexHull = new ConvexHullGrahamScan();
 
 	$.each(cluster._clusterMarkers, function(i, marker)
@@ -535,7 +553,9 @@ function showClusterHull(cluster)
 	clusterArea = L.polygon(points,{
 		color: '#009ee0',
 		fillColor: '#009ee0',
-		fillOpacity: 0.5
+		fillOpacity: 0.5,
+		// only an indication: it must not catch the mouse from the markers below
+		interactive: false
 	}).addTo(map);
 }
 
@@ -634,7 +654,7 @@ function preparePruneCluster()
 
 		m.on('click', function()
 		{
-			map.removeLayer(clusterArea);
+			hideClusterHull();
 
 			// Compute the  cluster bounds (it's slow : O(n))
 			var markersArea = pruneCluster.Cluster.FindMarkersInArea(cluster.bounds);
@@ -674,7 +694,7 @@ function preparePruneCluster()
 		})
 		.on('mouseout', function()
 		{
-			map.removeLayer(clusterArea);
+			hideClusterHull();
 		});
 
 		return m;
