@@ -36,10 +36,10 @@
 </p>
 <h3>Technik</h3>
 <ul>
-	<li>Leaflet <a href="http://leafletjs.com/" targte="_blank">http://leafletjs.com/</a></li>
-	<li>Leaflet-Markercluster <a href="https://github.com/Leaflet/Leaflet.markercluster" targte="_blank">https://github.com/Leaflet/Leaflet.markercluster</a></li>
+	<li>Leaflet <a href="http://leafletjs.com/" target="_blank" rel="noopener">http://leafletjs.com/</a></li>
+	<li>Leaflet-Markercluster <a href="https://github.com/Leaflet/Leaflet.markercluster" target="_blank" rel="noopener">https://github.com/Leaflet/Leaflet.markercluster</a></li>
 
-	<li>Bootstrap <a href="http://getbootstrap.com/" targte="_blank">http://getbootstrap.com/</a></li>
+	<li>Bootstrap <a href="http://getbootstrap.com/" target="_blank" rel="noopener">http://getbootstrap.com/</a></li>
 </ul>
 <h3>Attribution</h3>
 <p>

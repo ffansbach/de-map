@@ -8,14 +8,13 @@ require 'config.php';
 <html lang="de">
 	<head>
 		<meta charset="utf-8">
-		<meta http-equiv="X-UA-Compatible" content="IE=edge">
 		<title>Freifunk-Karte</title>
 		<meta name="description" content="Karte der Freifunk Zugangspunkte in Deutschland. Öffentlich zugängliche, nicht kommerzielle und unzensierte WLAN Zugangspunkte. ">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.1/css/bootstrap.min.css">
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
 		<link rel="stylesheet" href="css/site.css" />
 
-		<link rel="stylesheet" href="//unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" />
 	</head>
 	<body>
 		<div id="map"></div>
@@ -39,8 +38,8 @@ require 'config.php';
 							<!-- Nav tabs -->
 							<ul class="nav nav-tabs modalMainTabs" role="tablist">
 								<li role="presentation" class="active"><a href="#home" aria-controls="home" role="tab" data-toggle="tab">Infos</a></li>
-								<li role="presentation"><a href="#about" aria-controls="profile" role="tab" data-toggle="tab" data-tabsource="fetch.php?content=about">Über die Karte</a></li>
-								<li role="presentation"><a href="#stats" aria-controls="profile" role="tab" data-toggle="tab" data-tabsource="fetch.php?content=stats">Statistik</a></li>
+								<li role="presentation"><a href="#about" aria-controls="about" role="tab" data-toggle="tab" data-tabsource="fetch.php?content=about">Über die Karte</a></li>
+								<li role="presentation"><a href="#stats" aria-controls="stats" role="tab" data-toggle="tab" data-tabsource="fetch.php?content=stats">Statistik</a></li>
 							</ul>
 
 							<!-- Tab panes -->
@@ -49,8 +48,8 @@ require 'config.php';
 									<h3>Direktlink zur aktuellen Ansicht:</h3>
 									<p><span id="direktlink"></span></p>
 									<h3>Statistisches</h3>
-									<ul>Communities im Api-File: <span id="countCom"></ul>
-									<ul>Verarbeitete Knoten: <span id="countNodes"></ul>
+									<p>Communities im Api-File: <span id="countCom"></span><br />
+									Verarbeitete Knoten: <span id="countNodes"></span></p>
 									<h3>Download</h3>
 									<p><a href="fetch.php?content=gpxfile">Alle Knoten als GPX-Datei</a></p>
 									<p><a href="#" id="gpxlink">Aktuell sichtbare Knoten als GPX-Datei</a></p>
@@ -80,9 +79,6 @@ require 'config.php';
 							Bitte haben Sie einen Moment Geduld. Die Daten werden geladen.
 						</p>
 						<p>
-							Nach spätestens einer Minute werden Sie die Freifunk-Knoten angezeigt bekommen.
-						</p>
-						<p>
 							Vielen Dank für Ihre Geduld.
 						</p>
 					</div>
@@ -90,9 +86,9 @@ require 'config.php';
 			</div>
 		</div>
 
-		<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
-		<script src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.1/js/bootstrap.min.js"></script>
-		<script src="//unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha384-1H217gwSVyLSIfaLxHbE7dRb3v4mYCKbpQvzx0cegeju1MVsGrX5xXxAvs/HgeFs" crossorigin="anonymous"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd" crossorigin="anonymous"></script>
+		<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
 		<script src="js/prunecluster/PruneCluster.js"></script>
 		<script src="js/heatmap.min.js"></script>
 		<script src="js/leaflet-heatmap.js"></script>
@@ -101,8 +97,6 @@ require 'config.php';
 		<script src="js/meta_map.js"></script>
 		<script src="js/site.js"></script>
 		<script>
-			<?php /*var communities = <?php echo json_encode($parseResult['communities'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);?>;
-			var allTheRouters = <?php echo json_encode($parseResult['routerList']);?>;*/?>
 			var tileServerUrl = <?php echo json_encode($tileServerUrl);?>;
 			var tileServerAttribution = <?php echo json_encode($tileServerAttribution);?>;
 			var mapInitalView = <?php echo json_encode($mapInitalView);?>;
