@@ -3,12 +3,8 @@
  * Log the number of communities and nodes to a mysql db.
  * Those logs are used in the frontend to show a chart with historic data.
  */
-declare(strict_types = 1);
-
-namespace ffmap;
-
 require_once __DIR__ . '/config.php';
-require __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/lib/log.php';
 
 if (!isset($_REQUEST['token'])
     || $_REQUEST['token'] != $setDataLogPointToken) {

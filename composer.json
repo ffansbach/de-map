@@ -21,8 +21,7 @@
   },
   "autoload": {
     "psr-4": {
-      "FreifunkKarte\\": "src/",
-      "ffmap\\": "lib/"
+      "FreifunkKarte\\": "src/"
     }
   },
   "autoload-dev": {

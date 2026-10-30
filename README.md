@@ -75,7 +75,7 @@ der **Webserver** liefert nur fertige Dateien aus (billig, läuft bei jedem Seit
  └──────────────────────────────────────┬──────────────────────────────────────────────┘
                                         │  ein signierter, gzip-komprimierter POST (HTTPS)
                                         ▼
- ┌──────────────────── Webserver (PHP ≥ 7.4, kein Composer) ───────────────────────────┐
+ ┌──────────────────── Webserver (PHP ≥ 7.2, kein Composer) ───────────────────────────┐
  │  upload.php  →  cache/result_*.json  →  data.php  →  index.php + js/meta_map.js      │
  └─────────────────────────────────────────────────────────────────────────────────────┘
                                         │
@@ -104,17 +104,15 @@ ihres letzten Kontakts bekannt ist.
 
 |  | Parser-Server | Webserver (Karte) |
 |---|---|---|
-| **PHP** | **8.4.1 oder neuer** (CLI)¹ | **7.4 oder neuer**² |
+| **PHP** | **8.4.1 oder neuer** (CLI)¹ | **7.2 oder neuer** |
 | **Erweiterungen** | `curl`, `json`, `mbstring`, `pdo_sqlite`, `zlib`; `ftp` nur für den FTP-Upload | `zlib` (Upload), `json`; `mysqli` nur für die optionale Statistik |
-| **Composer** | ja | nein³ |
+| **Composer** | ja | nein |
 | **Datenbank** | SQLite-Datei (wird selbst angelegt) | keine (nur optional MySQL/MariaDB für die Statistik) |
 | **Netzwerk** | ausgehend HTTPS zu GitHub und zu allen Community-Servern | eingehend HTTPS vom Parser |
 | **Software** | Cron, `flock` | Apache oder nginx mit PHP (FPM oder mod_php), HTTPS |
 
 ¹ In `composer.json` steht formal PHP 8.3, das mitgelieferte `composer.lock` enthält aber Pakete, die
 8.4.1 verlangen. Getestet ist mit PHP 8.4 und 8.5.
-² `web/upload.php` läuft ab PHP 7.2; die Statistik (`lib/log.php`) braucht 7.4.
-³ Nur die optionale Statistik macht eine Ausnahme: `log_to_db.php` lädt `vendor/autoload.php`.
 
 Parser und Webserver können **auf derselben Maschine** laufen, müssen es aber nicht – und in der
 Praxis ist es oft ein kleiner Container für den Parser und ein normaler Webspace für die Karte.
@@ -405,9 +403,13 @@ Optional, in `config/integrations.local.json` (Vorlage: `config/integrations.exa
 
 ### Statistik: Knotenzahl im Zeitverlauf
 
-Der Reiter „Statistik“ zeigt die Entwicklung der Knotenzahl. Er braucht MySQL/MariaDB auf dem
-Webserver; nach jedem erfolgreichen Upload ruft der Parser dazu `log_to_db.php` auf, das die aktuelle
-Knotenzahl in die Tabelle `log` einträgt.
+Der Reiter „Statistik“ zeigt die Entwicklung der Knotenzahl: pro Kalenderwoche ein Punkt für den
+kleinsten und einen für den größten Wert. Er braucht MySQL/MariaDB auf dem Webserver. Nach jedem
+erfolgreichen Upload ruft der Parser dazu `log_to_db.php` auf, das die aktuelle Knotenzahl in die
+Tabelle `log` einträgt – ein neuer Punkt im Diagramm erscheint also erst mit der nächsten Woche.
+
+Gezeigt werden nur Werte über 5000 Knoten, und eine Woche, deren Minimum unter 75 % des zuletzt
+gezeigten fällt, wird als Messausfall (z. B. nicht erreichbare API-Dateien) ausgeblendet.
 
 Die Tabelle ergibt sich aus den Abfragen im Code (ein fertiges Schema liegt nicht bei):
 
@@ -421,18 +423,16 @@ CREATE TABLE `log` (
 ```
 
 Dazu auf dem Webserver in `config.php` `$dbAccess` und `$setDataLogPointToken` setzen, `log_to_db.php`
-und `lib/log.php` mitkopieren, und im Parser in `config/upload.local.json`:
+und `lib/log.php` mitkopieren (beide brauchen nur PHP und `mysqli`, kein Composer), und im Parser in
+`config/upload.local.json`:
 
 ```json
 "statsPingUrl": "https://DEINE-DOMAIN/log_to_db.php?token=DAS-TOKEN-AUS-CONFIG-PHP"
 ```
 
-> **Hinweis:** Dieser Teil stammt noch aus der Anfangszeit des Projekts und wurde bei der
-> Modernisierung bewusst nicht angefasst; bekannte Probleme stehen in [`PRD.md`](PRD.md) (Abschnitt
-> „Open bugs in legacy code“). `log_to_db.php` lädt außerdem `vendor/autoload.php`, der Webserver
-> braucht dafür also doch ein installiertes `vendor/` (siehe auch die Fußnote bei den
-> [Voraussetzungen](#voraussetzungen)). Für eine reine Karte kannst du diesen Teil weglassen; der
-> Reiter „Statistik“ bleibt dann ohne Funktion.
+Ob der Eintrag ankommt, siehst du am schnellsten direkt in der Datenbank:
+`SELECT MAX(ts), COUNT(*) FROM log;` – der neueste Zeitstempel sollte höchstens eine Stunde alt sein.
+Für eine reine Karte kannst du diesen Teil weglassen; der Reiter „Statistik“ bleibt dann ohne Funktion.
 
 ### Besucherzählung (Tracking-Code)
 
@@ -707,6 +707,7 @@ src/                  Parser, Auslieferung, Admin-Oberfläche (Namensraum Freifu
 web/upload.php        Empfänger für den Webserver (eigenständig, ab PHP 7.2)
 public-admin/         Einstieg der Admin-Oberfläche
 index.php data.php fetch.php debug.php   die Karte (ohne Framework, ohne Build-Schritt)
+log_to_db.php lib/log.php                die optionale Statistik (MySQL)
 js/ css/ img/ templates/                 Oberfläche; js/ enthält auch die mitgelieferten Bibliotheken
 config/ schema/       Beispiel- und Listenkonfiguration, JSON-Schema der nodelist
 tests/ PRD.md         Tests; Architektur, Entscheidungen und Fahrplan

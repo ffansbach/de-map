@@ -1,8 +1,6 @@
 parameters:
     level: 5
-    # legacy code only, baselined; new code is checked strictly by phpstan.neon
+    # the old web part (lib/log.php, plain PHP, no baseline needed); new code is checked strictly by phpstan.neon
     paths:
         - lib
     phpVersion: 80300
-includes:
-    - phpstan-baseline.neon

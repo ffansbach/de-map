@@ -6,7 +6,7 @@
 	Knoten, die länger als 3 Tage offline sind, werden ausgeblendet (als tot gewertet).
 </p>
 <p>
-	Gezeigt werden die Minimal- und Maximalwerte pro Tag.<br>
+	Gezeigt werden die Minimal- und Maximalwerte pro Woche.<br>
 	Kurzfristige Spitzen nach unten resultieren üblicherweise aus Verfügbarkeitsproblemen bei einzelnen API-Files.
 	Die Knoten waren in der Zeit normalerweise online.
 </p>
