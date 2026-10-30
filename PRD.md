@@ -75,7 +75,7 @@ This PRD covers the **backend/parser**. The goal is a clean, secure, tested, obs
 | 6 | Run tracking (SQLite) + structured logging; **baseline for drift detection (R11)** | done |
 | 7 | Internal admin UI on the LXC; **"page but no data" list (R12), drift alerts (R11)** | done (read-only, no "run now" button) |
 | 8 | Secure upload API (HMAC); **a failed delivery is reported as `delivery-failed` (alert) and fails the healthcheck** | done (receiver, HTTPS and FTP publishers, `run --upload`, `upload`, `upload:secret`); not yet installed on the web host, see the runbook in section 14 |
-| 9 | Cut-over and cleanup of legacy code | open |
+| 9 | Cut-over and cleanup of legacy code | **mostly done 2026-10-30**, see section 17; open: `fixedCommunities.php` to JSON (after weeks of history), `lib/log.php` |
 | 10 | Output slimming (own PRD section later) | open |
 
 Working rules: one step at a time, report after each, separate focused commits.
@@ -182,6 +182,8 @@ Still to create in step 3 (characterisation): a trimmed `directory.json`, a few 
 
 The untouched legacy `NodeListParser` runs against a fake network (`tests/Legacy`): `FakeCurlHelper` answers from a route table and records every request, `LegacyRunner` captures result files, debug messages, echo output and PHP warnings, `World`/`StandardWorld` build a reference scenario of 13 communities and 3 fixed ones from the source fixtures (dates are shifted so offline-node ages stay constant). Goldens live in `tests/fixtures/golden/legacy/` (`routers.json`, `communities.json`, `calls_cold.txt`, `calls_warm.txt`); regenerate deliberately with `UPDATE_GOLDEN=1 vendor/bin/phpunit tests/Legacy`.
 
+**Removed in step 9 (2026-10-30):** the legacy parser, `FakeCurlHelper`, `LegacyRunner`, the edge-case and parity tests and the call-count goldens are gone (they are in git before commit `05c4d83`, if the old behaviour is ever needed). Kept: `World`/`StandardWorld`, and the recorded `communities.json`/`routers.json`, which `ParseRunTest` and `LegacyResultWriterTest` hold the new output to. There is no `UPDATE_GOLDEN` any more; the two files are fixed references.
+
 ### Rules the rewrite must keep (pinned by tests)
 - Nodelist beats every other map of the same community; the other maps are not even fetched.
 - Nodes from several communities: identical name+id+coordinates are one node, the first community wins.
@@ -240,7 +242,7 @@ NodeCollection (first community keeps a node; legacy dedupe key; legacy router e
 | Old `geo[]` format | parsed | not supported (no source delivers it) |
 | Entry without id | included with empty id | counted as invalid |
 
-`LegacyParityTest` replays all 32 legacy edge cases and the three fixtures through the new parsers; only the first, fifth and sixth rows show up as differences there.
+(`LegacyParityTest`, removed in step 9) replayed all 32 legacy edge cases and the three fixtures through the new parsers; only the first, fifth and sixth rows show up as differences there.
 
 ### Performance
 A 4 MB nodelist with 20,000 nodes (more than any real source) parses in 0.6 s including the schema check, 105 MB peak; the same as nodeinfo in 0.06 s. Parsing is not where the 3-4 minutes of a legacy run go: that is waiting for the network (step 5).
@@ -313,7 +315,7 @@ Of 24,394 legacy nodes 24,374 are in the new result. The 20 that are not are 12 
 Also confirmed: `technicalType` is unreliable (iserlohn), and servers do misbehave (3Ländereck: nodelists flicker between full and empty; `map-data/bh/nodelist.json` was empty for a long time). Both are handled (content-based parsing; per-host limit, retry, last-good).
 
 ### Status of the legacy bugs (section 9) in the new code
-Fixed: warm run slower than cold (now fewer requests), "already parsed" never matching `.json` maps (a shared map is fetched once), second `dataPath` ignored, cached URL thrown away, nodelist validation (soft, reported), `result_metacommunities.json` never written (written, with links derived from members), `//config.json`, JSON without `nodes` raising a warning, failed API files requested twice, skipped communities still downloading their API file, different offline rules per format, entries without id included. The legacy code still runs in production until the cut-over (step 9).
+Fixed: warm run slower than cold (now fewer requests), "already parsed" never matching `.json` maps (a shared map is fetched once), second `dataPath` ignored, cached URL thrown away, nodelist validation (soft, reported), `result_metacommunities.json` never written (written, with links derived from members), `//config.json`, JSON without `nodes` raising a warning, failed API files requested twice, skipped communities still downloading their API file, different offline rules per format, entries without id included. The legacy code ran in production until the cut-over (2026-10-29) and was removed in step 9 (2026-10-30).
 
 ### Warnings the live run produced (input for drift detection, R11)
 69 warnings, all about sources and not alarms: nodes with coordinates outside the valid range (8 communities), nodelists with `version` other than 1.0.0 / 1.0.1 (e.g. `"1"`, 8), nodelists whose `status.online` or `status.clients` are strings (8), numeric ids where the schema wants strings (5). 66 maps deliver no data; their attempts are in `result_statistics.json` (R12), 24 API files have no nodeMaps, 16 API files cannot be loaded.
@@ -504,3 +506,18 @@ Dev machine: PHP 8.5, Composer 2.10. PHPUnit 11.5, PHPStan 2.1, PHP-CS-Fixer 3.x
 - How should the operator hear about *warnings* (new technical type, changed format)? They are visible in the ping log, the console and `bin/parser runs --events`, but they do not notify. Options: leave it; a daily digest; a second healthchecks.io check that fails on warnings.
 - The 3Ländereck network serves empty nodelists at times (and `bh` for hours): worth telling them.
 - Is `result_statistics.json` still needed once the admin UI exists (step 7)?
+
+## 17. Cut-over and cleanup (step 9)
+
+**Cut-over (2026-10-29 14:00):** hourly cron on the LXC runs `bin/parser run --out=var/out --upload --legacy-config=config.php`; the old `data.php?reparse...` cron line is commented out. By 2026-10-30 morning 15 runs in a row were `ok` (about 26,400 nodes, 36 s each, no alert apart from one transient dip in run 3).
+
+**Removed (2026-10-30):**
+- `data.php` parse and upload path: the file now only reads `cache/result_*.json` and echoes them (`communities`, `allTheRouters`, `metaCommunities`), byte-identical to the old cached branch, without `config.php` or `vendor/`. The web part works with the files alone.
+- `lib/NodeListParser.php`, `lib/parser/`, `CommunityCacheHandler`, `CommunityDebug`, `CurlHelper`, `HealthCheck`, `InfluxLog`, `lib/jsv4/`, `upload_cache.php`, the `Lib\` autoload mapping, and the tests of the old parser (see section 9).
+- Rollback is `git revert` of commit `05c4d83`/`207ed3c` plus uncommenting the cron line; the result files have the same shape.
+
+**Kept on purpose:** `lib/log.php` (MySQL statistics for the Statistik tab and `log_to_db.php`, namespace `ffmap`, still autoloaded from `lib/`), `fetch.php`, `debug.php` (reads `result_statistics.json`, still works with the new output), `index.php`, `js/`, `templates/`, and `fixedCommunities.php`, which the new pipeline and the admin `/fixed` page read. Its conversion to JSON waits for more run history ("dry for N runs").
+
+**Deployment note (LXC):** the project directory is served as a whole, so the root `.htaccess` returns 403 for `var/`, `config/`, `src/`, `vendor/` and other private paths; `public-admin/.htaccess` routes to `index.php`; the admin UI works from a sub-directory (base path from `SCRIPT_NAME`). `var/` must be group-writable for `www-data` (WAL needs `-shm`).
+
+**Open:** extend the last-good fallback (decisions table, 2026-10-29) to sources that are unreachable, and to API files (events `community-lost (api-unavailable)` in runs 15-20), max one day.

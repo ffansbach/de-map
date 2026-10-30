@@ -1,10 +1,14 @@
 <?php
 
 /*
- * Weak secrets to prevent external trigger for some actions.
+ * Weak secret to prevent external trigger of log_to_db.php (the statistics counter).
  */
-$forceReparseKey = 'a_key_to_prevent_everyone_from_calling_data.php?reparse';
 $setDataLogPointToken = 'key/token for log_to_db,php';
+
+/*
+ * healthchecks.io identifier of the check that `bin/parser run --legacy-config=config.php` pings.
+ */
+$healtcheckIdentifier = 'your healthchecks.io uuid';
 
 $environment = 'dev'; //for logging purpose . ie InfluxDB
 
@@ -35,16 +39,9 @@ $serverUpload = [
 #    'target' => '/cache',
 ];
 
-$influxDB = [
-    'host' => 'your influxdb host',
-    'port' => '8086',
-    'dbName' => 'freifunk_karte',
-    'user' => 'influx user',
-    'password' => 'influx pass',
-
-    'add_tag_env' => $environment,
-];
-
+/*
+ * InfluxDB v2, read by `bin/parser run --legacy-config=config.php`.
+ */
 $influxDB = [
     'host' => 'your influxdb host',
     'port' => '8086',

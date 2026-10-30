@@ -5,14 +5,13 @@ http://www.freifunk-karte.de/
 
 ### Funktionsweise
 
-Es wird die Freifunk-communityliste von https://raw.githubusercontent.com/freifunk/directory.api.freifunk.net/master/directory.json abgerufen.
+Ein Cronjob startet stündlich `bin/parser run` (PHP-Kommandozeile, siehe PRD.md und CLAUDE.md).
 
-Für jede Community wird das api-file abgerufen und nach nodeMaps - Knoten gesucht.
+Es wird die Freifunk-communityliste von https://raw.githubusercontent.com/freifunk/directory.api.freifunk.net/master/directory.json abgerufen. Für jede Community wird das api-file abgerufen und nach nodeMaps gesucht. Die Knotenliste wird am Inhalt erkannt (nodelist, nodeinfo von ffmap/meshviewer/hopglass, flaches meshviewer.json), nicht am angegebenen Typ.
 
-Nodemaps vom Typ Netmon, ffmap und openwifimap werden genutzt und jeweils per API oder bekanntem ajax-Verweis die Liste der Knoten abgerufen.
+Für die Knoten werden die notwendigen Informationen zusammengetragen und als `result_*.json` an den Webserver übertragen (`web/upload.php`). Die Karte (`index.php`, `js/meta_map.js`) liest nur diese Dateien über `data.php`.
 
-Für die Knoten werden notwendige Informationen zusammengetragen und in einer Datenstruktur abgelegt.
-Diese wird in einem Dateicache abgelegt und 24 Stunden lang genutzt.
+Der Verlauf der Läufe und was daran auffällig ist, zeigt die Admin-Oberfläche (`public-admin/`, nur lesend).
 
 ### Wie kommen bisher noch fehlende Daten in die Karte
 
