@@ -50,7 +50,7 @@ final class EventsPage implements Page
             return $html;
         };
 
-        return '<form class="filter" method="get" action="/events">'
+        return '<form class="filter" method="get" action="' . Html::e(Html::url('/events')) . '">'
             . '<label>from severity<select name="severity">' . $options(self::SEVERITIES, $severity, false) . '</select></label>'
             . '<label>kind<select name="kind">' . $options($kinds, $kind, true) . '</select></label>'
             . '<button type="submit">Filter</button></form>';

@@ -70,6 +70,11 @@ final class AdminAppTest extends AdminTestCase
         $this->assertStringContainsString('href="/tino/freifunkkarte/public-admin/runs/', $html, 'links inside a page');
         $this->assertStringNotContainsString('href="/communities"', $html);
 
+        foreach (['communities', 'events'] as $listing) {
+            $html = (string) $app->handle(self::request('/tino/freifunkkarte/public-admin/' . $listing))->getBody();
+            $this->assertStringContainsString('<form class="filter" method="get" action="/tino/freifunkkarte/public-admin/' . $listing . '">', $html, 'the filter form of ' . $listing);
+        }
+
         $root = $app->handle(self::request('/tino/freifunkkarte/public-admin/'));
         $this->assertSame(200, $root->getStatusCode());
 

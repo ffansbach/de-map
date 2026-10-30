@@ -83,7 +83,7 @@ final class CommunitiesPage implements Page
             return $html . '</select></label>';
         };
 
-        return '<form class="filter" method="get" action="/communities">'
+        return '<form class="filter" method="get" action="' . Html::e(Html::url('/communities')) . '">'
             . $select('outcome', 'outcome', self::OUTCOMES, $outcome)
             . $select('origin', 'origin', self::ORIGINS, $origin)
             . $select('sort', 'sort by', ['nodes'], $byNodes ? 'nodes' : null)
