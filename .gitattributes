@@ -1,0 +1,9 @@
+# One line-ending style in the repository: LF. Git converts on checkout/commit where needed.
+* text=auto eol=lf
+
+# never touch these
+*.png binary
+*.gif binary
+*.ico binary
+*.jpg binary
+*.sqlite binary
