@@ -102,7 +102,7 @@ Eine andere Datei lässt sich mit `--integrations=DATEI` angeben.
 
 | Feld | Standard | Bedeutung |
 |---|---|---|
-| `passwordHash` | – | von `php bin/parser admin:password`; ohne Hash nur Zugriff von `127.0.0.1` |
+| `passwordHash` | – | von `php bin/parser admin:password`; ohne Hash nur direkter Zugriff von `127.0.0.1` (nicht über einen Reverse-Proxy) |
 | `user` | `admin` | Benutzername |
 | `db` | `var/parser.sqlite` | Pfad zur Verlaufsdatenbank |
 | `timezone` | `Europe/Berlin` | Zeitzone der Anzeige |

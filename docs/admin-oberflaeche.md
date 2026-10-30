@@ -42,6 +42,6 @@ alle Ereignisse. Sie liest nur `var/parser.sqlite`.
 `chgrp www-data var var/log var/parser.sqlite; chmod 2775 var var/log; chmod 664 var/parser.sqlite`
 und den Cron-Benutzer in die Gruppe `www-data` aufzunehmen.
 
-**Sicherheit:** Ohne Passwort antwortet die Oberfläche nur auf `127.0.0.1`/`::1`. Mit Passwort
+**Sicherheit:** Ohne Passwort antwortet die Oberfläche nur auf `127.0.0.1`/`::1` und nur bei direkten Anfragen: trägt eine Anfrage Proxy-Header (`X-Forwarded-For`, `Forwarded`, `X-Real-IP`, `Via` …), wird sie abgelehnt, denn hinter einem Reverse-Proxy auf demselben Rechner sieht jede Anfrage wie `127.0.0.1` aus. Hinter einem Proxy also immer ein Passwort setzen. Mit Passwort
 verwendet sie HTTP Basic – sobald sie über das Netz erreichbar ist, **nur über HTTPS** betreiben. Sie
 sendet strenge Sicherheitsheader (keine Skripte, `no-store`) und kann nichts verändern.

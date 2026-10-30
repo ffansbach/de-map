@@ -179,6 +179,16 @@ final class AdminAppTest extends AdminTestCase
         $this->assertSame(403, $this->app()->handle(self::request('/echo', remote: ''))->getStatusCode(), 'an unknown address is not trusted');
     }
 
+    public function testWithoutAPasswordARequestThroughAProxyIsRefusedEvenFromTheLocalAddress(): void
+    {
+        foreach (['X-Forwarded-For' => '203.0.113.9', 'Forwarded' => 'for=203.0.113.9', 'X-Real-IP' => '203.0.113.9', 'X-Forwarded-Proto' => 'https', 'CF-Connecting-IP' => '203.0.113.9', 'Via' => '1.1 proxy'] as $header => $value) {
+            $response = $this->app()->handle(self::request('/echo', remote: '127.0.0.1', headers: [$header => $value]));
+
+            $this->assertSame(403, $response->getStatusCode(), $header);
+            $this->assertStringContainsString('not through a proxy', (string) $response->getBody());
+        }
+    }
+
     public function testWithAPasswordEveryoneNeedsIt(): void
     {
         $app = $this->app(new AdminConfig(user: 'tino', passwordHash: password_hash('secret', PASSWORD_DEFAULT), failedLoginDelayMs: 0));
