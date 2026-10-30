@@ -20,8 +20,8 @@ final class LogToDbTest extends TestCase
         $this->directory = sys_get_temp_dir() . '/ffk_logtodb_' . bin2hex(random_bytes(6));
         mkdir($this->directory . '/lib', 0777, true);
         mkdir($this->directory . '/cache');
-        copy($root . '/log_to_db.php', $this->directory . '/log_to_db.php');
-        copy($root . '/lib/log.php', $this->directory . '/lib/log.php');
+        copy($root . '/web/log_to_db.php', $this->directory . '/log_to_db.php');
+        copy($root . '/web/lib/log.php', $this->directory . '/lib/log.php');
         $this->writeConfig(true);
         $this->writeRouters(1500);
 

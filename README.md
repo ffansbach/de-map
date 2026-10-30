@@ -57,8 +57,8 @@ einzigen [Leaflet](https://leafletjs.com/)-Karte zusammen – derzeit mehr als 2
 - **Nachvollziehbar:** jeder Lauf wird in einer SQLite-Datei festgehalten, eine Admin-Oberfläche
   zeigt, was sich verändert hat und welche Karten keine Daten liefern
 - **Sicher:** TLS-Prüfung, Größenlimits, signierter Upload (HMAC) vom Parser zum Webserver
-- **Schlank im Betrieb:** der Webserver braucht nur PHP und ein paar Dateien – keine Datenbank, kein
-  Composer, keine Build-Schritte
+- **Schlank im Betrieb:** alles für den Webserver liegt fertig im Verzeichnis [`web/`](web/). Du lädst es
+  hoch – ohne Datenbank, ohne Composer, ohne Build-Schritte, ohne Shell auf dem Server
 
 ## So funktioniert es
 
@@ -128,13 +128,13 @@ git clone <repository-url> freifunk-karte
 cd freifunk-karte
 
 composer install                          # Abhängigkeiten des Parsers
-cp config.php_example.php config.php      # Karten-Einstellungen (Kachelserver, Startansicht)
+cp web/config.php_example.php web/config.php   # Karten-Einstellungen (Kachelserver, Startansicht)
 
-php bin/parser run --out=cache            # holt alle Daten, ca. 30–60 Sekunden
-php -S localhost:8000                     # Entwicklungsserver starten
+php bin/parser run --out=web/cache        # holt alle Daten, ca. 30–60 Sekunden
+php -S localhost:8000 -t web              # Entwicklungsserver für die Karte starten
 ```
 
-Dann <http://localhost:8000/> öffnen. `bin/parser run` schreibt vier Dateien nach `cache/`
+Dann <http://localhost:8000/> öffnen. `bin/parser run` schreibt vier Dateien nach `web/cache/`
 (`result_routers.json`, `result_communities.json`, `result_metacommunities.json`,
 `result_statistics.json`) und legt den Verlauf in `var/parser.sqlite` ab. Mit `php bin/parser runs`
 siehst du anschließend, was der Lauf gefunden hat.
@@ -176,6 +176,7 @@ entstehen:
 
 Das Projektverzeichnis darf **nicht** als Ganzes über einen Webserver ausgeliefert werden (dort
 liegen Konfiguration und Verlauf); für den Parser ist auf diesem Server gar kein Webserver nötig.
+Läuft die Karte auf derselben Maschine, zeigt der Document Root des Webservers auf `web/`.
 
 ### 2. Upload-Geheimnis erzeugen
 
@@ -190,45 +191,30 @@ ersetzen.
 
 ### 3. Webserver einrichten
 
-Auf den Webserver gehören **nur** diese Dateien und Ordner aus dem Projekt – nicht das ganze
-Repository:
+Alles, was auf den Webserver gehört, liegt im Verzeichnis **`web/`**. Es ist so aufgebaut, dass du es
+fertig hochladen kannst – ohne Composer, ohne Build-Schritt, ohne Shell auf dem Server:
 
 ```
-index.php   data.php   fetch.php   debug.php     die Karte
-css/   js/   img/   templates/                   Oberfläche
-upload.php  (aus web/)                           Empfänger für den Upload
-config.php  (aus config.php_example.php)         Karten-Einstellungen
-upload.config.php  (aus web/upload.config.example.php)
-cache/      (leeres Verzeichnis)                 hier landen die Ergebnisdateien
+web/
+├── index.php  data.php  fetch.php  favicon.ico    die Karte
+├── css/  js/  img/  templates/                     Oberfläche (js/ enthält die mitgelieferten Bibliotheken)
+├── upload.php                                      Empfänger für den Upload des Parsers
+├── cache/                                          hier landen die Ergebnisdateien (anfangs leer)
+├── debug.php                                       Fehleransicht (optional; die Admin-Oberfläche ersetzt sie)
+├── log_to_db.php  lib/log.php                      Statistik (optional, braucht MySQL)
+├── config.php_example.php                          Vorlage → wird zu config.php
+└── upload.config.example.php                       Vorlage → wird zu upload.config.php
 ```
 
-Optional: `log_to_db.php` und `lib/log.php` für die [Statistik](#statistik-knotenzahl-im-zeitverlauf);
-`debug.php` kann weggelassen werden, wenn du die [Admin-Oberfläche](#admin-oberfläche) nutzt.
-
-Beispiel (Benutzer, Server und Zielpfad anpassen; die Befehle laufen im Projektverzeichnis):
+**1. Die zwei Vorlagen kopieren** (auf deinem Rechner, im Projektverzeichnis). Die Kopien stehen in der
+`.gitignore`, weil sie Geheimnisse enthalten dürfen:
 
 ```bash
-ZIEL=benutzer@webserver:/var/www/freifunk-karte
-
-rsync -av index.php data.php fetch.php debug.php css js img templates "$ZIEL/"
-rsync -av web/upload.php "$ZIEL/"
-scp config.php_example.php "$ZIEL/config.php"
-scp web/upload.config.example.php "$ZIEL/upload.config.php"
-
-ssh benutzer@webserver 'cd /var/www/freifunk-karte && mkdir -p cache && chown www-data: cache'   # Benutzer des Webservers einsetzen
+cp web/config.php_example.php web/config.php
+cp web/upload.config.example.php web/upload.config.php
 ```
 
-**Ohne SSH-Zugang** (typisch bei günstigem Webhosting): Du brauchst nur einen FTP-/SFTP-Zugang oder
-den Dateimanager deines Anbieters. Lade dieselben Dateien und Ordner dorthin hoch, benenne
-`config.php_example.php` in `config.php` und `web/upload.config.example.php` in `upload.config.php` um,
-lege das Verzeichnis `cache/` an und gib ihm Schreibrechte für PHP (je nach Anbieter `755`, `775` oder
-`777` – so streng wie möglich, aber so, dass PHP hineinschreiben kann). Den Upload selbst erledigt der
-Parser über HTTPS; auf dem Webserver läuft sonst nichts, was eine Shell bräuchte. Auch `stateDir`
-(siehe unten) legt der Empfänger bei Bedarf selbst an (Rechte `0700`); der Standard, das temporäre
-Verzeichnis des Systems, funktioniert bei vielen Anbietern unverändert. Darin liegen nur leere Dateien
-`nonce-…` ohne vertrauliche Inhalte – nimm trotzdem ein Verzeichnis, das nicht öffentlich abrufbar ist.
-
-**`config.php`** bearbeiten – die Pflichtangaben für die Karte (alle Variablen siehe
+**2. `web/config.php` bearbeiten** – die Pflichtangaben für die Karte (alle Variablen siehe
 [Referenz](#configphp-webserver)):
 
 ```php
@@ -241,7 +227,8 @@ $mapInitalView = array('latitude' => 51.16, 'longitude' => 10.45, 'zoom' => 6);
 > Bei HTTPS-Seiten muss auch der Kachelserver per `https://` angesprochen werden, sonst blockiert
 > der Browser die Kacheln.
 
-**`upload.config.php`** bearbeiten – mindestens das Geheimnis aus Schritt 2 und das Zielverzeichnis:
+**3. `web/upload.config.php` bearbeiten** – mindestens das Geheimnis aus Schritt 2 und das
+Zielverzeichnis:
 
 ```php
 return array(
@@ -252,9 +239,26 @@ return array(
 ```
 
 Weitere Schalter (Plausibilitätsgrenzen, Reverse-Proxy) stehen in der
-[Referenz](#uploadconfigphp-webserver). Beide `.php`-Konfigurationsdateien geben
-nichts aus; ruft jemand sie im Browser auf, sieht er nichts. Trotzdem gehören sie nicht in die
-Versionsverwaltung.
+[Referenz](#uploadconfigphp-webserver). Beide `.php`-Konfigurationsdateien geben nichts aus; ruft
+jemand sie im Browser auf, sieht er nichts.
+
+**4. Den Inhalt von `web/` hochladen** – in das Web-Verzeichnis deines Anbieters, per FTP-/SFTP-Programm
+(z. B. FileZilla) oder, wenn du eine Shell hast, mit `rsync`:
+
+```bash
+rsync -av --exclude='*example*' --exclude='cache/*' web/ benutzer@webserver:/var/www/freifunk-karte/
+```
+
+Die beiden `*example*`-Vorlagen brauchst du auf dem Server nicht. Das Verzeichnis `cache/` muss dort
+existieren (es ist im Upload enthalten) und **für PHP beschreibbar** sein – je nach Anbieter Rechte
+`755`, `775` oder `777`; so streng wie möglich, aber so, dass PHP hineinschreiben kann. Auch `stateDir`
+(siehe oben) legt der Empfänger bei Bedarf selbst an (Rechte `0700`); der Standard, das temporäre
+Verzeichnis des Systems, funktioniert bei vielen Anbietern unverändert. Darin liegen nur leere Dateien
+`nonce-…` ohne vertrauliche Inhalte – nimm trotzdem ein Verzeichnis, das nicht öffentlich abrufbar ist.
+
+**Spätere Aktualisierungen:** Lade einfach die geänderten Dateien aus `web/` erneut hoch (oder alles).
+Wichtig ist nur, dass dabei `config.php`, `upload.config.php` und der Inhalt von `cache/` auf dem
+Server erhalten bleiben bzw. nicht durch leere Dateien ersetzt werden.
 
 **HTTPS ist Pflicht** für `upload.php`; ohne HTTPS lehnt der Empfänger alles ab. Zusätzlich:
 
@@ -262,10 +266,9 @@ Versionsverwaltung.
   `upload.php` deshalb `client_max_body_size 20m;` setzen.
 - **Hinter einem Reverse-Proxy,** der TLS beendet: in `upload.config.php`
   `'trustForwardedProto' => true` setzen (der Proxy muss `X-Forwarded-Proto` senden).
-- **Apache:** das mitgelieferte `.htaccess` im Projektstamm sperrt `var/`, `config/`, `src/` und
-  weitere private Ordner, falls doch einmal das ganze Projekt ausgeliefert wird. Es braucht
-  `AllowOverride` und `mod_rewrite`; verlass dich aber nicht darauf, sondern kopiere nur die oben
-  genannten Dateien.
+- **Apache:** das `.htaccess` im Projektstamm sperrt `var/`, `config/`, `src/` und weitere private
+  Ordner, falls doch einmal das ganze Projekt ausgeliefert wird. Es braucht `AllowOverride` und
+  `mod_rewrite`; verlass dich aber nicht darauf, sondern lade nur den Inhalt von `web/` hoch.
 
 **Prüfen:** ein GET auf den Empfänger muss abgelehnt werden, die Startseite muss laden:
 
@@ -422,8 +425,9 @@ CREATE TABLE `log` (
 );
 ```
 
-Dazu auf dem Webserver in `config.php` `$dbAccess` und `$setDataLogPointToken` setzen, `log_to_db.php`
-und `lib/log.php` mitkopieren (beide brauchen nur PHP und `mysqli`, kein Composer), und im Parser in
+Dazu in `web/config.php` `$dbAccess` und `$setDataLogPointToken` setzen (`log_to_db.php` und `lib/log.php`
+liegen schon in `web/` und werden mit hochgeladen; sie brauchen nur PHP und `mysqli`, kein Composer),
+und im Parser in
 `config/upload.local.json`:
 
 ```json
@@ -447,8 +451,8 @@ einen funktionierenden Betrieb zwingend.
 
 | Datei | Wo | Zweck | Pflicht |
 |---|---|---|---|
-| **`config.php`** | Webserver | Karte: Kachelserver, Startansicht (+ Statistik, Tracking) | ja |
-| **`upload.config.php`** | Webserver | Empfänger: Geheimnis, Zielordner, Plausibilitätsgrenzen | ja |
+| **`web/config.php`** | Webserver | Karte: Kachelserver, Startansicht (+ Statistik, Tracking) | ja |
+| **`web/upload.config.php`** | Webserver | Empfänger: Geheimnis, Zielordner, Plausibilitätsgrenzen | ja |
 | **`config/upload.local.json`** | Parser | Wohin und womit der Parser ausliefert | ja |
 | `config/integrations.local.json` | Parser | healthchecks.io, InfluxDB | nein |
 | `config/admin.local.json` | Parser | Admin-Oberfläche | nein |
@@ -468,10 +472,10 @@ Alle `*.local.json`, `config.php` und `upload.config.php` stehen in der `.gitign
 | `$dbAccess` | nein | Statistik: `array('host' => …, 'db' => …, 'user' => …, 'pass' => …)`; leeres Array = aus. |
 | `$setDataLogPointToken` | nein | Statistik: Token, das `log_to_db.php` prüft. |
 
-Die Beispieldatei enthält außerdem `$environment`, `$healtcheckIdentifier`, `$influxDB` und
-`$serverUpload`. Diese Werte liest nur der Parser, und nur wenn er mit `--legacy-config=config.php`
-gestartet wird (Umstieg von älteren Installationen). Neue Installationen nutzen stattdessen die
-JSON-Dateien in `config/` und können sie in `config.php` weglassen.
+Ältere Installationen lassen den Parser zusätzlich mit `--legacy-config=config.php` eine `config.php`
+im Projektstamm des Parser-Servers lesen; darin stehen dann `$environment`, `$healtcheckIdentifier`,
+`$influxDB`, `$serverUpload` und `$setDataLogPointToken`. Diese Datei hat nichts mit `web/config.php`
+zu tun und ist für neue Installationen nicht nötig – sie nutzen die JSON-Dateien in `config/`.
 
 ### `upload.config.php` (Webserver)
 
@@ -704,12 +708,15 @@ src/                  Parser, Auslieferung, Admin-Oberfläche (Namensraum Freifu
   Pipeline/ Output/     der Lauf als Ganzes, Ergebnisdateien
   Run/ Log/             Verlauf (SQLite), Erkennung von Auffälligkeiten, Meldungen
   Publish/ Admin/       Auslieferung (HTTPS/FTP), Admin-Oberfläche
-web/upload.php        Empfänger für den Webserver (eigenständig, ab PHP 7.2)
+web/                  alles für den Webserver, fertig zum Hochladen (kein Composer nötig):
+  index.php data.php fetch.php debug.php   die Karte (ohne Framework, ohne Build-Schritt)
+  upload.php                               Empfänger für den Upload (eigenständig, ab PHP 7.2)
+  log_to_db.php lib/log.php                die optionale Statistik (MySQL)
+  js/ css/ img/ templates/                 Oberfläche; js/ enthält auch die mitgelieferten Bibliotheken
+  cache/                                   Ergebnisdateien des Parsers
 public-admin/         Einstieg der Admin-Oberfläche
-index.php data.php fetch.php debug.php   die Karte (ohne Framework, ohne Build-Schritt)
-log_to_db.php lib/log.php                die optionale Statistik (MySQL)
-js/ css/ img/ templates/                 Oberfläche; js/ enthält auch die mitgelieferten Bibliotheken
-config/ schema/       Beispiel- und Listenkonfiguration, JSON-Schema der nodelist
+config/ schema/       Listenkonfiguration und Beispiele, JSON-Schema der nodelist
+fixedCommunities.php  Communities, die nicht im Verzeichnis stehen
 tests/ PRD.md         Tests; Architektur, Entscheidungen und Fahrplan
 ```
 

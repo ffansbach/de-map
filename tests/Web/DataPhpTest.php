@@ -24,7 +24,7 @@ final class DataPhpTest extends TestCase
     {
         $this->directory = sys_get_temp_dir() . '/ffk_data_http_' . bin2hex(random_bytes(6));
         mkdir($this->directory . '/cache', 0777, true);
-        copy(dirname(__DIR__, 2) . '/data.php', $this->directory . '/data.php');
+        copy(dirname(__DIR__, 2) . '/web/data.php', $this->directory . '/data.php');
         $this->writeResult('1');
     }
 

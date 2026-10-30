@@ -1,6 +1,8 @@
 <?php
+// never show errors to visitors (paths, database host and user names); they go to the web server's error log
 error_reporting(-1);
-ini_set('display_errors', 'On');
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
 
 require 'config.php';
 

@@ -3,6 +3,9 @@ config.php
 .idea
 
 cache/**
+# result files that the parser uploads to the web part (the directory itself is kept)
+web/cache/*
+!web/cache/.gitkeep
 
 # composer
 composer.phar

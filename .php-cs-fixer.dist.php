@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// Legacy code in lib/ is deliberately not formatted: it is being replaced step by step (see PRD.md).
+// The plain PHP of the web part (web/) is deliberately not formatted: it has to run on old PHP versions without a build step.
 $finder = PhpCsFixer\Finder::create()
     ->in(array_filter(
         [__DIR__ . '/src', __DIR__ . '/tests', __DIR__ . '/bin', __DIR__ . '/public-admin'],

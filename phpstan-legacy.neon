@@ -1,6 +1,6 @@
 parameters:
     level: 5
-    # the old web part (lib/log.php, plain PHP, no baseline needed); new code is checked strictly by phpstan.neon
+    # the old web part (web/lib/log.php, plain PHP, no baseline needed); new code is checked strictly by phpstan.neon
     paths:
-        - lib
+        - web/lib
     phpVersion: 80300

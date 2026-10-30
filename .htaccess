@@ -3,5 +3,5 @@
 # The document root should rather be public-admin/ or the legacy web files only; this is the second line of defence.
 # There is deliberately no <IfModule>: without mod_rewrite the server answers 500 instead of silently publishing.
 RewriteEngine On
-RewriteRule ^(var|config|src|vendor|bin|tests|schema|templates|\.git|\.claude)(/|$) - [F]
+RewriteRule ^(var|config|src|vendor|bin|tests|schema|\.git|\.claude)(/|$) - [F]
 RewriteRule ^(composer\.(json|lock)|phpunit\.xml|phpstan.*\.neon|\.php-cs-fixer.*|\.phpunit.*|\.gitignore|.*\.md|config\.php_example\.php)$ - [F]

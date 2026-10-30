@@ -3,4 +3,4 @@ parameters:
     level: 8
     phpVersion: 70200
     paths:
-        - web
+        - web/upload.php
