@@ -8,7 +8,10 @@ $(function() {
 		data: window.location.search.substring(1),
 		beforeSend: function()
 		{
-			ajaxModalTimeout = window.setTimeout("$('#waitModal').modal('show');", 1000);
+			ajaxModalTimeout = window.setTimeout(function()
+			{
+				$('#waitModal').modal('show');
+			}, 1000);
 		},
 		success: function(response)
 		{
