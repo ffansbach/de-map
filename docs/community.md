@@ -18,6 +18,11 @@ Der Weg auf die Karte führt über das **Freifunk-Verzeichnis**, nicht über die
    `meshviewer.json` und `nodes.json`.
 3. Die Knoten brauchen einen gültigen Standort. Knoten ohne Koordinaten werden nicht gezeigt.
 
+**Nachsehen, was der Parser gefunden hat:** Auf der Debugview der Karte (`/debug.php`) wählst du deine
+Community aus und siehst, ob Knoten gefunden wurden, wie viele übernommen oder als Dublette bzw. wegen
+fehlendem Standort aussortiert wurden – oder, wenn keine Daten ankommen, welche Adressen abgefragt wurden
+und was sie geantwortet haben. Die Ansicht wird bei jedem Parserlauf (stündlich) aktualisiert.
+
 Wer selbst eine Knotenliste anbieten möchte, findet ein Beispiel im
 [nodelist-Format](https://gist.github.com/StilgarBF/c21826994b775787f739) und PHP-Klassen für den
 Export in [nodelistexport](https://github.com/StilgarBF/nodelistexport). Das Schema lässt sich z. B.

@@ -27,18 +27,18 @@ final class ResultFilesTest extends TestCase
         rmdir($this->directory);
     }
 
-    public function testTheThreeFilesAreRead(): void
+    public function testTheFourFilesAreRead(): void
     {
-        foreach (['result_routers.json' => '[1,2,3]', 'result_communities.json' => '{}', 'result_statistics.json' => '{"a":1}', 'result_metacommunities.json' => '{}', 'other.json' => 'x'] as $name => $content) {
+        foreach (['result_routers.json' => '[1,2,3]', 'result_communities.json' => '{}', 'result_statistics.json' => '{"a":1}', 'result_metacommunities.json' => '{}', 'result_debug.json' => '{}', 'other.json' => 'x'] as $name => $content) {
             file_put_contents($this->directory . '/' . $name, $content);
         }
 
         $files = ResultFiles::fromDirectory($this->directory);
 
         // the retired statistics file and anything else in the directory is not delivered
-        $this->assertSame(['result_routers.json', 'result_communities.json', 'result_metacommunities.json'], array_keys($files->files));
+        $this->assertSame(['result_routers.json', 'result_communities.json', 'result_metacommunities.json', 'result_debug.json'], array_keys($files->files));
         $this->assertSame(3, $files->routerCount());
-        $this->assertSame(7 + 2 + 2, $files->size());
+        $this->assertSame(7 + 2 + 2 + 2, $files->size());
     }
 
     public function testTheOptionalFilesMayBeMissing(): void

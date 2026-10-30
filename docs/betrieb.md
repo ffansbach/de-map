@@ -31,7 +31,7 @@ Datei (404) und gültige, aber leere Listen werden dagegen geglaubt.
 | Upload: **422** | Das Paket wurde inhaltlich abgelehnt (zu wenige Knoten/Communities, mehr als die Hälfte weniger als vorher, ungültige JSON-Form). Meldung in der Antwort, `php bin/parser runs` zeigt `delivery-failed`. |
 | Upload: **500 not configured** | `upload.config.php` fehlt oder das Geheimnis ist kürzer als 32 Zeichen oder `target` existiert nicht. |
 | Lauf endet mit „refused“ | Ergebnis unplausibel klein. Ursache klären (Verzeichnis nicht erreichbar?) statt `--force`. |
-| Community fehlt | Admin-Oberfläche → *Karten ohne Daten* bzw. `runs --community=KEY`. Siehe [Meine Community fehlt auf der Karte](community.md). |
+| Community fehlt | Admin-Oberfläche → *Karten ohne Daten* bzw. `runs --community=KEY`. Siehe [Meine Community fehlt auf der Karte](community.md). Anfragende können selbst in der öffentlichen Debugview `/debug.php` nachsehen. |
 | Admin-Oberfläche: „not set up correctly“ | Details im Fehlerlog des Webservers: meist fehlt `config/admin.local.json` oder `var/` ist für den Webserver-Benutzer nicht beschreibbar (siehe [Rechte](admin-oberflaeche.md#admin-oberfläche)). |
 | Zwei Läufe überschneiden sich | Cronjob ohne `flock` – siehe [Cronjob](parser-server.md#schritt-6-cronjob-einrichten). |
 

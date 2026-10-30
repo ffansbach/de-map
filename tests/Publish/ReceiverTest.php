@@ -132,6 +132,16 @@ final class ReceiverTest extends TestCase
         return ($receiver ?? $this->receiver())->handle($server, $reader);
     }
 
+    public function testTheDebugFileIsInstalledToo(): void
+    {
+        $files = self::files() + ['result_debug.json' => '{"generated":"2026-10-30T12:00:00+00:00","communities":{}}'];
+
+        [$status] = $this->send([], $files);
+
+        $this->assertSame(200, $status);
+        $this->assertSame($files['result_debug.json'], file_get_contents($this->target . '/result_debug.json'));
+    }
+
     public function testASignedUploadIsInstalled(): void
     {
         $files = self::files();
@@ -369,6 +379,7 @@ final class ReceiverTest extends TestCase
             'routers that are not JSON' => [static fn (array $f): array => ['version' => 1, 'files' => ['result_routers.json' => '<?php evil();'] + $f], 'is not valid JSON'],
             'routers that are no nodes' => [static fn (array $f): array => ['version' => 1, 'files' => ['result_routers.json' => '[1, 2, 3]'] + $f], 'an entry is not a node'],
             'communities that are no communities' => [static fn (array $f): array => ['version' => 1, 'files' => ['result_communities.json' => '{"a": 5}'] + $f], 'an entry is not a community'],
+            'a debug file without communities' => [static fn (array $f): array => ['version' => 1, 'files' => ['result_debug.json' => '{"generated":"x"}'] + $f], 'no communities'],
             'the retired statistics file' => [static fn (array $f): array => ['version' => 1, 'files' => $f + ['result_statistics.json' => '{}']], 'unknown file'],
             'the routers are missing' => [static fn (array $f): array => ['version' => 1, 'files' => array_diff_key($f, ['result_routers.json' => 1])], 'result_routers.json is missing'],
             'the communities are missing' => [static fn (array $f): array => ['version' => 1, 'files' => array_diff_key($f, ['result_communities.json' => 1])], 'result_communities.json is missing'],

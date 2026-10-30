@@ -89,7 +89,7 @@ Ein Lauf im Einzelnen:
 3. Bei Karten-Seiten (z. B. Meshviewer) wird gesucht, wo die Daten liegen (`config.json`,
    `meshviewer.json`, `nodes.json`). Gefundene Adressen werden 7 Tage gemerkt.
 4. Die Knoten werden gelesen, geprüft (Standort, Koordinaten, Status), dedupliziert und in
-   `result_*.json` geschrieben.
+   `result_*.json` geschrieben (dazu `result_debug.json` für die öffentliche Debugview `debug.php`).
 5. Der Upload liefert die Dateien an den Webserver; dort ersetzt `upload.php` sie atomar.
 6. Der Lauf wird in der SQLite-Datei festgehalten und mit dem vorigen verglichen; Auffälliges löst
    Ereignisse aus (und ggf. einen Alarm bei healthchecks.io).
@@ -130,8 +130,8 @@ php bin/parser run --out=web/cache        # holt alle Daten, ca. 30–60 Sekunde
 php -S localhost:8000 -t web              # Entwicklungsserver für die Karte starten
 ```
 
-Dann <http://localhost:8000/> öffnen. `bin/parser run` schreibt drei Dateien nach `web/cache/`
-(`result_routers.json`, `result_communities.json`, `result_metacommunities.json`)
+Dann <http://localhost:8000/> öffnen. `bin/parser run` schreibt vier Dateien nach `web/cache/`
+(`result_routers.json`, `result_communities.json`, `result_metacommunities.json`, `result_debug.json`)
 und legt den Verlauf in `var/parser.sqlite` ab. Mit `php bin/parser runs`
 siehst du anschließend, was der Lauf gefunden hat.
 

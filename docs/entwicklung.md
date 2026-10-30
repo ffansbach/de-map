@@ -27,6 +27,7 @@ src/                  Parser, Auslieferung, Admin-Oberfläche (Namensraum Freifu
 web/                  alles für den Webserver, fertig zum Hochladen (kein Composer nötig):
   index.php data.php fetch.php             die Karte (ohne Framework, ohne Build-Schritt)
   upload.php                               Empfänger für den Upload (eigenständig, ab PHP 7.2)
+  debug.php                                Debugview für Besucher (liest cache/result_debug.json)
   log_to_db.php lib/log.php                die optionale Statistik (MySQL)
   js/ css/ img/ templates/                 Oberfläche; js/ enthält auch die mitgelieferten Bibliotheken
   cache/                                   Ergebnisdateien des Parsers

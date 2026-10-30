@@ -8,14 +8,14 @@ use FreifunkKarte\Pipeline\RunResult;
 use RuntimeException;
 
 /**
- * Writes the files the website reads: result_routers.json, result_communities.json and
- * result_metacommunities.json.
+ * Writes the files the website reads: result_routers.json, result_communities.json,
+ * result_metacommunities.json and result_debug.json (for web/debug.php).
  *
  * The shape and the encoding of the first two are what js/meta_map.js depends on.
  */
 final class ResultWriter
 {
-    public const FILES = ['result_routers.json', 'result_communities.json', 'result_metacommunities.json'];
+    public const FILES = ['result_routers.json', 'result_communities.json', 'result_metacommunities.json', 'result_debug.json'];
 
     /**
      * @return array<string, string> file name => path
@@ -30,6 +30,7 @@ final class ResultWriter
             'result_routers.json' => self::encode($result->nodes->toRouterEntries()),
             'result_communities.json' => self::encode($this->communities($result)),
             'result_metacommunities.json' => self::encode($this->metaCommunities($result)),
+            'result_debug.json' => json_encode((new DebugExport())->build($result), JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE),
         ];
 
         $paths = [];

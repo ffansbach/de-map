@@ -118,4 +118,29 @@ final class ResultWriterTest extends TestCase
 
         $this->assertNotSame('old', file_get_contents($this->directory . '/result_routers.json'));
     }
+
+    public function testTheDebugFileHasWhatThePublicDebugPageShows(): void
+    {
+        (new ResultWriter())->write($this->runResult(StandardWorld::build()), $this->directory);
+
+        $debug = $this->read('result_debug.json');
+        $this->assertArrayHasKey('generated', $debug);
+        $this->assertArrayHasKey('communities', $debug);
+        $this->assertIsArray($debug['communities']);
+
+        $ok = $debug['communities']['nl-city'];
+        $this->assertSame('ok', $ok['outcome']);
+        $this->assertNull($ok['reason']);
+        $this->assertGreaterThan(0, $ok['added']);
+        $this->assertSame(['name', 'url', 'meta', 'listed', 'outcome', 'reason', 'apiUrl', 'declaredTypes', 'format', 'sourceUrls', 'claimedNodes', 'found', 'added', 'duplicates', 'withoutLocation', 'dropped', 'invalid', 'staleSince', 'attempts', 'warnings', 'messages'], array_keys($ok));
+
+        $keys = array_keys($debug['communities']);
+        $sorted = $keys;
+        sort($sorted, SORT_NATURAL | SORT_FLAG_CASE);
+        $this->assertSame($sorted, $keys, 'sorted by key');
+
+        foreach ($debug['communities'] as $community) {
+            $this->assertSame($community['outcome'] === 'no-data', $community['reason'] !== null, 'a reason exactly for communities without data');
+        }
+    }
 }

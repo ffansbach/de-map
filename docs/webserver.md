@@ -11,6 +11,7 @@ fertig hochladen kannst – ohne Composer, ohne Build-Schritt, ohne Shell auf de
 ```
 web/
 ├── index.php  data.php  fetch.php  favicon.ico    die Karte
+├── debug.php                                       Debugview: was der Parser über eine Community herausgefunden hat
 ├── css/  js/  img/  templates/                     Oberfläche (js/ enthält die mitgelieferten Bibliotheken)
 ├── upload.php                                      Empfänger für den Upload des Parsers
 ├── cache/                                          hier landen die Ergebnisdateien (anfangs leer)
@@ -72,6 +73,10 @@ Verzeichnis des Systems, funktioniert bei vielen Anbietern unverändert. Darin l
 **Spätere Aktualisierungen:** Lade einfach die geänderten Dateien aus `web/` erneut hoch (oder alles).
 Wichtig ist nur, dass dabei `config.php`, `upload.config.php` und der Inhalt von `cache/` auf dem
 Server erhalten bleiben bzw. nicht durch leere Dateien ersetzt werden.
+
+**Debugview:** `debug.php` liest `cache/result_debug.json` (vom Parser mit hochgeladen) und zeigt
+Besuchern pro Community, was der Parser gefunden hat. Sie braucht weder `config.php` noch eine Datenbank.
+Wer sie nicht öffentlich haben möchte, löscht `debug.php` auf dem Webserver.
 
 **HTTPS ist Pflicht** für `upload.php`; ohne HTTPS lehnt der Empfänger alles ab. Zusätzlich:
 
