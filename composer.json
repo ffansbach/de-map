@@ -49,6 +49,7 @@
       "phpstan analyse --memory-limit=1G -c phpstan-weblib.neon",
       "phpstan analyse --memory-limit=1G -c phpstan-web.neon"
     ],
+    "docs": "php bin/check-docs",
     "cs": "php-cs-fixer fix --dry-run --diff",
     "cs-fix": "php-cs-fixer fix",
     "check": [

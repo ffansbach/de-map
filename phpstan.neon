@@ -20,6 +20,7 @@ parameters:
         - tests/Admin
         - tests/Publish
         - tests/Web
+        - tests/Docs
         - tests/Support
         - tests/Parser
         - tests/Model

@@ -1,0 +1,110 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Checks the Markdown documents (README.md and docs/*.md): every relative link has to point to a file that
+ * exists and every #anchor to a heading of that file, with GitHub's rules for anchors. Exit status 1 if
+ * anything is wrong, so that `composer check` keeps the documentation honest.
+ *
+ * Usage: bin/check-docs [project directory]
+ */
+
+/**
+ * GitHub's anchor for a heading: lower case, no punctuation, spaces become hyphens.
+ */
+function anchorOf(string $heading): string
+{
+    $text = (string) preg_replace('/<[^>]+>/', '', $heading);
+    $text = (string) preg_replace('/\[([^\]]*)\]\([^)]*\)/', '$1', $text);
+    $text = mb_strtolower(str_replace('`', '', trim($text)));
+
+    return str_replace(' ', '-', trim((string) preg_replace('/[^\p{L}\p{N}_\- ]/u', '', $text)));
+}
+
+function withoutCode(string $markdown): string
+{
+    return (string) preg_replace('/```.*?```/s', '', $markdown);
+}
+
+/**
+ * @return list<string> the anchors of all headings, with -1, -2 for repeated ones
+ */
+function anchorsIn(string $markdown): array
+{
+    preg_match_all('/^#{1,6}\s+(.*)$/m', withoutCode($markdown), $headings);
+    $seen = [];
+    $anchors = [];
+
+    foreach ($headings[1] as $heading) {
+        $anchor = anchorOf($heading);
+        $count = $seen[$anchor] ?? 0;
+        $seen[$anchor] = $count + 1;
+        $anchors[] = $count === 0 ? $anchor : $anchor . '-' . $count;
+    }
+
+    return $anchors;
+}
+
+$root = rtrim($argv[1] ?? dirname(__DIR__), '/');
+$files = array_merge(is_file($root . '/README.md') ? ['README.md'] : [], array_map(
+    static fn (string $path): string => 'docs/' . basename($path),
+    glob($root . '/docs/*.md') ?: [],
+));
+$problems = [];
+
+foreach ($files as $file) {
+    $markdown = (string) file_get_contents($root . '/' . $file);
+    $text = withoutCode($markdown);
+
+    if (substr_count($markdown, '```') % 2 !== 0) {
+        $problems[] = $file . ': a code block is not closed';
+    }
+
+    // [text](target#anchor) and <a href="target#anchor">
+    preg_match_all('/\]\(([^)#\s]*)(?:#([^)\s]*))?\)|href="([^"#]*)(?:#([^"]*))?"/', $text, $links, PREG_SET_ORDER);
+
+    foreach ($links as $link) {
+        $path = ($link[1] ?? '') !== '' || ($link[3] ?? '') === '' ? ($link[1] ?? '') : $link[3];
+        $anchor = ($link[2] ?? '') !== '' ? $link[2] : ($link[4] ?? '');
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://') || str_starts_with($path, 'mailto:')) {
+            continue;
+        }
+
+        $target = $path === '' ? $file : ltrim((string) preg_replace('#/+#', '/', dirname($file) === '.' ? $path : dirname($file) . '/' . $path), '/');
+
+        // resolve ../ and ./
+        $parts = [];
+
+        foreach (explode('/', $target) as $part) {
+            if ($part === '..') {
+                array_pop($parts);
+            } elseif ($part !== '.' && $part !== '') {
+                $parts[] = $part;
+            }
+        }
+
+        $target = implode('/', $parts);
+
+        if (!file_exists($root . '/' . $target)) {
+            $problems[] = sprintf('%s: %s does not exist', $file, $path);
+
+            continue;
+        }
+
+        if ($anchor !== '' && str_ends_with($target, '.md')
+            && !in_array($anchor, anchorsIn((string) file_get_contents($root . '/' . $target)), true)) {
+            $problems[] = sprintf('%s: %s has no heading #%s', $file, $target, $anchor);
+        }
+    }
+}
+
+echo sprintf("%d documents checked, %d problems\n", count($files), count($problems));
+
+foreach ($problems as $problem) {
+    echo '  - ' . $problem . "\n";
+}
+
+exit($problems === [] ? 0 : 1);
