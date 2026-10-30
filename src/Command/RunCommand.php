@@ -21,6 +21,7 @@ use FreifunkKarte\Run\DriftEvent;
 use FreifunkKarte\Run\RecordedRun;
 use FreifunkKarte\Run\RunRecorder;
 use FreifunkKarte\Run\RunRepository;
+use FreifunkKarte\Source\ApiDocumentStore;
 use FreifunkKarte\Source\Directory;
 use FreifunkKarte\Source\FixedCommunities;
 use FreifunkKarte\Source\LastGoodStore;
@@ -133,6 +134,7 @@ final class RunCommand extends Command
             null,
             (string) $input->getOption('directory-url'),
             lastGood: new LastGoodStore($cacheDir . '/last-good'),
+            apiDocuments: new ApiDocumentStore($cacheDir . '/last-good-api'),
             assignments: $config->assignments,
         );
 

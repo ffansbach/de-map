@@ -149,7 +149,7 @@ final class DriftDetector
                 DriftEvent::STALE_DATA,
                 $before->staleSince === null ? DriftEvent::WARNING : DriftEvent::INFO,
                 $now->key,
-                sprintf('"%s": the source has trouble, showing nodes saved at %s', $now->name, $now->staleSince),
+                sprintf('"%s": the source has trouble, showing data saved at %s', $now->name, $now->staleSince),
                 ['staleSince' => $now->staleSince],
             );
         }

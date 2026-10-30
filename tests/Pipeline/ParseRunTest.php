@@ -12,6 +12,7 @@ use FreifunkKarte\Parser\SourceParser;
 use FreifunkKarte\Pipeline\CommunityReport;
 use FreifunkKarte\Pipeline\ParseRun;
 use FreifunkKarte\Pipeline\RunResult;
+use FreifunkKarte\Source\ApiDocumentStore;
 use FreifunkKarte\Source\LastGoodStore;
 use FreifunkKarte\Source\SourceAssignment;
 use FreifunkKarte\Source\SourceAssignments;
@@ -36,7 +37,7 @@ final class ParseRunTest extends TestCase
      * @param list<string> $unreachableHosts
      * @param array<string, list<Response>> $flaky answers served first for a URL, before the world answers
      */
-    private function runWorld(World $world, ?SourceCache $cache = null, array $skip = [], ?string $only = null, array $unreachableHosts = [], bool $withFixed = true, array $flaky = [], ?LastGoodStore $lastGood = null, ?\Closure $clock = null, ?SourceAssignments $assignments = null): RunResult
+    private function runWorld(World $world, ?SourceCache $cache = null, array $skip = [], ?string $only = null, array $unreachableHosts = [], bool $withFixed = true, array $flaky = [], ?LastGoodStore $lastGood = null, ?\Closure $clock = null, ?SourceAssignments $assignments = null, ?ApiDocumentStore $apiDocuments = null): RunResult
     {
         $this->requests = [];
         $inner = $world->httpHandler();
@@ -64,6 +65,7 @@ final class ParseRunTest extends TestCase
             retryDelayMs: 0,
             lastGood: $lastGood,
             assignments: $assignments ?? new SourceAssignments(),
+            apiDocuments: $apiDocuments,
         );
 
         return $run->run($withFixed ? $world->fixedCommunities() : [], $skip, $only);
@@ -301,6 +303,97 @@ final class ParseRunTest extends TestCase
         );
 
         $this->assertSame(0, $result->nodes->count());
+    }
+
+    public function testSourceThatDoesNotAnswerAtAllShowsItsLastGoodNodesWithoutAskingAgain(): void
+    {
+        $store = new LastGoodStore();
+        $this->runWorld($this->oneNodeWorld(), lastGood: $store);
+
+        $result = $this->runWorld($this->oneNodeWorld(), lastGood: $store, unreachableHosts: ['flaky.test']);
+        $report = $this->report($result, 'flaky');
+
+        $this->assertSame(CommunityReport::OK, $report->outcome);
+        $this->assertSame(1, $result->nodes->count());
+        $this->assertNotNull($report->staleSince);
+        $this->assertStringContainsString('source answered with no answer (Could not resolve host); showing the nodes saved at', $report->warnings[0]);
+        // a host that did not answer usually does not answer a second later either
+        $this->assertCount(1, $this->requestsTo('https://flaky.test/'));
+    }
+
+    public function testApiFileThatDoesNotAnswerUsesTheCopyOfTheLastRun(): void
+    {
+        $api = new ApiDocumentStore();
+        $this->runWorld($this->oneNodeWorld(), apiDocuments: $api);
+
+        $result = $this->runWorld($this->oneNodeWorld(), unreachableHosts: ['api.test'], apiDocuments: $api);
+        $report = $this->report($result, 'flaky');
+
+        $this->assertSame(CommunityReport::OK, $report->outcome);
+        $this->assertSame(1, $result->nodes->count());
+        $this->assertSame('Freifunk flaky', $report->name);
+        $this->assertNotNull($report->staleSince);
+        $this->assertContainsEquals('API file not available (Could not resolve host); using the copy saved at ' . (new DateTimeImmutable())->format('Y-m-d H:i'), $report->messages);
+    }
+
+    public function testApiFileWithServerErrorOrHtmlInsteadOfJsonUsesTheCopy(): void
+    {
+        $api = new ApiDocumentStore();
+        $this->runWorld($this->oneNodeWorld(), apiDocuments: $api);
+
+        foreach ([new Response(503), new Response(429), new Response(200, [], '<html>maintenance</html>')] as $answer) {
+            $result = $this->runWorld($this->oneNodeWorld(), flaky: ['https://api.test/flaky.json' => [$answer]], apiDocuments: $api);
+
+            $this->assertSame(1, $result->nodes->count(), (string) $answer->getStatusCode());
+            $this->assertNotNull($this->report($result, 'flaky')->staleSince);
+        }
+    }
+
+    public function testApiFileThatIsGoneIsBelievedAndNotReplacedByTheCopy(): void
+    {
+        $api = new ApiDocumentStore();
+        $this->runWorld($this->oneNodeWorld(), apiDocuments: $api);
+        $removed = (new World())->communityWithoutApiFile('flaky');
+
+        $result = $this->runWorld($removed, apiDocuments: $api);
+
+        $this->assertSame(CommunityReport::API_UNAVAILABLE, $this->report($result, 'flaky')->outcome);
+        $this->assertSame(0, $result->nodes->count());
+    }
+
+    public function testApiFileCopyIsNotUsedAfterADay(): void
+    {
+        $api = new ApiDocumentStore();
+        $this->runWorld($this->oneNodeWorld(), apiDocuments: $api);
+
+        $result = $this->runWorld(
+            $this->oneNodeWorld(),
+            unreachableHosts: ['api.test'],
+            clock: static fn (): DateTimeImmutable => new DateTimeImmutable('+25 hours'),
+            apiDocuments: $api,
+        );
+
+        $this->assertSame(CommunityReport::API_UNAVAILABLE, $this->report($result, 'flaky')->outcome);
+        $this->assertNull($this->report($result, 'flaky')->staleSince);
+    }
+
+    public function testApiFileWithoutACopyIsReportedAsBefore(): void
+    {
+        $result = $this->runWorld($this->oneNodeWorld(), unreachableHosts: ['api.test'], apiDocuments: new ApiDocumentStore());
+
+        $this->assertSame(CommunityReport::API_UNAVAILABLE, $this->report($result, 'flaky')->outcome);
+    }
+
+    public function testCommunityShownFromTwoCopiesSaysSinceWhenTheOlderOneWasSaved(): void
+    {
+        $api = new ApiDocumentStore();
+        $store = new LastGoodStore();
+        $this->runWorld($this->oneNodeWorld(), lastGood: $store, apiDocuments: $api);
+
+        $result = $this->runWorld($this->oneNodeWorld(), lastGood: $store, unreachableHosts: ['api.test', 'flaky.test'], apiDocuments: $api);
+
+        $this->assertSame(1, $result->nodes->count());
+        $this->assertNotNull($this->report($result, 'flaky')->staleSince);
     }
 
     public function testNotFoundIsNotRetried(): void

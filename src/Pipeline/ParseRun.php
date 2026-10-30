@@ -14,6 +14,7 @@ use FreifunkKarte\Http\ParallelFetcher;
 use FreifunkKarte\Model\NodeCollection;
 use FreifunkKarte\Parser\ParseResult;
 use FreifunkKarte\Parser\SourceParser;
+use FreifunkKarte\Source\ApiDocumentStore;
 use FreifunkKarte\Source\Directory;
 use FreifunkKarte\Source\Discovery;
 use FreifunkKarte\Source\LastGoodStore;
@@ -47,6 +48,9 @@ final class ParseRun
     /** @var array<string, DateTimeImmutable> data URL => when the nodes shown for it were saved */
     private array $stale = [];
 
+    /** @var array<string, DateTimeImmutable> community key => when the copy of its API file was saved, if that copy is used */
+    private array $staleApi = [];
+
     private int $requests = 0;
 
     public function __construct(
@@ -59,6 +63,7 @@ final class ParseRun
         private readonly int $retryDelayMs = 1000,
         private readonly ?LastGoodStore $lastGood = null,
         private readonly SourceAssignments $assignments = new SourceAssignments(),
+        private readonly ?ApiDocumentStore $apiDocuments = null,
     ) {
     }
 
@@ -74,6 +79,7 @@ final class ParseRun
         $this->fetches = [];
         $this->parsed = [];
         $this->stale = [];
+        $this->staleApi = [];
         $this->requests = 0;
         $started = microtime(true);
         $now = $this->now();
@@ -82,7 +88,7 @@ final class ParseRun
         $directory = $this->fetchDirectory($only);
 
         $log(sprintf('fetching %d community API files', count($directory)));
-        $builds = $this->buildCommunities($directory, $skip);
+        $builds = $this->buildCommunities($directory, $skip, $now);
 
         foreach ($fixed as $key => $source) {
             if ($only === null || $only === $key) {
@@ -101,6 +107,7 @@ final class ParseRun
         $reports = $this->assemble($builds, $nodes = new NodeCollection(), $now);
         $this->cache->save($now);
         $this->lastGood?->prune($now);
+        $this->apiDocuments?->prune($now);
 
         $listed = array_values(array_filter($reports, static fn (CommunityReport $r): bool => $r->listed));
         $metaLinks = $this->metaResolver->resolve(array_map(
@@ -157,7 +164,7 @@ final class ParseRun
      * @param list<string> $skip
      * @return list<CommunityBuild>
      */
-    private function buildCommunities(array $directory, array $skip): array
+    private function buildCommunities(array $directory, array $skip, DateTimeImmutable $now): array
     {
         /** @var array<string, array<array-key, mixed>> $documents */
         $documents = [];
@@ -185,10 +192,26 @@ final class ParseRun
             }
 
             if ($document === null) {
+                $fetch = $apiFetches[$apiUrl] ?? null;
+                // a file that is not there (404) is believed; a server that does not answer properly is not
+                $stored = $fetch !== null && ($fetch->status === 200 || self::hasTrouble($fetch)) ? $this->apiDocuments?->load($apiUrl, $now) : null;
+
+                if ($stored !== null) {
+                    $build = $this->buildFromDocument($key, $apiUrl, $stored['document']);
+                    $build->messages[] = sprintf('API file not available (%s); using the copy saved at %s', self::describe($fetch), $stored['savedAt']->format('Y-m-d H:i'));
+                    $this->staleApi[$key] = $stored['savedAt'];
+                    $builds[] = $build;
+                    continue;
+                }
+
                 $builds[] = new CommunityBuild($placeholder, 'directory', $apiUrl, false, CommunityReport::API_UNAVAILABLE, messages: [
-                    'API file not available: ' . self::describe($apiFetches[$apiUrl] ?? null),
+                    'API file not available: ' . self::describe($fetch),
                 ]);
                 continue;
+            }
+
+            if (is_array($document['nodeMaps'] ?? null)) {
+                $this->apiDocuments?->save($apiUrl, $document, $now);
             }
 
             $builds[] = $this->buildFromDocument($key, $apiUrl, $document);
@@ -365,13 +388,18 @@ final class ParseRun
             return;
         }
 
-        $stored = $this->isTransient($url) ? $this->lastGood->load($url, $now) : null;
+        $stored = $this->mayFallBack($url) ? $this->lastGood->load($url, $now) : null;
 
         if ($stored === null) {
             return;
         }
 
-        $reason = ($this->fetches[$url]->status ?? 0) === 200 ? 'an empty body' : 'HTTP ' . ($this->fetches[$url]->status ?? '?');
+        $fetch = $this->fetches[$url] ?? null;
+        $reason = match (true) {
+            $fetch?->status === null => 'no answer (' . ($fetch->error ?? 'unreachable') . ')',
+            $fetch->status === 200 => 'an empty body',
+            default => 'HTTP ' . $fetch->status,
+        };
         $this->parsed[$url] = $stored['result']->withWarnings([
             sprintf('source answered with %s; showing the nodes saved at %s', $reason, $stored['savedAt']->format('Y-m-d H:i')),
         ]);
@@ -389,6 +417,31 @@ final class ParseRun
 
         $this->requests += count($results);
         $this->fetches = [...$this->fetches, ...$results];
+    }
+
+    /**
+     * Whether the last good nodes of a source may be shown instead of what it delivered now: the
+     * server does not answer or answers with an error, or its body is empty. Wider than
+     * {@see isTransient()}, which decides what is worth asking again at once (a host that timed out
+     * usually does it again).
+     */
+    private function mayFallBack(string $url): bool
+    {
+        $fetch = $this->fetches[$url] ?? null;
+
+        if ($fetch === null) {
+            return false;
+        }
+
+        return self::hasTrouble($fetch) || ($fetch->status === 200 && ($this->parsed[$url] ?? null)?->format === Format::Empty);
+    }
+
+    /**
+     * No answer at all (connection, DNS, TLS, timeout), request timeout, too many requests or a server error.
+     */
+    private static function hasTrouble(FetchResult $fetch): bool
+    {
+        return $fetch->status === null || $fetch->status === 408 || $fetch->status === 429 || $fetch->status >= 500;
     }
 
     private function isTransient(string $url): bool
@@ -730,6 +783,13 @@ final class ParseRun
 
         foreach ($chosen['unused'] as $unused) {
             $messages[] = sprintf('not used: %s (%s) - %s', implode(', ', $unused['urls']), $unused['entry']->declaredType, $chosen['nodelist'] ? 'the community has a nodelist, which takes priority' : 'another map of this community was used');
+        }
+
+        $apiStale = $this->staleApi[$key] ?? null;
+
+        if ($apiStale !== null && ($staleSince === null || $apiStale < new DateTimeImmutable($staleSince))) {
+            // the older of the two: that is how long this community has been shown from copies
+            $staleSince = $apiStale->format('c');
         }
 
         $attempts = $this->attempts($build, $now);
