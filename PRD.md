@@ -398,4 +398,4 @@ Decided to wait, in this order of usefulness:
 - **`fixedCommunities.php` as JSON** (`config/fixed-communities.json`, 17 entries). Review the admin page `/fixed` after a few weeks of history first (which entries stay dry).
 - **Small web things:** drop the unused `isCachedresult` from `data.php`; send `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options` from `index.php`.
 - **CI:** a workflow that runs `composer check` on PHP 8.4 and 8.5 (Gitea Actions or GitHub Actions).
-- **Dependency updates:** Guzzle 8, PHPUnit 13, Symfony Console 8 are available; `composer audit` reports no advisories. Keep `php-http/guzzle7-adapter`: the InfluxDB client finds it at runtime.
+- **Guzzle 8:** blocked. `php-http/guzzle7-adapter` (which the InfluxDB client finds at runtime) requires Guzzle ^7. Check again when the adapter or the InfluxDB client supports Guzzle 8 (`composer why-not guzzlehttp/guzzle 8`). Updated on 2026-10-30: everything else, incl. PHPUnit 13 and Symfony Console 8; `composer audit` reports no advisories.
