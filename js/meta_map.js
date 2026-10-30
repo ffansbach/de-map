@@ -342,6 +342,39 @@ function addPoints2Map(data)
 }
 
 /**
+ * escapes a text for use in html: names of nodes and communities come from third parties
+ *
+ * @param  {*} value
+ * @return {string}
+ */
+function escapeHtml(value)
+{
+	return String(value)
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
+
+/**
+ * a link to a community if its address is a web address (no javascript: and the like), else just the text
+ *
+ * @param  {string} url
+ * @param  {string} label
+ * @return {string} html
+ */
+function getLinkHtml(url, label)
+{
+	if(!/^https?:\/\//i.test(url))
+	{
+		return escapeHtml(label);
+	}
+
+	return '<a href="'+escapeHtml(url)+'" target="community_netmon" rel="noopener noreferrer">'+escapeHtml(label)+'</a>';
+}
+
+/**
  * get tooltip-html for router
  *
  * @param  {object} routerData
@@ -349,25 +382,25 @@ function addPoints2Map(data)
  */
 function getTooltipContent(routerData)
 {
-	var tooltip = '<h3 class="router">'+routerData.name+'</h3>';
+	var tooltip = '<h3 class="router">'+escapeHtml(routerData.name)+'</h3>';
 
 	if(typeof communities[routerData.community] != 'undefined')
 	{
 		var thisRouterCommunity = communities[routerData.community];
-		tooltip += '<h4 class="comm" title="Community">Freifunk-Gruppe: <a href="'+thisRouterCommunity.url+'" target="community_netmon">'+thisRouterCommunity.name+'</a></h4>';
+		tooltip += '<h4 class="comm" title="Community">Freifunk-Gruppe: '+getLinkHtml(thisRouterCommunity.url, thisRouterCommunity.name)+'</h4>';
 
 		if(thisRouterCommunity.meta !== false)
 		{
-			var metaName = thisRouterCommunity.meta;
+			var metaName = escapeHtml(thisRouterCommunity.meta);
 
 			if(
-				typeof metaCommunities[metaName] != 'undefined'
+				typeof metaCommunities[thisRouterCommunity.meta] != 'undefined'
 				&&
-				typeof metaCommunities[metaName].url != 'undefined'
+				typeof metaCommunities[thisRouterCommunity.meta].url != 'undefined'
 			)
 			{
 				// add link to metacommunity
-				metaName = '<a href="'+metaCommunities[metaName].url+'" target="community_netmon">'+metaName+'</a>';
+				metaName = getLinkHtml(metaCommunities[thisRouterCommunity.meta].url, thisRouterCommunity.meta);
 			}
 
 			tooltip += '<h4 class="comm" title="Metacommunity">Übergruppe: '+metaName+'</h4>';
@@ -378,7 +411,7 @@ function getTooltipContent(routerData)
 
 	if(routerData.clients != '?')
 	{
-		tooltip += 'verbundene Clients: '+routerData.clients+'<br />';
+		tooltip += 'verbundene Clients: '+escapeHtml(routerData.clients)+'<br />';
 	}
 
 	if(routerData.status != 'online' && routerData.status != '?')
