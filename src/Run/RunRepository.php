@@ -21,7 +21,10 @@ final class RunRepository
     public const REFUSED = 'refused';
     public const FAILED = 'failed';
 
-    private const SCHEMA_VERSION = 1;
+    private const SCHEMA_VERSION = 2;
+
+    /** the oldest schema the admin UI can still read (version 2 only added runs.compacted_at) */
+    private const READABLE_SINCE = 1;
 
     private function __construct(private readonly PDO $pdo, bool $readOnly = false)
     {
@@ -33,7 +36,7 @@ final class RunRepository
             // any write fails from here on; works the same on every PHP version
             $this->pdo->exec('PRAGMA query_only = ON');
 
-            if ($this->schemaVersion() < self::SCHEMA_VERSION) {
+            if ($this->schemaVersion() < self::READABLE_SINCE) {
                 throw new RuntimeException('The history is empty or from an older version: run `bin/parser run` once first');
             }
 
@@ -254,6 +257,37 @@ final class RunRepository
         $statement->execute([$key, $limit]);
 
         return array_values($statement->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    /**
+     * Drops the detail of runs older than the given number of days and keeps what the history needs: the
+     * summary of each run, one row per community (outcome, format, counts, the declared map types) and the
+     * events. Gone are the requests of the run and, per community, the account of the run, the tried
+     * addresses, the warnings, the source addresses and the API file address. That is about 85 % of the size.
+     *
+     * @return int the number of runs that were compacted
+     */
+    public function compact(int $keepDetailDays, DateTimeImmutable $now): int
+    {
+        $cutoff = $now->modify(sprintf('-%d days', $keepDetailDays))->format('c');
+        $old = 'SELECT id FROM runs WHERE compacted_at IS NULL AND status <> ? AND started_at < ?';
+        $arguments = [self::RUNNING, $cutoff];
+
+        $this->pdo->beginTransaction();
+
+        try {
+            $this->pdo->prepare('DELETE FROM fetches WHERE run_id IN (' . $old . ')')->execute($arguments);
+            $this->pdo->prepare("UPDATE community_results SET messages = '[]', attempts = '[]', warnings = '[]', source_urls = '[]', api_url = NULL WHERE run_id IN (" . $old . ')')->execute($arguments);
+            $mark = $this->pdo->prepare('UPDATE runs SET compacted_at = ? WHERE compacted_at IS NULL AND status <> ? AND started_at < ?');
+            $mark->execute([$now->format('c'), ...$arguments]);
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+
+            throw $e;
+        }
+
+        return $mark->rowCount();
     }
 
     /**
@@ -528,7 +562,17 @@ final class RunRepository
 
     private function migrate(): void
     {
-        if ($this->schemaVersion() >= self::SCHEMA_VERSION) {
+        $version = $this->schemaVersion();
+
+        if ($version >= self::SCHEMA_VERSION) {
+            return;
+        }
+
+        if ($version === 1) {
+            // 1 -> 2: which runs have lost their detail (see compact())
+            $this->pdo->exec('ALTER TABLE runs ADD COLUMN compacted_at TEXT');
+            $this->pdo->exec('PRAGMA user_version = ' . self::SCHEMA_VERSION);
+
             return;
         }
 
@@ -545,7 +589,8 @@ final class RunRepository
                 with_nodes INTEGER,
                 without_data INTEGER,
                 out_dir TEXT,
-                error TEXT
+                error TEXT,
+                compacted_at TEXT
             );
             CREATE TABLE community_results (
                 run_id INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,

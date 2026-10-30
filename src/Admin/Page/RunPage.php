@@ -39,8 +39,17 @@ final class RunPage implements Page
 
         $body .= '<h2>Events</h2>' . Widgets::eventsTable($context, $repository->events($runId), empty: 'No events: nothing odd compared with the run before.')->html;
         $body .= $this->changes($context, $runId)->html;
-        $body .= $this->noData($context, $runId)->html;
         $body .= $this->stale($context, $runId)->html;
+
+        if (($run['compacted_at'] ?? null) !== null) {
+            // without the tried addresses the reasons of "no data" would be guessed wrongly, so they are left out
+            $body .= '<h2>Detail</h2><p class="muted">The requests, the tried addresses and the account of each community were removed on '
+                . Html::e($context->time($run['compacted_at'])) . ' to keep the history small. The summary, the events and the changes above remain.</p>';
+
+            return new PageResult('Run #' . $runId, '/runs', new Safe($body));
+        }
+
+        $body .= $this->noData($context, $runId)->html;
         $body .= $this->fetches($context, $runId)->html;
 
         return new PageResult('Run #' . $runId, '/runs', new Safe($body));

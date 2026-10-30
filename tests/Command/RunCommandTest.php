@@ -148,6 +148,38 @@ final class RunCommandTest extends TestCase
         $this->assertSame('ok', $communities['mv-city']->outcome);
     }
 
+    public function testTheDetailOfOldRunsIsDroppedByDefaultAfterThirtyDays(): void
+    {
+        $this->execute([]);
+        $history = RunRepository::open($this->directory . '/state/parser.sqlite');
+        $old = $history->start(new \DateTimeImmutable('2026-01-10T12:00:00Z'), '/out');
+        $history->finish($old, \FreifunkKarte\Tests\Run\RunFixtures::standard(), RunRepository::OK, new \DateTimeImmutable('2026-01-10T12:00:30Z'));
+        $this->assertNotSame([], $history->fetches($old));
+        unset($history);
+
+        $this->execute([]);
+
+        $history = RunRepository::openReadOnly($this->directory . '/state/parser.sqlite');
+        $this->assertSame([], $history->fetches($old), 'the old run lost its requests');
+        $this->assertSame(40, $history->run($old)['nodes'] ?? null, 'but keeps its summary');
+        $newest = $history->latestRun();
+        $this->assertNotNull($newest);
+        $this->assertNotSame([], $history->fetches((int) $newest['id']), 'the newest run keeps everything');
+    }
+
+    public function testKeepDetailDaysZeroKeepsAllDetail(): void
+    {
+        $this->execute([]);
+        $history = RunRepository::open($this->directory . '/state/parser.sqlite');
+        $old = $history->start(new \DateTimeImmutable('2026-01-10T12:00:00Z'), '/out');
+        $history->finish($old, \FreifunkKarte\Tests\Run\RunFixtures::standard(), RunRepository::OK, new \DateTimeImmutable('2026-01-10T12:00:30Z'));
+        unset($history);
+
+        $this->execute(['--keep-detail-days' => '0']);
+
+        $this->assertNotSame([], RunRepository::openReadOnly($this->directory . '/state/parser.sqlite')->fetches($old));
+    }
+
     public function testOnlyRunsOneCommunity(): void
     {
         $this->execute(['--only' => 'flat-town']);

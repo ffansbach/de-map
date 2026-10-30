@@ -608,7 +608,8 @@ Die wichtigsten Optionen von `run`:
 | `--cache-dir=DIR` | `var/cache` | Gedächtnis des Parsers |
 | `--db=DATEI` | `var/parser.sqlite` | Verlaufsdatenbank |
 | `--log-file=DATEI` | `var/log/parser.log` | JSON-Log (eine Datei pro Tag, 14 Tage) |
-| `--keep-days=N` | `0` | Läufe löschen, die älter sind als N Tage (`0` = alles behalten) |
+| `--keep-days=N` | `0` | Läufe vollständig löschen, die älter sind als N Tage (`0` = alles behalten) |
+| `--keep-detail-days=N` | `30` | bei Läufen, die älter sind als N Tage, die Einzelheiten löschen (Abrufe, Meldungen, probierte Adressen); Zusammenfassung, Ereignisse und das Ergebnis je Community bleiben (`0` = alles behalten) |
 | `--concurrency=N` | `12` | gleichzeitige Abrufe |
 | `--only=KEY` | – | nur eine Community abfragen |
 | `--skip=A,B` | – | weitere Communities überspringen |
@@ -651,6 +652,14 @@ Datei (404) und gültige, aber leere Listen werden dagegen geglaubt.
 | Community fehlt | Admin-Oberfläche → *Karten ohne Daten* bzw. `runs --community=KEY`. Siehe [nächster Abschnitt](#meine-community-fehlt-auf-der-karte). |
 | Admin-Oberfläche: „not set up correctly“ | Details im Fehlerlog des Webservers: meist fehlt `config/admin.local.json` oder `var/` ist für den Webserver-Benutzer nicht beschreibbar (siehe [Rechte](#admin-oberfläche)). |
 | Zwei Läufe überschneiden sich | Cronjob ohne `flock` – siehe [Cronjob](#6-cronjob-einrichten). |
+
+**Größe des Verlaufs.** Ein vollständig gespeicherter Lauf braucht etwa 0,5 MB, bei einem Lauf pro Stunde
+wären das über 4 GB im Jahr. Deshalb löscht jeder Lauf die Einzelheiten von Läufen, die älter als 30 Tage
+sind (`--keep-detail-days`): übrig bleiben pro Lauf nur noch etwa 60 KB, also rund 0,5 GB im Jahr plus die
+letzten 30 Tage in voller Länge. Die Admin-Oberfläche weist bei einem solchen Lauf darauf hin. SQLite gibt
+freien Platz nicht an das Dateisystem zurück; die Datei wächst aber nicht weiter, weil der Platz für neue
+Läufe wiederverwendet wird. Wer sie nach dem ersten Verdichten verkleinern möchte (nicht während eines
+Laufs): `php -r 'new PDO("sqlite:var/parser.sqlite")->exec("VACUUM");'`
 
 **Sichern.** Wichtig ist nur `var/parser.sqlite` (der Verlauf) und deine Konfiguration. Alles andere
 entsteht beim nächsten Lauf neu.

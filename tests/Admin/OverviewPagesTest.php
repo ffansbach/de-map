@@ -127,6 +127,25 @@ final class OverviewPagesTest extends AdminTestCase
         $this->assertStringContainsString('https://pagey.test/map/', $html);
     }
 
+    public function testARunWhoseDetailWasCompactedSaysSoInsteadOfShowingEmptyTables(): void
+    {
+        $this->seedHistory($this->repository, withFailedRun: false);
+        $before = $this->assertValidHtml($this->get('/runs/1'));
+        $this->assertStringContainsString('Slowest requests', $before);
+
+        // seedHistory records runs in October 2026; these are older than 30 days
+        $this->assertSame(2, $this->repository->compact(30, self::at('2027-01-15T12:00:00Z')));
+
+        $html = $this->assertValidHtml($this->get('/runs/1'));
+
+        $this->assertStringContainsString('were removed on', $html);
+        $this->assertStringContainsString('to keep the history small', $html);
+        $this->assertStringNotContainsString('Slowest requests', $html);
+        // what stays
+        $this->assertStringContainsString('Events', $html);
+        $this->assertStringContainsString('Changes since', $this->assertValidHtml($this->get('/runs/2')));
+    }
+
     public function testNothingFromTheDataCanInjectMarkup(): void
     {
         $this->seedHistory($this->repository);

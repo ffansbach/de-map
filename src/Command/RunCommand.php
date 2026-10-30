@@ -68,6 +68,7 @@ final class RunCommand extends Command
             ->addOption('db', null, InputOption::VALUE_REQUIRED, 'SQLite file with the history of runs', 'var/parser.sqlite')
             ->addOption('log-file', null, InputOption::VALUE_REQUIRED, 'JSON log (a file per day is kept for two weeks)', 'var/log/parser.log')
             ->addOption('keep-days', null, InputOption::VALUE_REQUIRED, 'forget runs older than this many days; 0 keeps the whole history', '0')
+            ->addOption('keep-detail-days', null, InputOption::VALUE_REQUIRED, 'drop the requests and messages of runs older than this many days and keep their summaries; 0 keeps all detail', '30')
             ->addOption('no-history', null, InputOption::VALUE_NONE, 'do not record the run, compare it, log it or report it anywhere')
             ->addOption('integrations', null, InputOption::VALUE_REQUIRED, 'JSON file with the healthchecks.io / InfluxDB settings (default: config/integrations.local.json if it exists)')
             ->addOption('legacy-config', null, InputOption::VALUE_REQUIRED, 'take the healthchecks.io / InfluxDB (and, for --upload, FTP) settings from the config.php of the legacy parser')
@@ -226,6 +227,16 @@ final class RunCommand extends Command
 
             if ($keepDays > 0) {
                 $recorded->repository->prune($keepDays, $summary->finishedAt);
+            }
+
+            $keepDetailDays = (int) $input->getOption('keep-detail-days');
+
+            if ($keepDetailDays > 0) {
+                $compacted = $recorded->repository->compact($keepDetailDays, $summary->finishedAt);
+
+                if ($compacted > 0 && $io->isVerbose()) {
+                    $io->writeln(sprintf('history: dropped the detail of %d runs older than %d days', $compacted, $keepDetailDays));
+                }
             }
         }
 
