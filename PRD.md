@@ -67,7 +67,7 @@ Working rules: one step at a time, report after each, separate focused commits.
 | 2026-10-29 | Admin UI lives on the LXC, internal only | Run data stays private, no auth surface on the public host. |
 | 2026-10-29 | Keep output byte-compatible first, slim later | Allows a safe side-by-side comparison with the old parser. |
 | 2026-10-29 | Replace FTP by a signed HTTPS upload API | FTP is plaintext and its rename logic is broken (see findings). |
-| 2026-10-29 | No CI for now; `composer check` locally | Gitea runner not set up. |
+| 2026-10-29 | No CI for now; `composer check` locally | No CI runner set up. Superseded on 2026-10-30: GitHub Actions (`.github/workflows/ci.yml`). |
 | 2026-10-29 | PHPStan at level 5 with a baseline for `lib/`; CS-Fixer only on new code | Avoids churning code that will be deleted, while new code starts clean. |
 | 2026-10-29 | Dropped `phpseclib` (unused) and `lukaswhite/directory` (abandoned, deprecations on 8.5) | Fewer dependencies; phpseclib alone had 5 advisories. |
 | 2026-10-29 | Choose the parser by the **content** of a response (`FormatDetector`), not by the declared `technicalType` | The audit shows the declared type is unreliable (section 6). |
@@ -397,5 +397,4 @@ Decided to wait, in this order of usefulness:
 
 - **`fixedCommunities.php` as JSON** (`config/fixed-communities.json`, 17 entries). Review the admin page `/fixed` after a few weeks of history first (which entries stay dry).
 - **Small web things:** drop the unused `isCachedresult` from `data.php`; send `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options` from `index.php`.
-- **CI:** a workflow that runs `composer check` on PHP 8.4 and 8.5 (Gitea Actions or GitHub Actions).
 - **Guzzle 8:** blocked. `php-http/guzzle7-adapter` (which the InfluxDB client finds at runtime) requires Guzzle ^7. Check again when the adapter or the InfluxDB client supports Guzzle 8 (`composer why-not guzzlehttp/guzzle 8`). Updated on 2026-10-30: everything else, incl. PHPUnit 13 and Symfony Console 8; `composer audit` reports no advisories.

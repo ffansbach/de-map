@@ -38,8 +38,11 @@ tests/ docs/ PRD.md   Tests; Dokumentation; Architektur, Entscheidungen und Fahr
 ```
 
 [`PRD.md`](../PRD.md) erklärt Entscheidungen und das Design ausführlich (Englisch) und ist der beste Einstieg,
-wenn du mitarbeiten willst; [`history.md`](history.md) hält fest, was der alte Parser falsch gemacht hat. Fehler und Wünsche gern als Issue; Änderungen als Pull Request – bitte
-mit Tests, und `composer check` muss durchlaufen.
+wenn du mitarbeiten willst; [`history.md`](history.md) hält fest, was der alte Parser falsch gemacht hat. Fehler und Wünsche gern als [Issue](https://github.com/ffansbach/de-map/issues); Änderungen als [Pull Request](https://github.com/ffansbach/de-map/pulls) – bitte
+mit Tests, und `composer check` muss durchlaufen. Dasselbe prüft die CI auf GitHub
+(`.github/workflows/ci.yml`, PHP 8.4 und 8.5) bei jedem Push auf `main` und jedem Pull Request;
+[Dependabot](https://docs.github.com/de/code-security/dependabot) schlägt wöchentlich Composer-Updates vor
+(`.github/dependabot.yml`).
 
 **Regeln im Repository**
 

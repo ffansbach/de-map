@@ -11,10 +11,12 @@
   <a href="#produktivbetrieb-schritt-für-schritt">Produktivbetrieb</a> ·
   <a href="docs/konfiguration.md">Konfiguration</a> ·
   <a href="docs/betrieb.md">Fehlersuche</a> ·
-  <a href="docs/README.md">Dokumentation</a>
+  <a href="docs/README.md">Dokumentation</a> ·
+  <a href="https://github.com/ffansbach/de-map/issues">Fehler melden</a>
 </p>
 
 <p align="center">
+  <a href="https://github.com/ffansbach/de-map/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ffansbach/de-map/actions/workflows/ci.yml/badge.svg?branch=main"></a>
   <img alt="Lizenz: GPL v2" src="https://img.shields.io/badge/Lizenz-GPL%20v2-blue">
   <img alt="PHP 8.4+" src="https://img.shields.io/badge/PHP-8.4%2B-777BB4">
   <img alt="Seit 2015 in Betrieb" src="https://img.shields.io/badge/in%20Betrieb-seit%202015-brightgreen">
@@ -120,7 +122,7 @@ Wichtig ist nur, dass der Parser den Webserver per HTTPS erreicht und beide Uhre
 In fünf Minuten zur eigenen Karte auf dem Rechner (Parser und Webserver in einem Verzeichnis):
 
 ```bash
-git clone <repository-url> freifunk-karte
+git clone https://github.com/ffansbach/de-map.git freifunk-karte
 cd freifunk-karte
 
 composer install                          # Abhängigkeiten des Parsers

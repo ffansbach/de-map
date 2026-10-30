@@ -8,7 +8,7 @@ Der Parser ist der aufwendige Teil des Projekts (ein Lauf dauert etwa 30–40 Se
 ## Schritt 1: Parser installieren
 
 ```bash
-git clone <repository-url> /srv/freifunk-karte     # Pfad frei wählbar
+git clone https://github.com/ffansbach/de-map.git /srv/freifunk-karte     # Pfad frei wählbar
 cd /srv/freifunk-karte
 composer install --no-dev --optimize-autoloader
 mkdir -p var

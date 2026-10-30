@@ -10,7 +10,7 @@ The old parser itself is in Git (it was removed in commit `05c4d83`, `git show 0
 - **Web** runs on www.freifunk-karte.de (index.php, `data.php` in read mode, `fetch.php`, `js/`).
 - **Parser** runs on a Proxmox LXC. A cron job calls `data.php?<reparse-key>&processonly&upload`, which parses everything, writes `cache/result_*.json` and uploads them via FTP.
 - The result JSON is over 3 MB (it used to be bigger).
-- Git remote is a self-hosted Gitea (`gitea.fritz.box`). CI is not set up (decision: none for now).
+- The source lives on GitHub ([ffansbach/de-map](https://github.com/ffansbach/de-map)). CI is not set up (decision: none for now).
 
 ### Data flow
 1. `directory.json` from the freifunk/directory.api.freifunk.net repo gives the community list (name → API file URL).
